@@ -80,6 +80,27 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
 #update-bar{position:fixed;z-index:30;top:max(10px,env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:12px;background:var(--text);color:#1a1033;font-weight:700;padding:8px 8px 8px 16px;border-radius:6px;box-shadow:0 10px 30px rgba(0,0,0,.45);max-width:calc(100% - 32px)}
 #update-bar[hidden]{display:none}
 #update-bar .play{flex:none;font-size:13px;padding:8px 12px}
+.board{display:flex;flex-direction:column;gap:10px}
+.brow{display:grid;grid-template-columns:auto auto 1fr;gap:4px 14px;align-items:start;border:1px solid var(--line);border-radius:6px;padding:12px 14px}
+.brow.me{border-color:var(--gold)}
+.bplace{font-family:var(--f-display);font-weight:900;font-size:22px;color:var(--muted);min-width:1.2em}
+.brow .rank{font-size:34px}
+.bmain{min-width:0;display:flex;flex-direction:column;gap:4px}
+.bname{font-family:var(--f-display);font-weight:800;font-size:16px;overflow-wrap:anywhere}
+.bstats,.berr{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13px;font-variant-numeric:tabular-nums}
+.bstats b{font-family:var(--f-mono)}
+.berr{color:var(--muted)}.berr .e1{color:var(--bad)}.berr .e2{color:#ff8a5c}
+.bbest{font-size:12px;color:var(--gold);font-family:var(--f-mono)}
+.small{font-size:12px;color:var(--muted);font-weight:400}
+.estrip{position:relative;height:12px;background:#120e30;border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.estrip i{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px}
+.estrip i.m,.lg.m{background:var(--bad)}.estrip i.d,.lg.d{background:#ff8a5c}
+.lg{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:middle}
+.legend{font-size:12px}
+.have{display:block;font-size:13px;color:var(--muted);cursor:pointer;border:1px dashed var(--line-2);border-radius:4px;padding:8px 10px}
+.have input{position:absolute;width:1px;height:1px;opacity:0}
+.have u{color:var(--gold)}
+.card{max-height:calc(100dvh - 40px);overflow-y:auto}
 .ghost.small{padding:7px 12px;font-size:13px;align-self:flex-start}
 .seg button{background:var(--panel-2);border-color:var(--line);padding:10px 4px;font-weight:700;font-size:14px}
 .seg button[aria-pressed="true"]{background:var(--text);color:#1a1033;border-color:var(--text)}
@@ -518,7 +539,8 @@ const T={name:'',file:null,mime:'',isVideo:false,videoURL:null,buf:null,F:null,c
 function prepareChart(c){
   const rc={...c};
   const lo=Math.min(S.smin,S.smax),hi=Math.max(S.smin,S.smax);
-  rc.sp=Float32Array.from(c.sp,e=>lo+(hi-lo)*Math.pow(clamp(e,0,1),1.2));rc.int=Float32Array.from(c.int);rc.kick=Float32Array.from(c.kick);
+  const useHost=!!NET.role&&c.smin!=null;const lo2=useHost?Math.min(c.smin,c.smax):lo,hi2=useHost?Math.max(c.smin,c.smax):hi;
+  rc.sp=Float32Array.from(c.sp,e=>lo2+(hi2-lo2)*Math.pow(clamp(e,0,1),1.2));rc.int=Float32Array.from(c.int);rc.kick=Float32Array.from(c.kick);
   const n=rc.sp.length,pos=new Float64Array(n);
   for(let k=1;k<n;k++)pos[k]=pos[k-1]+(rc.sp[k-1]+rc.sp[k])/2/c.R;
   rc.pos=pos;rc.beat=60/c.bpm;
@@ -536,7 +558,8 @@ const G={state:'menu',mode:'solo',rc:null,notes:[],scan:0,botScan:0,src:null,gai
   startCtx:0,o:0,oInit:false,lastT:-9,W:0,H:0,dpr:1,
   keys:[0,0,0,0],press:[0,0,0,0],conf:[0,0,0,0],lconf:[0,0,0,0],lpress:[0,0,0,0],
   me:null,popups:[],parts:[],lastDrop:-1,flash:0,hurt:0,stTimer:0,ended:false,videoOn:false};
-function newStats(){return {score:0,combo:0,max:0,hp:0.5,cnt:[0,0,0,0,0],accSum:0,judged:0,dead:false};}
+function newStats(){return {score:0,combo:0,max:0,hp:0.5,cnt:[0,0,0,0,0],accSum:0,judged:0,dead:false,err:{death:0,rel:0},missT:[],deathT:[]};}
+function myStats(fin){const me=G.me,d=G.dts.slice().sort((a,b)=>a-b);const m={t:'st',score:me.score,combo:me.combo,hp:+me.hp.toFixed(3),acc:me.judged?+(me.accSum/me.judged).toFixed(4):1,dead:me.dead,cnt:me.cnt,max:me.max,err:me.err,ms:d.length?Math.round(d[d.length>>1]*1000):0};if(fin){m.fin=1;m.missT=me.missT.slice(0,500);m.deathT=me.deathT.slice(0,200);}return m;}
 
 function nowCtx(){
   const a=AC;if(!a)return performance.now()/1000;
@@ -564,7 +587,8 @@ function startGame(mode,lead,ovr){
   G.evs=G.rc.events.slice();G.atkShake=-9;G.banner=null;SING.meter=0;SING.trail=[];SING.hit=0;SING.sent=0;SING.inTune=0;SING.ticks=0;SING.loud=0;SING.scream=-99;
   G.scan=0;G.botScan=0;G.popups=[];G.parts=[];G.lastDrop=-1;G.flash=0;G.hurt=0;
   G.keys=[0,0,0,0];G.press=[0,0,0,0];G.conf=[0,0,0,0];G.lconf=[0,0,0,0];G.lpress=[0,0,0,0];
-  if(mode!=='solo')NET.remote={...NET.remote,score:0,combo:0,acc:1,hp:0.5,dead:false,cnt:[0,0,0,0,0],max:0};
+  if(mode!=='solo')for(const P of Object.values(NET.players))P.st=newSt();
+  G.focusId=null;
   G.gain=a.createGain();G.gain.gain.value=0.9;
   G.an=a.createAnalyser();G.an.fftSize=256;G.an.smoothingTimeConstant=0.7;G.fdata=new Uint8Array(G.an.frequencyBinCount);
   G.src=a.createBufferSource();G.src.buffer=BUF;G.src.connect(G.gain);G.gain.connect(G.an);G.an.connect(a.destination);
@@ -596,12 +620,12 @@ function judge(lane,t){
     if(G.mode!=='solo')NET.send({t:'k',l:lane,j:ji});
     return;
   }
-  if(death){death.j=3;hurtMe(0.3);popup('СМЕРТЕЛЬНА!','#ff3b3b',0);if(G.mode!=='solo')NET.send({t:'k',l:lane,j:5});}
+  if(death){death.j=3;G.me.err.death++;G.me.deathT.push(+death.t.toFixed(1));hurtMe(0.3);popup('СМЕРТЕЛЬНА!','#ff3b3b',0);if(G.mode!=='solo')NET.send({t:'k',l:lane,j:5});}
 }
 function hurtMe(v){const me=G.me;me.hp=clamp(me.hp-v,0,1);me.combo=0;G.hurt=1;checkDead();}
 function missNote(n){
   const me=G.me;n.j=2;if(me.dead)return;
-  me.cnt[4]++;me.combo=0;me.judged++;me.hp=clamp(me.hp-0.045,0,1);
+  me.cnt[4]++;me.missT.push(+n.t.toFixed(1));me.combo=0;me.judged++;me.hp=clamp(me.hp-0.045,0,1);
   popup('ПРОМАХ','#ff5b6e',0);if(G.mode!=='solo')NET.send({t:'k',l:n.l,j:4});
   checkDead();
 }
@@ -622,7 +646,7 @@ function keyDown(lane,t){
 function keyUp(lane,t){
   if(!G.keys[lane])return;G.keys[lane]=0;
   if(G.state!=='play')return;
-  for(let i=G.scan;i<G.notes.length;i++){const n=G.notes[i];if(n.t>t)break;if(n.l===lane&&n.h===1){if(t<n.t+n.len-0.12){n.h=3;G.me.combo=0;G.me.hp=clamp(G.me.hp-0.02,0,1);popup('ВІДПУСТИВ','#ff8a5c',0);checkDead();}else n.h=2;}}
+  for(let i=G.scan;i<G.notes.length;i++){const n=G.notes[i];if(n.t>t)break;if(n.l===lane&&n.h===1){if(t<n.t+n.len-0.12){n.h=3;G.me.err.rel++;G.me.combo=0;G.me.hp=clamp(G.me.hp-0.02,0,1);popup('ВІДПУСТИВ','#ff8a5c',0);checkDead();}else n.h=2;}}
   if(G.mode!=='solo')NET.send({t:'p',l:lane,d:0});
 }
 
@@ -648,13 +672,13 @@ function update(t,dt){
     if(vt>=0&&vt<bgv.duration){if(bgv.paused&&G.state==='play')bgv.play().catch(()=>{});if(Math.abs(bgv.currentTime-vt)>0.18)bgv.currentTime=vt;}
   }
   // онлайн-статистика
-  if(G.mode!=='solo'){G.stTimer-=dt;if(G.stTimer<=0){G.stTimer=0.15;NET.send({t:'st',score:me.score,combo:me.combo,hp:+me.hp.toFixed(3),acc:me.judged?+(me.accSum/me.judged).toFixed(4):1,dead:me.dead,cnt:me.cnt,max:me.max});}}
+  if(G.mode!=='solo'){G.stTimer-=dt;if(G.stTimer<=0){G.stTimer=0.15;NET.send(myStats(false));}}
   if(t>G.rc.dur+0.8&&!G.ended){G.ended=true;finishSong();}
 }
 
 function finishSong(){
   stopAudio();G.state='results';
-  if(G.mode!=='solo')NET.send({t:'st',score:G.me.score,combo:G.me.combo,hp:G.me.hp,acc:G.me.judged?G.me.accSum/G.me.judged:1,dead:G.me.dead,cnt:G.me.cnt,max:G.me.max,fin:1});
+  if(G.mode!=='solo'){NET.send(myStats(true));const ms=myStats(true);noteBest('me','Ти',{score:ms.score,acc:ms.acc,dead:ms.dead});}
   setTimeout(renderResults,G.mode==='solo'?0:600);
   showScreen('results');renderResults();
 }
@@ -731,7 +755,7 @@ function drawBg(t,int,kick,st,now){
   const W=G.W,H=G.H,c=cx;
   const dropHue=st&&st.drop>=0?40:0;
   const hue=258+int*30+dropHue;
-  if(G.videoOn&&G.state!=='menu'){c.fillStyle=`rgba(10,8,26,${0.38+0.15*(1-int)})`;c.fillRect(0,0,W,H);}
+  if(G.videoOn&&G.state!=='menu'){c.clearRect(0,0,W,H);c.fillStyle='rgba(10,8,26,0.18)';c.fillRect(0,0,W,H);}
   else{
     const g=c.createLinearGradient(0,0,0,H);g.addColorStop(0,`hsl(${hue},48%,${8+int*5}%)`);g.addColorStop(1,`hsl(${hue+25},55%,${4+int*4}%)`);c.fillStyle=g;c.fillRect(0,0,W,H);
     // сцена: підлога з лініями, що їдуть у такт
@@ -772,6 +796,12 @@ function drawStrum(side,t,st,int,kick,bump){
   const pps=H*0.58,p0=posAt(rc,t);
   const sideScale=isMe?1:(G.solo1?0:0.82);if(!sideScale)return;
   const jit=kick*S.shake*3;
+  if(G.videoOn){
+    let mn=1e9,mx=-1e9;for(let l=0;l<4;l++){const x=laneX(side,l,t,st);mn=Math.min(mn,x);mx=Math.max(mx,x);}
+    const pad=sz*0.75*sideScale,x0=mn-pad,w=mx-mn+pad*2;
+    const gr=cx.createLinearGradient(x0,0,x0+w,0);gr.addColorStop(0,'rgba(8,6,20,0)');gr.addColorStop(0.12,'rgba(8,6,20,0.7)');gr.addColorStop(0.88,'rgba(8,6,20,0.7)');gr.addColorStop(1,'rgba(8,6,20,0)');
+    cx.fillStyle=gr;cx.fillRect(x0,-H,w,H*3);
+  }
   // приймачі
   for(let l=0;l<4;l++){
     const x=laneX(side,l,t,st)+(Math.random()-0.5)*jit,y=recY+(Math.random()-0.5)*jit;
@@ -837,9 +867,19 @@ function drawHUD(t,st,recY){
   const acc=me.judged?(me.accSum/me.judged*100).toFixed(2):'100.00';
   bar(G.myCx,bw,by,me.hp,'#2ff06a',me.dead?'ТИ · ВИБУВ':'ТИ',`${me.score.toLocaleString('uk')}  ·  ${acc}%  ·  промахів ${me.cnt[4]}`);
   if(G.mode!=='solo'){
-    const R=NET.remote;
-    if(G.solo1){c.font=`600 12px ${FONT_M}`;c.textAlign='left';c.fillStyle='#c9b8ff';c.fillText(`${R.name}: ${R.score.toLocaleString('uk')} · ${(R.acc*100).toFixed(1)}%${R.dead?' · вибув':''}`,14,40);}
-    else bar(G.opCx,bw,by,R.hp,'#c24b99',(R.name||'Друг')+(R.dead?' · ВИБУВ':''),`${R.score.toLocaleString('uk')}  ·  ${(R.acc*100).toFixed(2)}%  ·  комбо ${R.combo}`);
+    const os=netOthers(),F=os[0];
+    if(F&&F.id!==G.focusId){G.focusId=F.id;G.lpress=[0,0,0,0];}
+    if(F&&!G.solo1){const R=F.st;bar(G.opCx,bw,by,R.hp,'#c24b99',F.name+(os.length>1?' · ЛІДЕР':'')+(R.dead?' · ВИБУВ':''),`${R.score.toLocaleString('uk')}  ·  ${(R.acc*100).toFixed(2)}%  ·  комбо ${R.combo}`);}
+    if(os.length>1||G.solo1){
+      const rows=[{n:'Ти',s:me.score,a:me.judged?me.accSum/me.judged:1,d:me.dead,me:true}].concat(os.map(P=>({n:P.name,s:P.st.score,a:P.st.acc,d:P.st.dead})));
+      rows.sort((x,y)=>(y.d?-1:y.s)-(x.d?-1:x.s));
+      const x0=14,y0=G.solo1?58:(S.down?H*0.2:H*0.32);
+      c.save();c.fillStyle='rgba(12,10,29,.55)';c.fillRect(x0-6,y0-16,Math.min(260,W*0.42),rows.length*19+10);
+      c.font=`600 13px ${FONT_M}`;c.textAlign='left';
+      rows.forEach((r,i)=>{c.fillStyle=r.me?'#ffd23f':r.d?'rgba(255,91,110,.8)':'rgba(243,240,255,.88)';
+        const nm=r.n.length>10?r.n.slice(0,10)+'…':r.n;c.fillText(`${i+1}. ${nm}`,x0,y0+i*19);c.textAlign='right';c.fillText(r.d?'вибув':`${r.s.toLocaleString('uk')} ${(r.a*100).toFixed(0)}%`,x0+Math.min(248,W*0.42-12),y0+i*19);c.textAlign='left';});
+      c.restore();
+    }
   }else if(!G.solo1){c.font=`800 13px ${FONT_D}`;c.textAlign='center';c.fillStyle='rgba(243,240,255,.6)';c.fillText('БОТ',G.opCx,by-10);}
   // оцінки
   const py=H*0.5+(S.down?-H*0.08:H*0.04);
@@ -1000,13 +1040,14 @@ const ATK_NAMES={swap:'ПЕРЕМІШКА',wave:'ХВИЛІ',stealth:'НЕВИД
 function launchAttack(k){
   SING.sent++;
   if(G.mode==='solo'){G.me.score+=3000;G.banner={text:'ГОЛОСОВИЙ БОНУС +3000',color:'#2ff06a',t0:performance.now()};for(let l=0;l<4;l++)G.lconf[l]=performance.now()+300;return;}
-  NET.send({t:'atk',k});
-  G.banner={text:'АТАКА ПОЛЕТІЛА: '+ATK_NAMES[k],color:'#2ff06a',sub:'→ '+(NET.remote.name||'друг'),t0:performance.now()};
+  const tg=netOthers().find(P=>!P.st.dead)||netOthers()[0];if(!tg)return;
+  NET.send({t:'atk',k,to:tg.id});
+  G.banner={text:'АТАКА ПОЛЕТІЛА: '+ATK_NAMES[k],color:'#2ff06a',sub:'→ '+tg.name,t0:performance.now()};
 }
-function receiveAttack(k){
+function receiveAttack(k,fromName){
   if(G.state!=='play'||!ATK_NAMES[k])return;
   const t=G.lastT,s=t+0.9;
-  G.banner={text:'АТАКА: '+ATK_NAMES[k],color:'#ff4d6a',sub:'від '+(NET.remote.name||'друга'),t0:performance.now()};
+  G.banner={text:'АТАКА: '+ATK_NAMES[k],color:'#ff4d6a',sub:'від '+(fromName||'суперника'),t0:performance.now()};
   if(k==='shake'){G.atkShake=t+3;G.hurt=0.6;return;}
   if(k==='death'){
     for(let i=0;i<6;i++){const tt=s+0.3+i*0.45,l=Math.random()*4|0;
@@ -1086,19 +1127,21 @@ async function setTrack({name,ab,mime,maybeVideo},asGuest,fileId){
   T.name=name.replace(/\.[^.]+$/,'');T.file=ab;T.mime=mime;T.buf=buf;T.fileId=fileId||rid();
   T.seed=hashStr(name+'|'+Math.round(buf.duration*100));
   if(asGuest){setProg(null,'Трек отримано');return;}
+  T.fp=fingerprint(ab);T.chartId=null;
+  if(NET.role==='host')sendTrackAll();
   T.F=null;T.chart=null;T.rc=null;
   const chans=[];for(let i=0;i<Math.min(2,buf.numberOfChannels);i++)chans.push(buf.getChannelData(i));
   T.F=await analyze(chans,buf.sampleRate,p=>setProg(p,`Слухаю біт і голос… ${Math.round(p*100)}%`));
   regenChart();
   setProg(null,`${T.isVideo?'Відео':'Аудіо'} · ${fmtTime(buf.duration)} · ${Math.round(T.F.bpm)} BPM`);
-  if(NET.role==='host'&&NET.conn&&NET.conn.open)netSendTrack();
 }
 
 function regenChart(){
   if(!T.F)return;
   T.chart=generateChart(T.F,S.diff,S.ev/100,T.seed,T.name);
+  T.chart.smin=S.smin;T.chart.smax=S.smax;
   T.rc=prepareChart(T.chart);T.chartId=rid();
-  if(NET.role==='host'&&NET.conn&&NET.conn.open)NET.send({t:'chart',id:T.chartId,c:T.chart});
+  if(NET.role==='host')sendChartAll();
   renderMenu();
 }
 let regenT=0;const regenSoon=()=>{clearTimeout(regenT);regenT=setTimeout(regenChart,220);};
@@ -1112,7 +1155,8 @@ function renderMenu(){
   for(const b of document.querySelectorAll('#seg-diff button')){b.setAttribute('aria-pressed',String(+b.dataset.d===(guest&&T.chart?T.chart.diff:S.diff)));b.disabled=guest;}
   const evv=guest&&T.chart?Math.round(T.chart.L*100):S.ev;
   $('#ev').value=evv;$('#ev').disabled=guest;$('#ev-val').textContent=EV_NAMES(evv);
-  $('#smin').value=S.smin;$('#smin-val').textContent=S.smin.toFixed(1)+'×';$('#smax').value=S.smax;$('#smax-val').textContent=S.smax.toFixed(1)+'×';
+  const hs=guest&&T.chart&&T.chart.smin!=null,v1=hs?T.chart.smin:S.smin,v2=hs?T.chart.smax:S.smax;
+  $('#smin').value=v1;$('#smin-val').textContent=v1.toFixed(1)+'×';$('#smax').value=v2;$('#smax-val').textContent=v2.toFixed(1)+'×';$('#smin').disabled=$('#smax').disabled=guest;
   $('#shake').value=Math.round(S.shake*100);$('#shake-val').textContent=Math.round(S.shake*100)+'%';
   $('#offset').value=S.offset;$('#offset-val').textContent=(S.offset>0?'+':'')+S.offset+' мс';
   for(const b of document.querySelectorAll('#seg-pos button'))b.setAttribute('aria-pressed',String(b.dataset.v===S.pos));
@@ -1133,131 +1177,244 @@ function renderMenu(){
   renderNet();
 }
 
-/* ---------- онлайн (PeerJS, безкоштовний P2P) ---------- */
-const NET={peer:null,conn:null,role:null,code:'',remote:{name:'Друг',score:0,combo:0,acc:1,hp:0.5,dead:false,cnt:[0,0,0,0,0],max:0,fin:false},
-  gs:{file:null,chart:null,ready:false},rtt:0.1,rx:null,sendProg:null,myReady:false,status:'',err:'',pingT:0,
-  send(m){if(this.conn&&this.conn.open){try{this.conn.send(m);}catch(e){}}}};
+/* ---------- онлайн (PeerJS, безкоштовний P2P, до 8 гравців) ---------- */
+const MAXP=8;
+const NET={peer:null,role:null,code:'',host:null,hostF:null,players:{},myId:'me',rtt:0.1,rx:null,meta:null,myReady:false,status:'',err:'',pingT:0,best:{},chartSentAt:0,
+  send(m){
+    if(this.role==='host'){for(const P of Object.values(this.players))psend(P,{...m,from:'host'});}
+    else if(this.role==='guest'&&this.host&&this.host.open){try{this.host.send(m);}catch(e){}}
+  }};
 const CODE_ABC='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const genCode=()=>Array.from({length:5},()=>CODE_ABC[Math.random()*CODE_ABC.length|0]).join('');
-const peerId=code=>'ritmbatl-v1-'+code.toLowerCase();
+const peerId=code=>'ritmbatl-v2-'+code.toLowerCase();
 const netOK=()=>typeof Peer!=='undefined';
+const newSt=()=>({score:0,combo:0,hp:0.5,acc:1,dead:false,cnt:[0,0,0,0,0],max:0,err:{death:0,rel:0},ms:0,fin:false,missT:[],deathT:[]});
+function psend(P,m){if(P&&P.conn&&P.conn.open){try{P.conn.send(m);}catch(e){}}}
+function netOthers(){return Object.values(NET.players).filter(P=>P.name).sort((a,b)=>(b.st.dead?-1:b.st.score)-(a.st.dead?-1:a.st.score));}
+function fmtBytes(b){return b>1048576?(b/1048576).toFixed(1)+' МБ':Math.round(b/1024)+' КБ';}
+function fmtEta(s){if(!isFinite(s)||s<0)return '…';if(s<1)return 'менше секунди';if(s<60)return Math.ceil(s)+' с';return Math.floor(s/60)+' хв '+Math.ceil(s%60)+' с';}
+function fingerprint(ab){
+  const u=new Uint8Array(ab),n=u.length;let h=2166136261;
+  const mix=i=>{h^=u[i];h=Math.imul(h,16777619);};
+  for(let i=0;i<Math.min(n,65536);i++)mix(i);
+  for(let i=Math.max(0,n-65536);i<n;i++)mix(i);
+  for(let k=0;k<4096;k++)mix(Math.floor(k/4096*n));
+  return n+'-'+(h>>>0).toString(36);
+}
 
 function netError(e){
   const t=e&&e.type;
   const msg=t==='peer-unavailable'?'Кімнату з таким кодом не знайдено. Перевір код або попроси нове посилання.':
     t==='unavailable-id'?'Код зайнятий, створюю інший…':
     t==='browser-incompatible'?'Цей браузер не вміє P2P. Спробуй Chrome, Edge або Firefox.':
-    (t==='network'||t==='server-error'||t==='socket-error'||t==='socket-closed')?'Немає зв\'язку із сервером з\'єднання. Перевір інтернет. Якщо гра відкрита у вікні Claude — відкрий файл гри у звичайному браузері або на хостингу.':
+    (t==='network'||t==='server-error'||t==='socket-error'||t==='socket-closed')?'Немає зв\'язку із сервером з\'єднання. Перевір інтернет.':
     'Помилка з\'єднання: '+(t||e);
   if(t==='unavailable-id'&&NET.role==='host'){netLeave(true);netHost();return;}
-  NET.err=msg;toast(msg,5000);if(t!=='peer-unavailable'||NET.role==='guest'){}renderNet();
+  NET.err=msg;toast(msg,5000);renderNet();
 }
 function netLeave(silent){
-  try{NET.conn&&NET.conn.close();}catch(e){}try{NET.peer&&NET.peer.destroy();}catch(e){}
+  if(NET.role==='host')NET.send({t:'bye'});
+  for(const P of Object.values(NET.players)){try{P.conn&&P.conn.close();}catch(e){}try{P.fconn&&P.fconn.close();}catch(e){}}
+  try{NET.host&&NET.host.close();}catch(e){}try{NET.hostF&&NET.hostF.close();}catch(e){}try{NET.peer&&NET.peer.destroy();}catch(e){}
   clearInterval(NET.pingT);
-  NET.peer=null;NET.conn=null;NET.role=null;NET.code='';NET.gs={file:null,chart:null,ready:false};NET.rx=null;NET.myReady=false;NET.sendProg=null;
+  Object.assign(NET,{peer:null,role:null,code:'',host:null,hostF:null,players:{},rx:null,meta:null,myReady:false,best:{}});
   if(!silent){NET.err='';if(G.state!=='menu')toMenu();}
   try{if(location.hash.startsWith('#join-'))history.replaceState(null,'',location.pathname+location.search);}catch(e){}
   renderMenu();
 }
+
+/* --- хост --- */
 function netHost(){
   if(!netOK()){toast('Онлайн-модуль не завантажився. Перевір інтернет.');return;}
-  NET.err='';NET.role='host';NET.code=genCode();NET.status='Створюю кімнату…';renderNet();
+  NET.err='';NET.role='host';NET.code=genCode();NET.status='Створюю кімнату…';NET.players={};NET.best={};renderMenu();
   const p=new Peer(peerId(NET.code),{debug:0});NET.peer=p;
-  p.on('open',()=>{NET.status='Чекаю друга';renderNet();});
-  p.on('connection',c=>{if(NET.conn&&NET.conn.open){c.on('open',()=>{c.send({t:'full'});setTimeout(()=>c.close(),300);});return;}attachConn(c);});
+  p.on('open',()=>{NET.status='Чекаю гравців';renderNet();});
+  p.on('connection',c=>{
+    const kind=c.metadata&&c.metadata.k;
+    if(kind==='file'){
+      c.on('open',()=>{const P=NET.players[c.peer];if(P){P.fconn=c;}else NET.pendF=Object.assign(NET.pendF||{},{[c.peer]:c});});
+      c.on('close',()=>{const P=NET.players[c.peer];if(P&&P.fconn===c)P.fconn=null;});
+      return;
+    }
+    if(Object.keys(NET.players).length>=MAXP){c.on('open',()=>{c.send({t:'full'});setTimeout(()=>c.close(),300);});return;}
+    c.on('open',()=>{
+      const P={id:c.peer,name:'',conn:c,fconn:(NET.pendF&&NET.pendF[c.peer])||null,gs:{file:null,chart:null,ready:false},st:newSt(),send:null,have:null};
+      if(NET.pendF)delete NET.pendF[c.peer];
+      NET.players[c.peer]=P;
+      psend(P,{t:'welcome',id:c.peer,name:S.name});
+      if(!NET.pingT)NET.pingT=setInterval(()=>NET.send({t:'ping',ts:performance.now()}),2000);
+      if(T.file)setTimeout(()=>sendTrackTo(P),300);
+      if(T.chart)psend(P,{t:'chart',id:T.chartId,c:T.chart});
+      renderNet();
+    });
+    c.on('data',m=>onHostMsg(c.peer,m));
+    c.on('close',()=>{
+      const P=NET.players[c.peer];if(!P||P.conn!==c)return;
+      delete NET.players[c.peer];try{P.fconn&&P.fconn.close();}catch(e){}
+      if(P.name)toast(P.name+' вийшов');broadcastRoster();renderNet();if(G.state==='results')renderResults();
+    });
+  });
   p.on('error',netError);
   p.on('disconnected',()=>{if(NET.peer===p&&!p.destroyed)try{p.reconnect();}catch(e){}});
 }
+function broadcastRoster(){
+  const list=[{id:'host',name:S.name}].concat(Object.values(NET.players).filter(P=>P.name).map(P=>({id:P.id,name:P.name})));
+  NET.send({t:'roster',list});
+}
+function onHostMsg(id,m){
+  const P=NET.players[id];if(!P||!m||typeof m!=='object')return;
+  switch(m.t){
+    case 'hi':P.name=String(m.name||'Гравець').slice(0,20)||'Гравець';broadcastRoster();toast(P.name+' зайшов у кімнату');renderNet();break;
+    case 'ping':psend(P,{t:'pong',ts:m.ts});break;
+    case 'gs':P.gs={file:m.file,chart:m.chart,ready:!!m.ready};if(m.prog!=null)P.rprog=m.prog;renderNet();break;
+    case 'have':if(m.id===T.fileId){P.have=m.id;}break;
+    case 'st':applySt(P,m);relay(id,m);break;
+    case 'p':case 'k':onPress(id,m);relay(id,m);break;
+    case 'atk':
+      if(m.to==='host')receiveAttack(String(m.k),P.name);
+      else if(NET.players[m.to])psend(NET.players[m.to],{t:'atk',k:m.k,from:id,fromName:P.name});
+      break;
+  }
+}
+function relay(fromId,m){for(const Q of Object.values(NET.players))if(Q.id!==fromId)psend(Q,{...m,from:fromId});}
+
+/* передача файлу: швидкий сирий канал або запасний через текст */
+let SEQ=1;
+async function sendTrackTo(P){
+  if(!T.file||!P.conn||!P.conn.open)return;
+  const id=T.fileId,ab=T.file,size=ab.byteLength,seq=SEQ++;
+  for(let w=0;w<20&&!P.fconn;w++)await sleep(100);
+  const raw=!!(P.fconn&&P.fconn.open&&P.fconn.dataChannel),CH=raw?64*1024:48*1024,n=Math.ceil(size/CH);
+  psend(P,{t:'trk',id,seq,name:T.name,size,mime:T.mime,video:T.isVideo,n,CH,raw,fp:T.fp});
+  P.send={id,sent:0,size,t0:performance.now(),done:false};P.have=null;renderNet();
+  const u8=new Uint8Array(ab);
+  for(let i=0;i<n;i++){
+    if(NET.players[P.id]!==P||T.fileId!==id||P.have===id){P.send.done=true;renderNet();return;}
+    const a=i*CH,b=Math.min(size,a+CH);
+    if(raw){
+      const dc=P.fconn.dataChannel;
+      while(dc.readyState==='open'&&dc.bufferedAmount>6*1024*1024){await new Promise(r=>{dc.bufferedAmountLowThreshold=2*1024*1024;dc.onbufferedamountlow=()=>r();setTimeout(r,250);});}
+      if(dc.readyState!=='open'){P.fconn=null;sendTrackTo(P);return;}
+      const pk=new Uint8Array(8+b-a),dv=new DataView(pk.buffer);dv.setUint32(0,seq);dv.setUint32(4,i);pk.set(u8.subarray(a,b),8);
+      try{dc.send(pk.buffer);}catch(e){await sleep(50);i--;continue;}
+    }else{
+      const c=P.conn;while(c.open&&((c.dataChannel&&c.dataChannel.bufferedAmount>4*1024*1024)||(c.bufferSize||0)>8))await sleep(20);
+      let s='';const sub=u8.subarray(a,b);for(let j=0;j<sub.length;j+=0x8000)s+=String.fromCharCode.apply(null,sub.subarray(j,j+0x8000));
+      psend(P,{t:'ch',seq,i,b64:btoa(s)});
+    }
+    P.send.sent=b;
+    if(i%16===0||i===n-1){renderNet();await sleep(0);}
+  }
+  P.send.done=true;renderNet();
+}
+function sendTrackAll(){for(const P of Object.values(NET.players))sendTrackTo(P);}
+function sendChartAll(){if(!T.chart)return;NET.chartSentAt=performance.now();NET.send({t:'chart',id:T.chartId,c:T.chart});}
+
+/* --- гість --- */
 function netJoin(code){
   if(!netOK()){toast('Онлайн-модуль не завантажився. Перевір інтернет.');return;}
   code=(code||'').toUpperCase().replace(/[^A-Z0-9]/g,'');if(code.length<4){toast('Введи код кімнати');return;}
   ac();
-  NET.err='';NET.role='guest';NET.code=code;NET.status='Підключаюсь…';
+  NET.err='';NET.role='guest';NET.code=code;NET.status='Підключаюсь…';NET.players={};NET.best={};
   T.buf=null;T.chart=null;T.rc=null;T.F=null;T.fileId=null;T.chartId=null;renderMenu();
-  const p=new Peer('ritmbatl-v1-g-'+rid()+rid(),{debug:0});NET.peer=p;
-  p.on('open',()=>{const c=p.connect(peerId(code),{reliable:true});attachConn(c);});
-  p.on('error',e=>{netError(e);if(e&&e.type==='peer-unavailable'){netLeave(true);}});
-}
-function attachConn(c){
-  NET.conn=c;
-  c.on('open',()=>{
-    NET.send({t:'hi',name:S.name});
-    NET.status=NET.role==='host'?'Друг у кімнаті':'Підключено';
-    clearInterval(NET.pingT);NET.pingT=setInterval(()=>NET.send({t:'ping',ts:performance.now()}),2000);
-    if(NET.role==='host'){if(T.file)netSendTrack();}
-    else sendGS();
-    renderNet();
+  const p=new Peer('ritmbatl-v2-g-'+rid()+rid(),{debug:0});NET.peer=p;
+  p.on('open',id=>{
+    NET.myId=id;
+    const c=p.connect(peerId(code),{reliable:true,serialization:'json',metadata:{k:'main'}});NET.host=c;
+    c.on('open',()=>{c.send({t:'hi',name:S.name});NET.status='Підключено';clearInterval(NET.pingT);NET.pingT=setInterval(()=>NET.send({t:'ping',ts:performance.now()}),2000);sendGS();renderNet();});
+    c.on('data',onGuestMsg);
+    c.on('close',()=>{if(NET.host!==c)return;toast('Хост закрив кімнату');netLeave();});
+    const f=p.connect(peerId(code),{reliable:true,serialization:'raw',metadata:{k:'file'}});NET.hostF=f;
+    f.on('data',onRawChunk);
   });
-  c.on('data',onNet);
-  c.on('close',()=>{
-    if(NET.conn!==c)return;NET.conn=null;clearInterval(NET.pingT);
-    if(NET.role==='host'){NET.gs={file:null,chart:null,ready:false};NET.status='Друг вийшов. Чекаю знову…';toast('Друг відключився');if(G.state!=='menu'&&G.mode==='host'){/* граємо далі соло */G.mode='solo';}renderNet();}
-    else{toast('Хост закрив кімнату');netLeave();}
-  });
-  c.on('error',e=>console.warn(e));
+  p.on('error',e=>{netError(e);if(e&&e.type==='peer-unavailable')netLeave(true);});
 }
-function sendGS(){NET.send({t:'gs',file:T.buf?T.fileId:null,chart:T.rc?T.chartId:null,ready:NET.myReady});}
-
-async function netSendTrack(){
-  const c=NET.conn;if(!c||!c.open||!T.file)return;
-  const id=T.fileId,ab=T.file,CH=96*1024,n=Math.ceil(ab.byteLength/CH);
-  NET.send({t:'trk',id,name:T.name,size:ab.byteLength,mime:T.mime,video:T.isVideo,n});
-  NET.sendProg=0;renderNet();
-  for(let i=0;i<n;i++){
-    if(NET.conn!==c||T.fileId!==id)return;
-    while(c.open&&((c.dataChannel&&c.dataChannel.bufferedAmount>4*1024*1024)||(c.bufferSize||0)>16))await sleep(25);
-    NET.send({t:'ch',id,i,d:ab.slice(i*CH,(i+1)*CH)});
-    if(i%8===0||i===n-1){NET.sendProg=(i+1)/n;renderNet();await sleep(0);}
-  }
-  NET.sendProg=null;
-  if(T.chart)NET.send({t:'chart',id:T.chartId,c:T.chart});
-  renderNet();
+function sendGS(){NET.send({t:'gs',file:T.buf?T.fileId:null,chart:T.rc?T.chartId:null,ready:NET.myReady,prog:NET.rx?NET.rx.got/NET.rx.n:null});}
+let gsT=0;function sendGSsoon(){if(gsT)return;gsT=setTimeout(()=>{gsT=0;sendGS();},400);}
+function onRawChunk(d){
+  const rx=NET.rx;if(!rx||!(d instanceof ArrayBuffer)||d.byteLength<8)return;
+  const dv=new DataView(d),seq=dv.getUint32(0),i=dv.getUint32(4);
+  gotChunk(seq,i,new Uint8Array(d,8));
 }
-
-async function onNet(m){
+function gotChunk(seq,i,bytes){
+  const rx=NET.rx;if(!rx||seq!==rx.seq||i>=rx.n||rx.seen[i])return;
+  rx.buf.set(bytes,i*rx.CH);rx.seen[i]=1;rx.got++;rx.bytes+=bytes.length;
+  if(rx.got%12===0||rx.got===rx.n){renderNet();sendGSsoon();}
+  if(rx.got===rx.n)finishRx(rx);
+}
+async function finishRx(rx){
+  NET.rx=null;
+  try{await setTrack({name:rx.name,ab:rx.buf.buffer,mime:rx.mime,maybeVideo:rx.video},true,rx.id);}
+  catch(e){console.error(e);toast('Не вдалося відкрити трек від хоста');}
+  sendGS();renderMenu();
+}
+async function onGuestMsg(m){
   if(!m||typeof m!=='object')return;
-  const R=NET.remote;
+  const from=m.from||'host';
   switch(m.t){
-    case 'hi':R.name=String(m.name||'Друг').slice(0,24);renderNet();break;
-    case 'full':toast('У цій кімнаті вже грають двоє');netLeave();break;
+    case 'welcome':NET.myId=m.id;break;
+    case 'roster':{
+      const keep=NET.players;NET.players={};
+      for(const r of m.list||[]){if(r.id===NET.myId)continue;NET.players[r.id]=keep[r.id]||{id:r.id,name:'',st:newSt()};NET.players[r.id].name=String(r.name||'Гравець').slice(0,20);}
+      renderNet();if(G.state==='results')renderResults();break;}
+    case 'full':toast('Кімната повна (максимум '+MAXP+' гравців)');netLeave();break;
+    case 'bye':toast('Хост закрив кімнату');netLeave();break;
     case 'ping':NET.send({t:'pong',ts:m.ts});break;
     case 'pong':NET.rtt=clamp((performance.now()-m.ts)/1000,0,2);break;
-    case 'gs':if(NET.role==='host'){NET.gs={file:m.file,chart:m.chart,ready:!!m.ready};renderNet();}break;
     case 'trk':
-      if(NET.role!=='guest')break;
-      NET.rx={id:m.id,name:String(m.name||'трек'),size:m.size,mime:String(m.mime||''),video:!!m.video,n:m.n|0,got:0,parts:new Array(m.n|0)};
+      NET.meta={id:m.id,seq:m.seq,name:String(m.name||'трек'),size:m.size|0,mime:String(m.mime||''),video:!!m.video,n:m.n|0,CH:m.CH|0,fp:m.fp||''};
+      if(T.fileId===m.id&&T.buf){NET.send({t:'have',id:m.id});break;}
+      NET.rx={...NET.meta,buf:new Uint8Array(m.size|0),seen:new Uint8Array(m.n|0),got:0,bytes:0,t0:performance.now()};
       T.buf=null;T.fileId=null;$('#drop-title').textContent=NET.rx.name;renderMenu();break;
-    case 'ch':{
-      const rx=NET.rx;if(!rx||rx.id!==m.id||m.i<0||m.i>=rx.n||rx.parts[m.i])break;
-      rx.parts[m.i]=m.d;rx.got++;
-      if(rx.got%6===0||rx.got===rx.n){setProg(rx.got/rx.n,`Отримую трек від хоста… ${Math.round(rx.got/rx.n*100)}%`);renderNet();}
-      if(rx.got===rx.n){
-        const blob=new Blob(rx.parts,{type:rx.mime||'application/octet-stream'});NET.rx=null;
-        try{const ab=await blob.arrayBuffer();await setTrack({name:rx.name,ab,mime:rx.mime,maybeVideo:rx.video},true,rx.id);}
-        catch(e){console.error(e);toast('Не вдалося відкрити трек від хоста');}
-        sendGS();renderMenu();
-      }
-      break;}
+    case 'ch':{let bin;try{bin=atob(m.b64);}catch(e){break;}const u=new Uint8Array(bin.length);for(let j=0;j<bin.length;j++)u[j]=bin.charCodeAt(j);gotChunk(m.seq,m.i,u);break;}
     case 'chart':
-      if(NET.role!=='guest'||!m.c||!Array.isArray(m.c.notes))break;
+      if(!m.c||!Array.isArray(m.c.notes))break;
       T.chart=m.c;T.rc=prepareChart(m.c);T.chartId=m.id;sendGS();renderMenu();break;
     case 'start':
-      if(NET.role!=='guest'||!T.rc||!T.buf)break;
+      if(!T.rc||!T.buf)break;
       startGame('guest',Math.max(1,(+m.lead||3)-NET.rtt/2));break;
-    case 'menu':if(NET.role==='guest'&&G.state!=='menu')toMenu();break;
-    case 'st':Object.assign(R,{score:m.score|0,combo:m.combo|0,hp:clamp(+m.hp||0,0,1),acc:clamp(+m.acc||0,0,1),dead:!!m.dead,cnt:Array.isArray(m.cnt)?m.cnt.slice(0,5):R.cnt,max:m.max|0});if(m.fin){R.fin=true;if(G.state==='results')renderResults();}break;
-    case 'atk':receiveAttack(String(m.k));break;
-    case 'p':if(m.l>=0&&m.l<4)G.lpress[m.l]=m.d?1:0;break;
-    case 'k':if(m.l>=0&&m.l<4&&m.j<4)G.lconf[m.l]=performance.now();break;
+    case 'menu':if(G.state!=='menu')toMenu();break;
+    case 'st':{const P=NET.players[from];if(P)applySt(P,m);break;}
+    case 'p':case 'k':onPress(from,m);break;
+    case 'atk':receiveAttack(String(m.k),m.fromName||(NET.players[m.from]&&NET.players[m.from].name)||(NET.players.host&&NET.players.host.name));break;
   }
 }
+/* гість вибрав у себе той самий трек */
+async function useOwnCopy(file){
+  const meta=NET.meta;if(!meta){toast('Хост ще не вибрав трек');return;}
+  const ab=await file.arrayBuffer();
+  if(fingerprint(ab)!==meta.fp){toast('Це інший файл, ніж у хоста. Чекаємо передачу.');return;}
+  NET.rx=null;
+  try{await setTrack({name:meta.name,ab,mime:meta.mime||file.type,maybeVideo:meta.video},true,meta.id);T.fp=meta.fp;}catch(e){toast('Не вдалося відкрити файл');return;}
+  NET.send({t:'have',id:meta.id});sendGS();toast('Готово — взяв твій файл, передача не потрібна');renderMenu();
+}
 
+/* спільне */
+function applySt(P,m){
+  const s=P.st;
+  Object.assign(s,{score:m.score|0,combo:m.combo|0,hp:clamp(+m.hp||0,0,1),acc:clamp(+m.acc||0,0,1),dead:!!m.dead,max:m.max|0,ms:m.ms|0});
+  if(Array.isArray(m.cnt))s.cnt=m.cnt.slice(0,5).map(x=>x|0);
+  if(m.err)s.err={death:m.err.death|0,rel:m.err.rel|0};
+  if(m.fin){s.fin=true;s.missT=Array.isArray(m.missT)?m.missT.slice(0,500):[];s.deathT=Array.isArray(m.deathT)?m.deathT.slice(0,200):[];noteBest(P.id,P.name,s);if(G.state==='results')renderResults();}
+}
+function noteBest(id,name,s){
+  const b=NET.best[id];
+  if(!b||(!s.dead&&(b.dead||s.score>b.score)))NET.best[id]={name,score:s.score,acc:s.acc,dead:s.dead};
+  else NET.best[id].name=name;
+}
+function onPress(from,m){
+  if(from!==G.focusId)return;
+  if(m.t==='p'&&m.l>=0&&m.l<4)G.lpress[m.l]=m.d?1:0;
+  if(m.t==='k'&&m.l>=0&&m.l<4&&m.j<4)G.lconf[m.l]=performance.now();
+}
+function allReady(){
+  const ps=Object.values(NET.players).filter(P=>P.name);
+  return ps.length>0&&ps.every(P=>P.gs.ready&&P.gs.file===T.fileId&&P.gs.chart===T.chartId);
+}
 function netHostStart(){
   ac();
-  const g=NET.gs,ok=g.ready&&g.file===T.fileId&&g.chart===T.chartId;
-  if(!ok){toast('Друг ще не готовий');return;}
-  NET.remote.fin=false;
+  if(!allReady()){toast('Ще не всі готові');return;}
+  for(const P of Object.values(NET.players))P.st=newSt();
   NET.send({t:'start',lead:3});startGame('host',3);
 }
 
@@ -1267,42 +1424,57 @@ function renderNet(){
   const err=NET.err?`<p class="note err">${esc(NET.err)}</p>`:'';
   if(!NET.role){
     box.innerHTML=`<div class="row"><label class="sr" for="nm">Твоє ім'я</label><input id="nm" maxlength="20" value="${esc(S.name)}" placeholder="Твоє ім'я"></div>
-      <div class="row"><button id="btn-host" class="alt">Створити кімнату</button></div>
-      <div class="row join"><label class="sr" for="code">Код кімнати</label><input id="code" maxlength="6" placeholder="Код друга" autocapitalize="characters" spellcheck="false" value="${esc(pendingCode)}"><button id="btn-join" class="alt">Увійти</button></div>${err}`;
+      <div class="row"><button id="btn-host" class="alt">Створити кімнату (до ${MAXP} гравців)</button></div>
+      <div class="row join"><label class="sr" for="code">Код кімнати</label><input id="code" maxlength="6" placeholder="Код кімнати" autocapitalize="characters" spellcheck="false" value="${esc(pendingCode)}"><button id="btn-join" class="alt">Увійти</button></div>${err}`;
     $('#nm').oninput=e=>{S.name=e.target.value.trim().slice(0,20)||S.name;saveS();};
     $('#btn-host').onclick=()=>{ac();netHost();};
     $('#btn-join').onclick=()=>netJoin($('#code').value);
     $('#code').onkeydown=e=>{if(e.key==='Enter')netJoin(e.target.value);};
     return;
   }
-  const R=NET.remote,connected=!!(NET.conn&&NET.conn.open);
   if(NET.role==='host'){
     const link=location.protocol.startsWith('http')?location.origin+location.pathname+'#join-'+NET.code:'';
-    const g=NET.gs;
-    const row=(ok,txt)=>`<li class="${ok?'ok':''}"><i></i>${txt}</li>`;
-    const fileOk=connected&&g.file===T.fileId&&!!T.fileId,chartOk=connected&&g.chart===T.chartId&&!!T.chartId;
-    const sending=NET.sendProg!=null?` · ${Math.round(NET.sendProg*100)}%`:'';
-    const can=connected&&fileOk&&chartOk&&g.ready;
-    box.innerHTML=`<div class="room"><span class="small">Код кімнати</span><b class="code">${esc(NET.code)}</b></div>
-      ${link?`<div class="row join"><label class="sr" for="lnk">Посилання для друга</label><input id="lnk" readonly value="${esc(link)}"><button id="btn-copy" class="alt">Копіювати</button></div>`:
-      `<p class="note">Друг відкриває цей самий файл гри, натискає «Увійти» і вводить код.</p>`}
-      <ul class="steps">${row(connected,connected?esc(R.name)+' у кімнаті':esc(NET.status||'Чекаю друга'))}${row(fileOk,T.fileId?'Трек у друга'+(fileOk?'':sending):'Вибери трек')}${row(chartOk,'Стрілки у друга')}${row(g.ready&&connected,'Друг натиснув «Готовий»')}</ul>
-      <div class="row"><button id="btn-start" class="play small" ${can?'':'disabled'}>Старт для обох</button><button id="btn-leave" class="ghost">Вийти</button></div>${err}`;
+    const ps=Object.values(NET.players).filter(P=>P.name);
+    const rows=ps.map(P=>{
+      const g=P.gs,fileOk=g.file===T.fileId&&!!T.fileId,chartOk=g.chart===T.chartId&&!!T.chartId;
+      let tr='';
+      if(!T.fileId)tr='чекає трек';
+      else if(fileOk)tr='трек ✓';
+      else if(P.send&&!P.send.done&&P.send.id===T.fileId){const el=(performance.now()-P.send.t0)/1000,sp=P.send.sent/Math.max(0.1,el);tr=`трек ${Math.round(P.send.sent/P.send.size*100)}% · ${(sp/1048576).toFixed(1)} МБ/с · ще ${fmtEta((P.send.size-P.send.sent)/sp)}`;}
+      else tr='отримує трек…';
+      const ch=T.chartId?(chartOk?'стрілки ✓':'стрілки йдуть…'):'стрілки готуються';
+      const ok=fileOk&&chartOk&&g.ready;
+      return `<li class="${ok?'ok':''}"><i></i><span><b>${esc(P.name)}</b> · ${tr} · ${ch} · ${g.ready?'готовий':'не натиснув «Готовий»'}</span></li>`;
+    }).join('');
+    const can=allReady();
+    box.innerHTML=`<div class="room"><span class="small">Код кімнати</span><b class="code">${esc(NET.code)}</b><span class="small">${ps.length+1}/${MAXP+1}</span></div>
+      ${link?`<div class="row join"><label class="sr" for="lnk">Посилання для друзів</label><input id="lnk" readonly value="${esc(link)}"><button id="btn-copy" class="alt">Копіювати</button></div>`:
+      `<p class="note">Друзі відкривають цей самий файл гри, натискають «Увійти» і вводять код.</p>`}
+      <ul class="steps">${rows||`<li><i></i>${esc(NET.status||'Чекаю гравців')} — кидай посилання друзям</li>`}</ul>
+      <div class="row"><button id="btn-start" class="play small" ${can?'':'disabled'}>Старт для всіх</button><button id="btn-leave" class="ghost">Закрити кімнату</button></div>${err}`;
     $('#btn-start').onclick=()=>{if(!S.cal){openCal(()=>showScreen('menu'));return;}netHostStart();};$('#btn-leave').onclick=()=>netLeave();
-    const cp=$('#btn-copy');if(cp)cp.onclick=()=>{const v=$('#lnk').value;const done=()=>toast('Посилання скопійовано — кидай другу');
+    const cp=$('#btn-copy');if(cp)cp.onclick=()=>{const v=$('#lnk').value;const done=()=>toast('Посилання скопійовано — кидай друзям');
       if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(v).then(done,()=>{$('#lnk').select();toast('Виділив посилання — скопіюй вручну');});else{$('#lnk').select();toast('Виділив посилання — скопіюй вручну');}};
   }else{
-    const rx=NET.rx;
-    const trackTxt=rx?`Отримую «${esc(rx.name)}» · ${Math.round(rx.got/Math.max(1,rx.n)*100)}%`:(T.buf?`Трек: ${esc(T.name)}`:'Чекаю, поки хост вибере трек');
+    const rx=NET.rx,connected=!!(NET.host&&NET.host.open);
+    let trackTxt;
+    if(rx){const el=(performance.now()-rx.t0)/1000,sp=rx.bytes/Math.max(0.1,el);
+      trackTxt=`Отримую «${esc(rx.name)}» · ${Math.round(rx.got/Math.max(1,rx.n)*100)}% · ${fmtBytes(rx.bytes)} з ${fmtBytes(rx.size)} · ${(sp/1048576).toFixed(1)} МБ/с · ще ${rx.bytes>0?fmtEta((rx.size-rx.bytes)/sp):'…'}`;}
+    else trackTxt=T.buf?`Трек: ${esc(T.name)}`:'Чекаю, поки хост вибере трек';
     const ready=!!(T.buf&&T.rc);
+    const who=[(NET.players.host&&NET.players.host.name)||'Хост'].concat(Object.values(NET.players).filter(P=>P.id!=='host').map(P=>P.name));
     box.innerHTML=`<div class="room"><span class="small">Кімната</span><b class="code">${esc(NET.code)}</b></div>
-      <ul class="steps"><li class="${connected?'ok':''}"><i></i>${connected?'Хост: '+esc(R.name):esc(NET.status)}</li><li class="${T.buf?'ok':''}"><i></i>${trackTxt}</li><li class="${T.rc?'ok':''}"><i></i>${T.rc?'Стрілки готові':'Чекаю стрілки'}</li></ul>
+      <p class="note">У кімнаті: ${who.map(esc).join(', ')} і ти</p>
+      <ul class="steps"><li class="${connected?'ok':''}"><i></i>${connected?'Підключено':esc(NET.status)}</li><li class="${T.buf?'ok':''}"><i></i>${trackTxt}</li><li class="${T.rc?'ok':''}"><i></i>${T.rc?'Стрілки готові':(T.buf||rx?'Хост готує стрілки…':'Чекаю стрілки')}</li></ul>
+      ${rx||(!T.buf&&NET.meta)?`<label class="have"><input type="file" id="have-file" accept="audio/*,video/*">У тебе вже є цей трек? <u>Вибери його</u> — і чекати не треба</label>`:''}
       <div class="row"><button id="btn-ready" class="play small" ${ready&&!NET.myReady?'':'disabled'}>${NET.myReady?'Готовий — чекаю старту':'Я готовий'}</button><button id="btn-leave" class="ghost">Вийти</button></div>
-      <p class="note">Складність і події вибирає хост. Швидкість, тряска і затримка — твої.</p>${err}`;
+      <p class="note">Складність, події і швидкість стрілок вибирає хост. Тряска, затримка і клавіші — твої.</p>${err}`;
     $('#btn-ready').onclick=()=>{ac();const go=()=>{showScreen('menu');NET.myReady=true;sendGS();renderNet();};if(!S.cal)openCal(go);else go();};
     $('#btn-leave').onclick=()=>netLeave();
+    const hf=$('#have-file');if(hf)hf.onchange=e=>{const f=e.target.files[0];if(f)useOwnCopy(f);};
   }
 }
+setInterval(()=>{if(NET.role&&G.state==='menu')renderNet();},1000);
 
 
 /* ---------- розкладка клавіш ---------- */
@@ -1391,6 +1563,32 @@ function statBlock(name,st,acc,isMe){
   <dl><div><dt>Рахунок</dt><dd>${st.score.toLocaleString('uk')}</dd></div><div><dt>Точність</dt><dd>${(acc*100).toFixed(2)}%</dd></div><div><dt>Макс. комбо</dt><dd>${st.max}</dd></div>
   <div><dt>Ідеально</dt><dd>${st.cnt[0]}</dd></div><div><dt>Добре</dt><dd>${st.cnt[1]}</dd></div><div><dt>Так собі</dt><dd>${st.cnt[2]}</dd></div><div><dt>Жах</dt><dd>${st.cnt[3]}</dd></div><div><dt>Промахи</dt><dd>${st.cnt[4]}</dd></div></dl></div>`;
 }
+function errStrip(missT,deathT,dur){
+  const tk=(arr,cls)=>arr.map(x=>`<i class="${cls}" style="left:${clamp(x/dur*100,0,100).toFixed(2)}%"></i>`).join('');
+  return `<div class="estrip" title="Де були помилки">${tk(missT,'m')}${tk(deathT,'d')}</div>`;
+}
+function renderBoard(html){
+  const me=G.me,d=G.dts.slice().sort((a,b)=>a-b),myMs=d.length?Math.round(d[d.length>>1]*1000):0;
+  const mine={id:'me',name:'Ти',st:{score:me.score,acc:me.judged?me.accSum/me.judged:1,dead:me.dead,cnt:me.cnt,max:me.max,err:me.err,ms:myMs,fin:true,missT:me.missT,deathT:me.deathT},me:true};
+  const all=[mine].concat(netOthers().map(P=>({id:P.id,name:P.name,st:P.st})));
+  all.sort((a,b)=>(b.st.dead?-1:b.st.score)-(a.st.dead?-1:a.st.score));
+  const waiting=all.filter(x=>!x.st.fin).map(x=>x.name);
+  const top=all[0];
+  html+=`<h2>${waiting.length?'Чекаю результати…':(top.me?'Ти переміг!':esc(top.name)+' переміг')}</h2>`;
+  if(waiting.length)html+=`<p class="note">Ще грають: ${waiting.map(esc).join(', ')}</p>`;
+  html+='<div class="board">';
+  all.forEach((x,i)=>{
+    const s=x.st,r=rankOf(s.acc,s.dead),b=x.me?NET.best.me:NET.best[x.id];
+    const ms=s.ms||0,msTxt=Math.abs(ms)<15?'точно':ms>0?`пізно на ${ms} мс`:`рано на ${-ms} мс`;
+    html+=`<div class="brow${x.me?' me':''}"><div class="bplace">${i+1}</div><div class="rank r-${r}">${r}</div>
+      <div class="bmain"><div class="bname">${esc(x.name)}${s.fin?'':' <span class="small">· ще грає</span>'}</div>
+      <div class="bstats"><span><b>${s.score.toLocaleString('uk')}</b> очок</span><span>${(s.acc*100).toFixed(2)}%</span><span>комбо ${s.max}</span></div>
+      <div class="berr"><span class="e1">промахів ${s.cnt[4]}</span><span class="e2">смертельних ${s.err?s.err.death:0}</span><span>відпустив довгих ${s.err?s.err.rel:0}</span><span>в середньому ${msTxt}</span></div>
+      ${s.fin?errStrip(s.missT||[],s.deathT||[],G.rc.dur):''}
+      ${b?`<div class="bbest">Найкращий у кімнаті: ${b.score.toLocaleString('uk')} · ${(b.acc*100).toFixed(1)}%</div>`:''}</div></div>`;
+  });
+  return html+'</div><p class="note legend"><i class="lg m"></i> промах <i class="lg d"></i> смертельна нота — риски показують, у якому місці пісні</p>';
+}
 function renderResults(){
   if(G.test){
     const d=G.dts,ok=d.length>=8;let html='<p class="eyebrow">Тест затримки</p>';
@@ -1406,9 +1604,7 @@ function renderResults(){
   const me=G.me,acc=me.judged?me.accSum/me.judged:1;let html=`<p class="eyebrow">${esc(T.name||'Трек')} · ${DIFFS[G.rc.diff]}</p>`;
   if(G.mode==='solo'){html+=`<h2>Результат</h2><div class="res-grid one">${statBlock('Ти',me,acc,true)}</div>`;}
   else{
-    const R=NET.remote;let verdict='Чекаю результат друга…';
-    if(R.fin){const a=me.dead?-1:me.score,b=R.dead?-1:R.score;verdict=a>b?'Ти переміг!':a<b?esc(R.name)+' переміг':'Нічия';}
-    html+=`<h2>${verdict}</h2><div class="res-grid">${statBlock('Ти',me,acc,true)}${statBlock(R.name,R,R.acc,false)}</div>`;
+    html=renderBoard(html);
   }
   $('#res').innerHTML=html;
   $('#btn-again').hidden=G.mode==='guest';
@@ -1487,6 +1683,7 @@ function bindUI(){
     try{const ab=await makeDemo();await setTrack({name:'Демо-біт 128 BPM.wav',ab,mime:'audio/wav',maybeVideo:false},false);}catch(e){console.error(e);setProg(null,'Не вдалося створити демо');}busy=false;renderMenu();};
   for(const btn of document.querySelectorAll('#seg-diff button'))btn.onclick=()=>{S.diff=+btn.dataset.d;saveS();renderMenu();regenSoon();};
   $('#ev').oninput=e=>{S.ev=+e.target.value;saveS();$('#ev-val').textContent=EV_NAMES(S.ev);regenSoon();};
+  $('#smin').onchange=$('#smax').onchange=()=>{if(T.chart&&NET.role!=='guest'){T.chart.smin=S.smin;T.chart.smax=S.smax;T.chartId=rid();T.rc=prepareChart(T.chart);if(NET.role==='host')sendChartAll();}};
   $('#smin').oninput=e=>{S.smin=+e.target.value;if(S.smax<S.smin){S.smax=S.smin;$('#smax').value=S.smax;$('#smax-val').textContent=S.smax.toFixed(1)+'×';}saveS();$('#smin-val').textContent=S.smin.toFixed(1)+'×';};
   $('#smax').oninput=e=>{S.smax=+e.target.value;if(S.smin>S.smax){S.smin=S.smax;$('#smin').value=S.smin;$('#smin-val').textContent=S.smin.toFixed(1)+'×';}saveS();$('#smax-val').textContent=S.smax.toFixed(1)+'×';};
   $('#shake').oninput=e=>{S.shake=+e.target.value/100;saveS();$('#shake-val').textContent=e.target.value+'%';};
@@ -1512,7 +1709,7 @@ function bindUI(){
   $('#btn-pause-menu').onclick=toMenu;
   $('#btn-retry').onclick=()=>{ac();startGame('solo',null,G.ovr);};
   $('#btn-dead-menu').onclick=toMenu;
-  $('#btn-again').onclick=()=>{ac();if(G.test){startGame('solo',null,G.ovr);return;}if(G.mode==='host'||(NET.role==='host')){if(NET.conn&&NET.conn.open){NET.remote.fin=false;NET.send({t:'start',lead:3});startGame('host',3);}else startGame('solo');}else startGame('solo');};
+  $('#btn-again').onclick=()=>{ac();if(G.test){startGame('solo',null,G.ovr);return;}if(NET.role==='host'){if(Object.keys(NET.players).length){showScreen('menu');renderMenu();toast('Чекаю, поки всі будуть готові — потім «Старт для всіх»');for(const P of Object.values(NET.players))P.gs.ready=false;NET.send({t:'menu'});}else startGame('solo');}else startGame('solo');};
   $('#btn-res-menu').onclick=()=>{if(NET.role==='host')NET.send({t:'menu'});toMenu();};
   const h=location.hash||'';
   if(h.startsWith('#join-')){pendingCode=h.slice(6).toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);if(pendingCode)setTimeout(()=>{toast('Тебе запросили в кімнату '+pendingCode);netJoin(pendingCode);},300);}
@@ -1520,7 +1717,7 @@ function bindUI(){
 
 
 /* ---------- версія сайту ---------- */
-const BUILD_ID="2026-10-29 13:47";
+const BUILD_ID="2026-10-29 13:55";
 function showBuild(){const [d,tm]=BUILD_ID.split(' ');const [y,m,dd]=d.split('-');$('#build-info').textContent=`Оновлено: ${dd}.${m}.${y} о ${tm}`;}
 async function checkUpdate(){
   if(!/^https?:$/.test(location.protocol)||G.state==='play')return;
