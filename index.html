@@ -204,7 +204,7 @@ input[type=text],#nm,#code,#lnk{background:#120e30;border:2px solid var(--line-2
         <div class="field"><span class="flabel">Звідки летять ноти</span>
           <div class="seg seg2" id="seg-dir" role="group" aria-label="Звідки летять ноти"><button data-v="up" aria-pressed="true">Знизу вгору ↑</button><button data-v="down" aria-pressed="false">Згори вниз ↓</button></div></div>
         <div class="checks">
-          <label><input type="checkbox" id="nofail"> Без програшу</label>
+          <label><input type="checkbox" id="nofail"> Без програшу (соло; онлайн — завжди)</label>
           <label><input type="checkbox" id="sing"> Співай і атакуй (мікрофон)</label>
         </div>
         <p class="hint">«Співай і атакуй»: зверху караоке-смужка з мелодією. Співаєш у жовте — заряджаєш шкалу, і другу летить атака (перемішка, переворот, невидимки, хвилі, залп смертельних нот). Гучний крик трясе йому екран. У соло — бонусні очки.</p>
@@ -776,7 +776,7 @@ function missNote(n){
   checkDead();
 }
 function checkDead(){
-  const me=G.me;if(me.hp>0||me.dead||S.nofail)return;
+  const me=G.me;if(me.hp>0||me.dead||S.nofail||G.mode!=='solo')return;
   me.dead=true;
   if(G.mode==='solo'){stopAudio();G.state='dead';showScreen('dead');}
   else{toast('Ти вибув. Дивись, як грає друг');}
@@ -1917,7 +1917,7 @@ function bindUI(){
 
 
 /* ---------- версія сайту ---------- */
-const BUILD_ID="2026-10-29 14:51";
+const BUILD_ID="2026-10-29 14:59";
 function showBuild(){const [d,tm]=BUILD_ID.split(' ');const [y,m,dd]=d.split('-');$('#build-info').textContent=`Оновлено: ${dd}.${m}.${y} о ${tm}`;}
 async function checkUpdate(){
   if(!/^https?:$/.test(location.protocol)||G.state==='play')return;
