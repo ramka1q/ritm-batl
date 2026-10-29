@@ -1244,10 +1244,11 @@ function netHost(){
       psend(P,{t:'welcome',id:c.peer,name:S.name,build:BUILD_ID});
       if(!NET.pingT)NET.pingT=setInterval(()=>NET.send({t:'ping',ts:performance.now()}),2000);
       if(T.file)setTimeout(()=>sendTrackTo(P),300);
-      if(T.chart)psend(P,{t:'chart',id:T.chartId,c:T.chart});
+      if(T.chart)setTimeout(()=>sendChartTo(P),200);
       renderNet();
     });
     c.on('data',m=>onHostMsg(c.peer,m));
+    c.on('error',e=>{console.warn('conn error',e);NET.err='Помилка з\'єднання з гравцем: '+((e&&(e.type||e.message))||e);renderNet();});
     c.on('close',()=>{
       const P=NET.players[c.peer];if(!P||P.conn!==c)return;
       delete NET.players[c.peer];try{P.fconn&&P.fconn.close();}catch(e){}
@@ -1308,7 +1309,25 @@ async function sendTrackTo(P){
   P.send.done=true;renderNet();
 }
 function sendTrackAll(){for(const P of Object.values(NET.players))sendTrackTo(P);}
-function sendChartAll(){if(!T.chart)return;NET.chartSentAt=performance.now();NET.send({t:'chart',id:T.chartId,c:T.chart});}
+let CHART_JSON={id:null,s:''};
+function sendChartTo(P){
+  if(!T.chart||!P||!P.conn||!P.conn.open)return;
+  if(CHART_JSON.id!==T.chartId)CHART_JSON={id:T.chartId,s:JSON.stringify(T.chart)};
+  const s=CHART_JSON.s,PART=4000,n=Math.ceil(s.length/PART);
+  for(let i=0;i<n;i++)psend(P,{t:'cp',id:T.chartId,i,n,s:s.slice(i*PART,(i+1)*PART)});
+  P.chartSent={id:T.chartId,at:performance.now(),tries:((P.chartSent&&P.chartSent.id===T.chartId)?P.chartSent.tries:0)+1};
+}
+function sendChartAll(){if(!T.chart)return;for(const P of Object.values(NET.players))sendChartTo(P);}
+/* автоповтор: якщо гравець не підтвердив стрілки чи трек — шлемо ще раз */
+setInterval(()=>{
+  if(NET.role!=='host')return;const now=performance.now();
+  for(const P of Object.values(NET.players)){
+    if(!P.name||!P.conn||!P.conn.open)continue;
+    if(T.chart&&P.gs.chart!==T.chartId&&(!P.chartSent||P.chartSent.id!==T.chartId||now-P.chartSent.at>4000))sendChartTo(P);
+    if(T.file&&P.gs.file!==T.fileId&&P.have!==T.fileId&&P.send&&P.send.done&&P.send.id===T.fileId&&now-(P.send.doneAt||now)>8000&&(P.rprog==null||P.rprog<1)){P.send=null;sendTrackTo(P);}
+    if(P.send&&P.send.done&&!P.send.doneAt)P.send.doneAt=now;
+  }
+},1500);
 
 /* --- гість --- */
 function netJoin(code){
@@ -1323,6 +1342,7 @@ function netJoin(code){
     const c=p.connect(peerId(code),{reliable:true,serialization:'binary',metadata:{k:'main'}});NET.host=c;
     c.on('open',()=>{c.send({t:'hi',name:S.name,build:BUILD_ID});NET.status='Підключено';clearInterval(NET.pingT);NET.pingT=setInterval(()=>NET.send({t:'ping',ts:performance.now()}),2000);sendGS();renderNet();});
     c.on('data',onGuestMsg);
+    c.on('error',e=>{console.warn('conn error',e);NET.err='Помилка з\'єднання з хостом: '+((e&&(e.type||e.message))||e);renderNet();});
     c.on('close',()=>{if(NET.host!==c)return;toast('Хост закрив кімнату');netLeave();});
     const f=p.connect(peerId(code),{reliable:true,serialization:'raw',metadata:{k:'file'}});NET.hostF=f;
     f.on('data',onRawChunk);
@@ -1368,6 +1388,13 @@ async function onGuestMsg(m){
       NET.rx={...NET.meta,buf:new Uint8Array(m.size|0),seen:new Uint8Array(m.n|0),got:0,bytes:0,t0:performance.now()};
       T.buf=null;T.fileId=null;$('#drop-title').textContent=NET.rx.name;renderMenu();break;
     case 'ch':{let bin;try{bin=atob(m.b64);}catch(e){break;}const u=new Uint8Array(bin.length);for(let j=0;j<bin.length;j++)u[j]=bin.charCodeAt(j);gotChunk(m.seq,m.i,u);break;}
+    case 'cp':{
+      if(!NET.cparts||NET.cparts.id!==m.id)NET.cparts={id:m.id,n:m.n|0,got:0,p:new Array(m.n|0)};
+      const cp=NET.cparts;if(m.i<0||m.i>=cp.n||cp.p[m.i]!=null)break;
+      cp.p[m.i]=String(m.s||'');cp.got++;
+      if(cp.got===cp.n){let c;try{c=JSON.parse(cp.p.join(''));}catch(e){NET.cparts=null;break;}NET.cparts=null;
+        if(c&&Array.isArray(c.notes)&&T.chartId!==m.id){T.chart=c;T.rc=prepareChart(c);T.chartId=m.id;sendGS();renderMenu();}else if(T.chartId===m.id)sendGS();}
+      break;}
     case 'chart':
       if(!m.c||!Array.isArray(m.c.notes))break;
       T.chart=m.c;T.rc=prepareChart(m.c);T.chartId=m.id;sendGS();renderMenu();break;
@@ -1722,7 +1749,7 @@ function bindUI(){
 
 
 /* ---------- версія сайту ---------- */
-const BUILD_ID="2026-10-29 14:11";
+const BUILD_ID="2026-10-29 14:12";
 function showBuild(){const [d,tm]=BUILD_ID.split(' ');const [y,m,dd]=d.split('-');$('#build-info').textContent=`Оновлено: ${dd}.${m}.${y} о ${tm}`;}
 async function checkUpdate(){
   if(!/^https?:$/.test(location.protocol)||G.state==='play')return;
