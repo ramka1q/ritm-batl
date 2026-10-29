@@ -1108,7 +1108,7 @@ async function loadFile(file){
   if(busy||NET.role==='guest')return;
   if(file.size>400*1024*1024){toast('Файл більший за 400 МБ — візьми коротший');return;}
   busy=true;ac();
-  $('#drop-title').textContent=file.name;setProg(0.02,'Читаю файл…');
+  $('#drop-title').textContent=file.name;setProg(0.02,'Читаю файл…');if(NET.role==='host')NET.send({t:'prep',p:-1,name:file.name});
   try{
     const ab=await file.arrayBuffer();
     const ext=(file.name.split('.').pop()||'').toLowerCase();
@@ -1390,7 +1390,7 @@ async function onGuestMsg(m){
       NET.meta={id:m.id,seq:m.seq,name:String(m.name||'трек'),size:m.size|0,mime:String(m.mime||''),video:!!m.video,n:m.n|0,CH:m.CH|0,fp:m.fp||''};
       if(T.fileId===m.id&&T.buf){NET.send({t:'have',id:m.id});break;}
       NET.rx={...NET.meta,buf:new Uint8Array(m.size|0),seen:new Uint8Array(m.n|0),got:0,bytes:0,t0:performance.now()};
-      T.buf=null;T.fileId=null;$('#drop-title').textContent=NET.rx.name;renderMenu();break;
+      NET.opening=null;T.buf=null;T.fileId=null;$('#drop-title').textContent=NET.rx.name;renderMenu();break;
     case 'ch':{let bin;try{bin=atob(m.b64);}catch(e){break;}const u=new Uint8Array(bin.length);for(let j=0;j<bin.length;j++)u[j]=bin.charCodeAt(j);gotChunk(m.seq,m.i,u);break;}
     case 'cp':{
       if(T.chartId===m.id&&T.rc){if(m.i===0)sendGS();break;}
@@ -1400,7 +1400,7 @@ async function onGuestMsg(m){
       if(cp.got===cp.n){let c;try{c=JSON.parse(cp.p.join(''));}catch(e){NET.cparts=null;NET.chartBad=true;renderNet();break;}NET.cparts=null;NET.chartBad=false;
         if(c&&Array.isArray(c.notes)&&T.chartId!==m.id){T.chart=c;T.rc=prepareChart(c);T.chartId=m.id;sendGS();renderMenu();}else if(T.chartId===m.id)sendGS();}
       break;}
-    case 'prep':NET.prep=clamp(+m.p||0,0,1);if(!NET.prepT0||NET.prep===0)NET.prepT0=performance.now();renderNet();break;
+    case 'prep':if(+m.p<0){NET.opening=String(m.name||'трек').slice(0,80);renderNet();break;}NET.opening=null;NET.prep=clamp(+m.p||0,0,1);if(!NET.prepT0||NET.prep===0)NET.prepT0=performance.now();renderNet();break;
     case 'chart':
       if(!m.c||!Array.isArray(m.c.notes))break;
       T.chart=m.c;T.rc=prepareChart(m.c);T.chartId=m.id;sendGS();renderMenu();break;
@@ -1504,7 +1504,7 @@ function renderNet(){
     let trackTxt;
     if(rx){const el=(performance.now()-rx.t0)/1000,sp=rx.bytes/Math.max(0.1,el);
       trackTxt=`Отримую «${esc(rx.name)}» · ${Math.round(rx.got/Math.max(1,rx.n)*100)}% · ${fmtBytes(rx.bytes)} з ${fmtBytes(rx.size)} · ${(sp/1048576).toFixed(1)} МБ/с · ще ${rx.bytes>0?fmtEta((rx.size-rx.bytes)/sp):'…'}`;}
-    else trackTxt=T.buf?`Трек: ${esc(T.name)}`:'Чекаю, поки хост вибере трек';
+    else trackTxt=T.buf?`Трек: ${esc(T.name)}`:(NET.opening?`Хост відкриває трек «${esc(NET.opening)}»…`:'Чекаю, поки хост вибере трек');
     if(rx&&rx.last&&performance.now()-rx.last>10000)trackTxt+=' <span class="warn">⚠ трек завис: 10 с нічого не приходить — хост повторить відправку</span>';
     if(rx&&!rx.last&&performance.now()-rx.t0>10000)trackTxt+=' <span class="warn">⚠ трек не починає йти — перевір інтернет або перезайди</span>';
     let chTxt;const cp=NET.cparts,now=performance.now();
@@ -1734,7 +1734,7 @@ function bindUI(){
   ['dragleave','drop'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.remove('over');}));
   dz.addEventListener('drop',e=>{const f=e.dataTransfer&&e.dataTransfer.files[0];if(f)loadFile(f);});
   addEventListener('dragover',e=>e.preventDefault());addEventListener('drop',e=>e.preventDefault());
-  $('#btn-demo').onclick=async()=>{if(busy||NET.role==='guest')return;busy=true;ac();$('#drop-title').textContent='Демо-біт 128 BPM';setProg(0.02,'Записую біт…');renderMenu();
+  $('#btn-demo').onclick=async()=>{if(busy||NET.role==='guest')return;busy=true;ac();$('#drop-title').textContent='Демо-біт 128 BPM';setProg(0.02,'Записую біт…');if(NET.role==='host')NET.send({t:'prep',p:-1,name:'Демо-біт 128 BPM'});renderMenu();
     try{const ab=await makeDemo();await setTrack({name:'Демо-біт 128 BPM.wav',ab,mime:'audio/wav',maybeVideo:false},false);}catch(e){console.error(e);setProg(null,'Не вдалося створити демо');}busy=false;renderMenu();};
   for(const btn of document.querySelectorAll('#seg-diff button'))btn.onclick=()=>{S.diff=+btn.dataset.d;saveS();renderMenu();regenSoon();};
   $('#ev').oninput=e=>{S.ev=+e.target.value;saveS();$('#ev-val').textContent=EV_NAMES(S.ev);regenSoon();};
@@ -1772,7 +1772,7 @@ function bindUI(){
 
 
 /* ---------- версія сайту ---------- */
-const BUILD_ID="2026-10-29 14:16";
+const BUILD_ID="2026-10-29 14:20";
 function showBuild(){const [d,tm]=BUILD_ID.split(' ');const [y,m,dd]=d.split('-');$('#build-info').textContent=`Оновлено: ${dd}.${m}.${y} о ${tm}`;}
 async function checkUpdate(){
   if(!/^https?:$/.test(location.protocol)||G.state==='play')return;
