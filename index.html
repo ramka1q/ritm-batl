@@ -171,7 +171,7 @@ input[type=text],#nm,#code,#lnk{background:#120e30;border:2px solid var(--line-2
         <div class="field"><label for="smax">Найшвидше — гучні місця <b id="smax-val">2.7×</b></label><input type="range" id="smax" min="0.6" max="4.5" step="0.1" value="2.7">
           <p class="hint">У кожній пісні найтихіше місце дає мінімум, найгучніше — максимум. Постав обидва однаково — швидкість буде рівна.</p></div>
         <div class="field"><label for="shake">Тряска екрану <b id="shake-val">100%</b></label><input type="range" id="shake" min="0" max="150" step="10" value="100"></div>
-        <div class="field"><label for="offset">Затримка звуку <b id="offset-val">0 мс</b></label><input type="range" id="offset" min="-250" max="400" step="5" value="0"><button id="btn-cal" class="ghost small">Підібрати затримку автоматично</button><p class="hint">Тиснеш вчасно, а пише «рано» — рухай вправо. Для блютуз-навушників часто +120…+200.</p></div>
+        <div class="field"><label for="offset">Затримка звуку <b id="offset-val">0 мс</b></label><input type="range" id="offset" min="-250" max="400" step="5" value="0"><div class="row"><button id="btn-cal" class="ghost small">Підібрати затримку автоматично</button><button id="btn-lattest" class="ghost small">Тест затримки (метроном)</button></div><p class="hint">Під час соло-гри видно, на скільки мс ти рано чи пізно тиснеш; клавіші − і = підкручують затримку на ходу. Для блютуз-навушників часто +120…+200.</p></div>
         <div class="field"><span class="flabel">Де стоять стрілки</span>
           <div class="seg seg3" id="seg-pos" role="group" aria-label="Де стоять стрілки"><button data-v="left" aria-pressed="false">Зліва</button><button data-v="center" aria-pressed="false">По центру</button><button data-v="right" aria-pressed="true">Справа</button></div></div>
         <div class="field"><span class="flabel">Звідки летять ноти</span>
@@ -548,10 +548,12 @@ function stopAudio(){
   if(G.videoOn){try{bgv.pause();}catch(e){}}
 }
 
-function startGame(mode,lead){
-  if(!T.rc||!T.buf)return;
+function startGame(mode,lead,ovr){
+  const CH=ovr?ovr.chart:T.chart,BUF=ovr?ovr.buf:T.buf;
+  if(!CH||!BUF)return;
+  G.ovr=ovr||null;G.test=!!(ovr&&ovr.test);G.dts=[];G.offShow=0;
   const a=ac();stopAudio();
-  G.mode=mode;G.rc=prepareChart(T.chart);G.me=newStats();G.ended=false;
+  G.mode=mode;G.rc=prepareChart(CH);G.me=newStats();G.ended=false;
   G.notes=G.rc.notes.map(n=>({t:n[0],l:n[1],len:n[2],k:n[3],j:0,h:0}));
   G.evs=G.rc.events.slice();G.atkShake=-9;G.banner=null;SING.meter=0;SING.trail=[];SING.hit=0;SING.sent=0;SING.inTune=0;SING.ticks=0;SING.loud=0;SING.scream=-99;
   G.scan=0;G.botScan=0;G.popups=[];G.parts=[];G.lastDrop=-1;G.flash=0;G.hurt=0;
@@ -559,11 +561,11 @@ function startGame(mode,lead){
   if(mode!=='solo')NET.remote={...NET.remote,score:0,combo:0,acc:1,hp:0.5,dead:false,cnt:[0,0,0,0,0],max:0};
   G.gain=a.createGain();G.gain.gain.value=0.9;
   G.an=a.createAnalyser();G.an.fftSize=256;G.an.smoothingTimeConstant=0.7;G.fdata=new Uint8Array(G.an.frequencyBinCount);
-  G.src=a.createBufferSource();G.src.buffer=T.buf;G.src.connect(G.gain);G.gain.connect(G.an);G.an.connect(a.destination);
+  G.src=a.createBufferSource();G.src.buffer=BUF;G.src.connect(G.gain);G.gain.connect(G.an);G.an.connect(a.destination);
   const L=lead!=null?lead:Math.max(2.4,4*G.rc.beat);
   G.oInit=false;G.startCtx=a.currentTime+L;G.lead=L;
   G.src.start(G.startCtx);
-  G.videoOn=!!(T.isVideo&&T.videoURL);
+  G.videoOn=!ovr&&!!(T.isVideo&&T.videoURL);
   if(G.videoOn){if(bgv.src!==T.videoURL)bgv.src=T.videoURL;bgv.muted=true;try{bgv.pause();bgv.currentTime=0;}catch(e){}bgv.hidden=false;}else bgv.hidden=true;
   G.state='play';showScreen(null);
 }
@@ -583,7 +585,8 @@ function judge(lane,t){
     best.j=1;me.cnt[ji]++;me.combo++;me.max=Math.max(me.max,me.combo);me.score+=J.sc;me.accSum+=J.acc;me.judged++;
     me.hp=clamp(me.hp+J.hp,0,1);G.conf[lane]=performance.now();
     if(best.len>0)best.h=1;
-    popup(J.n,J.c,me.combo);
+    const ms=Math.round((t-best.t)*1000);G.dts.push(t-best.t);if(G.dts.length>200)G.dts.shift();
+    popup(J.n,J.c,me.combo,ms);
     if(G.mode!=='solo')NET.send({t:'k',l:lane,j:ji});
     return;
   }
@@ -602,7 +605,7 @@ function checkDead(){
   if(G.mode==='solo'){stopAudio();G.state='dead';showScreen('dead');}
   else{toast('Ти вибув. Дивись, як грає друг');}
 }
-function popup(text,color,combo){G.popups.push({text,color,combo,t0:performance.now()});if(G.popups.length>6)G.popups.shift();}
+function popup(text,color,combo,ms){G.popups.push({text,color,combo,ms,t0:performance.now()});if(G.popups.length>6)G.popups.shift();}
 
 function keyDown(lane,t){
   if(G.state!=='play')return;
@@ -840,7 +843,15 @@ function drawHUD(t,st,recY){
     c.save();c.globalAlpha=a;c.translate(G.myCx,y);c.scale(s,s);c.textAlign='center';
     c.font=`900 ${Math.round(Math.min(34,G.W/14))}px ${FONT_D}`;c.lineWidth=6;c.strokeStyle='#120a24';c.strokeText(p.text,0,0);c.fillStyle=p.color;c.fillText(p.text,0,0);
     if(p.combo>=5){c.font=`800 22px ${FONT_M}`;c.strokeText(String(p.combo),0,32);c.fillStyle='#fff';c.fillText(String(p.combo),0,32);}
+    if(p.ms!=null&&G.mode==='solo'){const tx=p.ms===0?'0 мс':(p.ms>0?'+'+p.ms+' мс пізно':p.ms+' мс рано');c.font=`700 14px ${FONT_M}`;c.lineWidth=4;c.strokeText(tx,0,-30);c.fillStyle=Math.abs(p.ms)<25?'#9cff8a':p.ms>0?'#ffb066':'#7ff7ff';c.fillText(tx,0,-30);}
     c.restore();
+  }
+  if(G.mode==='solo'&&t>0){
+    const rec=G.dts.slice(-16);let line='';
+    if(rec.length>=4){const s=rec.slice().sort((a,b)=>a-b),m=Math.round(s[s.length>>1]*1000);line=`середнє: ${m>0?'+':''}${m} мс ${Math.abs(m)<15?'(точно)':m>0?'(пізно)':'(рано)'} · `;}
+    const fresh=now-G.offShow<1500;
+    c.font=`${fresh?800:600} ${fresh?15:12}px ${FONT_M}`;c.textAlign='left';c.fillStyle=fresh?'#ffd23f':'rgba(243,240,255,.7)';
+    c.fillText(`${line}затримка ${S.offset>0?'+':''}${S.offset} мс  [− / =]`,14,40);
   }
   // попередження про подію
   if(st.warn&&Math.floor(now/120)%2){
@@ -917,6 +928,8 @@ addEventListener('keydown',e=>{
   if(e.target&&(e.target.tagName==='INPUT'||e.target.tagName==='SELECT'||e.target.tagName==='TEXTAREA'))return;
   const l=KEYMAP[e.code];
   if(l!=null&&G.state==='play'){e.preventDefault();if(!e.repeat)keyDown(l,evT(e));return;}
+  if((e.code==='Minus'||e.code==='Equal'||e.code==='NumpadSubtract'||e.code==='NumpadAdd')&&(G.state==='play'||G.state==='paused')&&G.mode==='solo'){
+    S.offset=clamp(S.offset+(e.code==='Minus'||e.code==='NumpadSubtract'?-5:5),-250,400);S.cal=true;saveS();G.offShow=performance.now();e.preventDefault();return;}
   if(e.code==='Escape'||e.code==='KeyP'){if(G.state==='play'&&G.mode==='solo')pauseGame();else if(G.state==='paused')resumeGame();}
   if(e.code==='Enter'&&G.state==='results'&&G.mode!=='guest')$('#btn-again').click();
 });
@@ -1373,6 +1386,17 @@ function statBlock(name,st,acc,isMe){
   <div><dt>Ідеально</dt><dd>${st.cnt[0]}</dd></div><div><dt>Добре</dt><dd>${st.cnt[1]}</dd></div><div><dt>Так собі</dt><dd>${st.cnt[2]}</dd></div><div><dt>Жах</dt><dd>${st.cnt[3]}</dd></div><div><dt>Промахи</dt><dd>${st.cnt[4]}</dd></div></dl></div>`;
 }
 function renderResults(){
+  if(G.test){
+    const d=G.dts,ok=d.length>=8;let html='<p class="eyebrow">Тест затримки</p>';
+    if(!ok){html+='<h2>Замало попадань</h2><p class="note">Натисни «Ще раз» і тисни під кожен удар.</p>';$('#res').innerHTML=html;$('#btn-again').hidden=false;$('#res-note').textContent='';return;}
+    const s=d.slice().sort((a,b)=>a-b),m=Math.round(s[s.length>>1]*1000),sug=clamp(Math.round((S.offset+m)/5)*5,-250,400);
+    html+=`<h2>${Math.abs(m)<15?'Затримка вже точна':m>0?'Ти тиснеш пізно на '+m+' мс':'Ти тиснеш рано на '+(-m)+' мс'}</h2>
+      <p class="note">Зараз стоїть ${S.offset>0?'+':''}${S.offset} мс. ${Math.abs(m)<15?'Нічого міняти не треба.':'Рекомендовано поставити '+(sug>0?'+':'')+sug+' мс.'}</p>
+      ${Math.abs(m)>=15?`<button id="btn-apply-off" class="play">Застосувати ${sug>0?'+':''}${sug} мс</button>`:''}`;
+    $('#res').innerHTML=html;$('#btn-again').hidden=false;$('#res-note').textContent='Після зміни натисни «Ще раз», щоб перевірити.';
+    const ap=$('#btn-apply-off');if(ap)ap.onclick=()=>{S.offset=sug;S.cal=true;saveS();renderMenu();ap.disabled=true;ap.textContent='Застосовано: '+(sug>0?'+':'')+sug+' мс';};
+    return;
+  }
   const me=G.me,acc=me.judged?me.accSum/me.judged:1;let html=`<p class="eyebrow">${esc(T.name||'Трек')} · ${DIFFS[G.rc.diff]}</p>`;
   if(G.mode==='solo'){html+=`<h2>Результат</h2><div class="res-grid one">${statBlock('Ти',me,acc,true)}</div>`;}
   else{
@@ -1383,6 +1407,25 @@ function renderResults(){
   $('#res').innerHTML=html;
   $('#btn-again').hidden=G.mode==='guest';
   $('#res-note').textContent=G.mode==='guest'?'Наступну гру запускає хост':'';
+}
+
+/* ---------- тест затримки: метроном зі стрілками ---------- */
+let LATTEST=null;
+async function startLatencyTest(){
+  ac();
+  if(!LATTEST){
+    const sr=44100,bpm=100,b=60/bpm,off=1,nb=40,dur=off+nb*b+1.5;
+    const oc=new OfflineAudioContext(1,Math.ceil(sr*dur),sr);
+    for(let i=0;i<nb;i++){const t=off+i*b,o=oc.createOscillator(),g=oc.createGain();o.frequency.setValueAtTime(150,t);o.frequency.exponentialRampToValueAtTime(45,t+0.1);
+      g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.9,t+0.002);g.gain.exponentialRampToValueAtTime(0.0001,t+0.3);o.connect(g);g.connect(oc.destination);o.start(t);o.stop(t+0.32);
+      const c=oc.createOscillator(),cg=oc.createGain();c.type='square';c.frequency.value=i%4===0?1500:1100;cg.gain.setValueAtTime(0.0001,t);cg.gain.exponentialRampToValueAtTime(0.15,t+0.002);cg.gain.exponentialRampToValueAtTime(0.0001,t+0.04);c.connect(cg);cg.connect(oc.destination);c.start(t);c.stop(t+0.05);}
+    const buf=await oc.startRendering();
+    const R=40,nC=Math.ceil(dur*R)+1,flat=v=>new Array(nC).fill(v);
+    const lanes=[0,1,2,3,3,2,1,0];
+    const notes=[];for(let i=0;i<nb;i++)notes.push([+(off+i*b).toFixed(4),lanes[i%8],0,0]);
+    LATTEST={test:true,buf,chart:{v:2,title:'Тест затримки',dur:+dur.toFixed(3),bpm,off,R,diff:0,L:0,notes,events:[],drops:[],sp:flat(0.15),int:flat(0.3),kick:flat(0),mel:[],melR:20}};
+  }
+  startGame('solo',null,LATTEST);
 }
 
 /* ---------- демо-біт ---------- */
@@ -1457,12 +1500,13 @@ function bindUI(){
   $('#keys-reset').onclick=()=>{S.keys=DEF_KEYS.map(k=>k.slice());saveS();buildKeymap();capturing=null;window.keyCapture=null;renderKeys();toast('Клавіші скинуто');};
   $('#nofail').onchange=e=>{S.nofail=e.target.checked;saveS();};
   $('#btn-solo').onclick=()=>{if(T.rc&&!NET.role){ac();if(!S.cal)openCal(()=>startGame('solo'));else startGame('solo');}};
+  $('#btn-lattest').onclick=()=>{if(NET.role){toast('Тест затримки — тільки поза кімнатою');return;}startLatencyTest();};
   $('#btn-cal').onclick=()=>openCal(()=>showScreen('menu'));
   $('#btn-resume').onclick=resumeGame;
   $('#btn-pause-menu').onclick=toMenu;
-  $('#btn-retry').onclick=()=>{ac();startGame('solo');};
+  $('#btn-retry').onclick=()=>{ac();startGame('solo',null,G.ovr);};
   $('#btn-dead-menu').onclick=toMenu;
-  $('#btn-again').onclick=()=>{ac();if(G.mode==='host'||(NET.role==='host')){if(NET.conn&&NET.conn.open){NET.remote.fin=false;NET.send({t:'start',lead:3});startGame('host',3);}else startGame('solo');}else startGame('solo');};
+  $('#btn-again').onclick=()=>{ac();if(G.test){startGame('solo',null,G.ovr);return;}if(G.mode==='host'||(NET.role==='host')){if(NET.conn&&NET.conn.open){NET.remote.fin=false;NET.send({t:'start',lead:3});startGame('host',3);}else startGame('solo');}else startGame('solo');};
   $('#btn-res-menu').onclick=()=>{if(NET.role==='host')NET.send({t:'menu'});toMenu();};
   const h=location.hash||'';
   if(h.startsWith('#join-')){pendingCode=h.slice(6).toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);if(pendingCode)setTimeout(()=>{toast('Тебе запросили в кімнату '+pendingCode);netJoin(pendingCode);},300);}
