@@ -276,7 +276,7 @@ function pickPeaks(x,fps,mult){
     let mx=true;for(let j=i-4;j<=i+4;j++)if(j>=0&&j<n&&x[j]>v){mx=false;break;}
     if(!mx)continue;
     const a=Math.max(0,i-w),b=Math.min(n,i+w2+1),lm=(P[b]-P[a])/(b-a),thr=lm*mult+gm*0.3;
-    if(v>thr)out.push({i,s:(v-thr)/(gm+1e-9)});
+    if(v>thr){const dn=x[i-1]-2*v+x[i+1],fr=dn<0?clamp(0.5*(x[i-1]-x[i+1])/dn,-0.5,0.5):0;out.push({i,fi:i+fr,s:(v-thr)/(gm+1e-9)});}
   }
   return out;
 }
@@ -292,6 +292,7 @@ async function analyze(chans,sr,onProg){
   const binHz=sr/N,bb=(a,b)=>[Math.max(1,Math.round(a/binHz)),Math.min(half-1,Math.round(b/binHz))];
   const bL=bb(30,140),bS=bb(150,450),bV=bb(300,3400),bH=bb(5000,14000),bP=bb(90,1100);
   const A=()=>new Float32Array(nF);
+  const kLo=Math.max(1,Math.floor(80/binHz)),kHi=Math.min(half-1,Math.ceil(3400/binHz)),NB=kHi-kLo+1,spec=new Float32Array(nF*NB);
   const rms=A(),eL=A(),eV=A(),ton=A(),fL=A(),fS=A(),fV=A(),fH=A(),fA=A(),pitch=A();
   const sum=(arr,b)=>{let s=0;for(let k=b[0];k<=b[1];k++)s+=arr[k];return s/(b[1]-b[0]+1);};
   const flux=(b)=>{let s=0;for(let k=b[0];k<=b[1];k++){const d=cur[k]-prev[k];if(d>0)s+=d;}return s/(b[1]-b[0]+1);};
@@ -301,7 +302,7 @@ async function analyze(chans,sr,onProg){
     rms[f]=Math.sqrt(s2/N);
     fft(re,im);
     for(let k=0;k<half;k++)cur[k]=Math.log1p(Math.sqrt(re[k]*re[k]+im[k]*im[k])*2);
-    eL[f]=sum(cur,bL);eV[f]=sum(cur,bV);
+    eL[f]=sum(cur,bL);eV[f]=sum(cur,bV);spec.set(cur.subarray(kLo,kHi+1),f*NB);
     fL[f]=flux(bL);fS[f]=flux(bS);fV[f]=flux(bV);fH[f]=flux(bH);
     let a=0;for(let k=1;k<half;k++){const d=cur[k]-prev[k];if(d>0)a+=d;}fA[f]=a/half;
     // висота голосу (harmonic product spectrum)
@@ -316,23 +317,30 @@ async function analyze(chans,sr,onProg){
     const t=prev;prev=cur;cur=t;
     if(f%400===0){onProg&&onProg(0.05+0.8*f/nF);await yieldUI();}
   }
-  const dur=len/sr,t0=0.42*N/sr,ft=i=>i/fps+t0;
+  const dur=len/sr,t0=0.72*N/sr,ft=i=>i/fps+t0;
   // голос: якщо вокальна енергія слабка — висоту не враховуємо
   const vq=quantile(ton,0.4);for(let f=0;f<nF;f++)if(ton[f]<vq)pitch[f]=0;
   // --- onsets по смугах
   const types=[['kick',fL,1.3,1],['snare',fS,1.35,0.9],['voc',fV,1.25,1.1],['hat',fH,1.4,0.6]];
   let raw=[];const vOn=new Uint8Array(nF);
-  for(const [ty,x,m,w] of types){for(const p of pickPeaks(x,fps,m)){raw.push({t:ft(p.i),i:p.i,s:p.s*w,type:ty});if(ty==='voc')vOn[p.i]=1;}}
+  for(const [ty,x,m,w] of types){for(const p of pickPeaks(x,fps,m)){raw.push({t:ft(p.fi),i:p.i,s:p.s*w,type:ty});if(ty==='voc')vOn[p.i]=1;}}
   raw.sort((a,b)=>a.t-b.t);
   const cands=[];
   for(const r of raw){
     const last=cands[cands.length-1];
-    if(last&&r.t-last.t<0.045){if(r.s>last.s){last.extra+=last.s*0.25;last.s=r.s;last.type=r.type;last.i=r.i;}else last.extra+=r.s*0.25;}
-    else cands.push({t:r.t,i:r.i,s:r.s,type:r.type,extra:0});
+    if(last&&r.t-last.t<0.045){if(r.type==='voc'){last.v=1;last.vs=Math.max(last.vs||0,r.s);}if(r.s>last.s){last.extra+=last.s*0.25;last.s=r.s;last.type=r.type;last.i=r.i;}else last.extra+=r.s*0.25;}
+    else cands.push({t:r.t,i:r.i,s:r.s,type:r.type,extra:0,v:r.type==='voc'?1:0,vs:r.type==='voc'?r.s:0});
   }
-  for(const c of cands){c.s+=c.extra;delete c.extra;const pv=[];for(let f=c.i+2;f<Math.min(nF,c.i+13);f++)if(pitch[f])pv.push(pitch[f]);pv.sort((a,b)=>a-b);c.p=pv.length>=4?+pv[pv.length>>1].toFixed(2):0;}
+  for(const c of cands){c.s+=c.extra;delete c.extra;const pv=[];for(let f=c.i+2;f<Math.min(nF,c.i+13);f++)if(pitch[f])pv.push(pitch[f]);pv.sort((a,b)=>a-b);c.p=pv.length>=4?+pv[pv.length>>1].toFixed(2):0;const pw=[];for(let f=c.i+6;f<Math.min(nF,c.i+22);f++)if(pitch[f])pw.push(pitch[f]);pw.sort((x,y)=>x-y);c.p2=pw.length>=5?+pw[pw.length>>1].toFixed(2):0;}
+  // уточнення кожної атаки по самій хвилі: де енергія (з підсиленими верхами) росте найкрутіше, крок ~1.5 мс
+  {const HP=64,W2=128,nE=Math.floor(len/HP),le=new Float32Array(nE);
+   for(let e=0;e<nE;e++){let s=0;const o=e*HP;for(let i=1;i<W2&&o+i<len;i++){const d=mono[o+i]-0.95*mono[o+i-1];s+=d*d;}le[e]=Math.log(1e-9+s);}
+   for(const c of cands){const tc=c.t,a0=Math.max(2,Math.floor((tc-0.04)*sr/HP)),a1=Math.min(nE-2,Math.ceil((tc+0.012)*sr/HP));
+     let best=-1e9,bi=-1;for(let e=a0;e<=a1;e++){const dv=le[e+1]-le[e-1];if(dv>best){best=dv;bi=e;}}
+     if(bi>0&&best>0.8)c.t=(bi*HP+W2*0.5)/sr;}
+   if(cands.length>2)cands.sort((p,q)=>p.t-q.t);}
   const sq=quantile(cands.map(c=>c.s),0.9)||1;
-  for(const c of cands){c.s=+(c.s/sq).toFixed(3);c.t=+c.t.toFixed(4);delete c.i;}
+  for(const c of cands){c.s=+(c.s/sq).toFixed(3);c.vs=+((c.vs||0)/sq).toFixed(3);c.t=+c.t.toFixed(4);delete c.i;}
   onProg&&onProg(0.88);await yieldUI();
   // --- темп
   const lm=movAvg(fA,Math.round(fps*0.5)),env=new Float32Array(nF);
@@ -352,7 +360,70 @@ async function analyze(chans,sr,onProg){
     const P=60*fps/b;
     for(let p=0;p<P;p+=1){let s=0,c=0;for(let x=p;x<nF;x+=P){s+=envAt(x);c++;}s/=Math.max(1,c);if(s>bs){bs=s;bpm=b;ph=p;}}
   }
-  const beat=60/bpm;let off=ft(ph)%beat;if(off<0)off+=beat;
+  // --- біт-трекінг динамічним програмуванням: знаходимо КОЖЕН удар, навіть якщо темп трохи гуляє
+  {let s2=0;for(let i=0;i<nF;i++)s2+=env[i]*env[i];const sd=Math.sqrt(s2/nF)||1;for(let i=0;i<nF;i++)env[i]/=sd;}
+  const nrm=x=>{const m=movAvg(x,Math.round(fps*0.5)),o=new Float32Array(nF);let s2=0;for(let i=0;i<nF;i++){o[i]=Math.max(0,x[i]-m[i]);s2+=o[i]*o[i];}const sd=Math.sqrt(s2/nF)||1;for(let i=0;i<nF;i++)o[i]/=sd;return o;};
+  {const a1=nrm(fL),a2=nrm(fS),a3=nrm(fA);for(let i=0;i<nF;i++)env[i]=a1[i]+0.6*a2[i]+0.3*a3[i];}
+  const P0=60*fps/bpm,scr=new Float32Array(nF),bpt=new Int32Array(nF).fill(-1),TIGHT=110;
+  for(let t=0;t<nF;t++){
+    let best=-1e9,bi=-1;const a0=Math.max(0,Math.round(t-2*P0)),b0=Math.round(t-P0/2);
+    for(let p=a0;p<=b0;p++){const v=scr[p]-TIGHT*Math.pow(Math.log((t-p)/P0),2);if(v>best){best=v;bi=p;}}
+    scr[t]=env[t]+(bi>=0?best:0);bpt[t]=bi;
+    if(t%3000===0){onProg&&onProg(0.88+0.06*t/nF);await yieldUI();}
+  }
+  let bt=nF-1,bm=-1e9;for(let t=Math.max(0,Math.floor(nF-P0));t<nF;t++)if(scr[t]>bm){bm=scr[t];bt=t;}
+  const bfr=[];while(bt>=0){bfr.push(bt);bt=bpt[bt];}bfr.reverse();
+  const bref=bfr.map(f=>{if(f<=0||f>=nF-1)return f;let best=f,bv=env[f];for(let g=f-2;g<=f+2;g++)if(g>0&&g<nF-1&&env[g]>bv){bv=env[g];best=g;}
+    const dn=env[best-1]-2*env[best]+env[best+1];return best+(dn<0?clamp(0.5*(env[best-1]-env[best+1])/dn,-0.5,0.5):0);});
+  // згладжування: кожен біт — з локальної лінійної регресії по ±6 бітах (прибирає дрижання кадрів, тримає зміну темпу)
+  let beats=bref.map((f,i)=>{const a0=Math.max(0,i-6),a1=Math.min(bref.length-1,i+6);let sx=0,sy=0,sxx=0,sxy=0,n=0;
+    for(let j=a0;j<=a1;j++){sx+=j;sy+=bref[j];sxx+=j*j;sxy+=j*bref[j];n++;}
+    const den=n*sxx-sx*sx,sl=den?(n*sxy-sx*sy)/den:0,ic=(sy-sl*sx)/n,fit=ic+sl*i;
+    return ft(Math.abs(fit-f)<P0*0.15?fit:f);});
+  // ремонт сітки: пропущений удар — вставляємо, зайвий — прибираємо
+  if(beats.length>8){
+    const Pb=60/bpm,fixed=[beats[0]];
+    for(let i=1;i<beats.length;i++){const prev=fixed[fixed.length-1],gap=beats[i]-prev;
+      if(gap<Pb*0.6)continue;
+      const k=Math.round(gap/Pb);if(k>=2){for(let j=1;j<k;j++)fixed.push(prev+gap*j/k);}
+      fixed.push(beats[i]);}
+    beats=fixed;
+    const med=60/bpm;
+    while(beats[0]-med>-0.001)beats.unshift(beats[0]-med);
+    while(beats[beats.length-1]+med<dur+med)beats.push(beats[beats.length-1]+med);
+  }else{beats=[];const b=60/bpm;for(let x=ft(ph)%b;x<dur+b;x+=b)beats.push(x);}
+  // підганяємо сітку під реальні удари: медіанний зсув сильних атак відносно найближчого біта
+  {const strong=cands.filter(c=>c.s>0.6&&(c.type==='kick'||c.type==='snare')),ds=[];let k=0;
+   for(const c of strong){while(k<beats.length-1&&beats[k+1]<=c.t)k++;const a0=beats[k],a1=beats[Math.min(k+1,beats.length-1)],I=Math.max(0.2,a1-a0);
+     const u=(c.t-a0)/I,q=Math.round(u*2)/2,d=c.t-(a0+q*I);if(Math.abs(d)<0.06)ds.push(d);}
+   if(ds.length>8){ds.sort((x,y)=>x-y);const sh=clamp(ds[ds.length>>1],-0.04,0.04);beats=beats.map(x=>x+sh);}}
+  // фаза по відрізках з 8 ударів: бочка на долі — якщо низ сильніший на півдолях, зсуваємо цей відрізок на півудару
+  {const at=t=>{const f=Math.round((t-t0)*fps);let m=0;for(let g=f-1;g<=f+1;g++)if(g>=0&&g<nF)m=Math.max(m,fL[g]);return m;};
+   const kq=quantile(fL,0.9)||1;
+   for(let s=0;s<beats.length-1;s+=8){const e=Math.min(beats.length-1,s+8);let on=0,offb=0;
+     for(let i=s;i<e;i++){on+=at(beats[i]);offb+=at((beats[i]+beats[i+1])/2);}
+     if(offb>on*1.3&&offb/(e-s)>kq*0.5){for(let i=s;i<e;i++)beats[i]=(beats[i]+beats[i+1])/2;}}
+   // після зсувів — ремонт інтервалів
+   const Pb=60/bpm,fx=[beats[0]];
+   for(let i=1;i<beats.length;i++){const prev=fx[fx.length-1],gap=beats[i]-prev;if(gap<Pb*0.6)continue;const k=Math.round(gap/Pb);if(k>=2)for(let j=1;j<k;j++)fx.push(prev+gap*j/k);fx.push(beats[i]);}
+   beats=fx;}
+  // локальне підлаштування: кожен удар — до медіани реальних атак поруч (±4 удари), щоб сітка лягала на звук і без бочки
+  {const T=cands.filter(c=>c.s>0.25).map(c=>c.t),sh=new Float32Array(beats.length);let j0=0;
+   for(let i=0;i<beats.length;i++){const I=i<beats.length-1?beats[i+1]-beats[i]:beats[i]-beats[i-1];const lo=beats[i]-4*I,hi=beats[i]+4*I,ds=[];
+     while(j0<T.length&&T[j0]<lo)j0++;
+     for(let j=j0;j<T.length&&T[j]<hi;j++){const k=Math.max(0,Math.min(beats.length-2,i+Math.floor((T[j]-beats[i])/I)));const a0=beats[k],I2=beats[k+1]-a0,u=(T[j]-a0)/I2,q=Math.round(u*4)/4,d=T[j]-(a0+q*I2);if(Math.abs(d)<I2/10)ds.push(d);}
+     if(ds.length>=4){ds.sort((p,q)=>p-q);sh[i]=clamp(ds[ds.length>>1],-0.03,0.03);}}
+   beats=beats.map((x,i)=>x+sh[i]);}
+  // якщо темп рівний (більшість треків) — ставимо ідеально рівну сітку по всіх ударах (робастна лінійна регресія)
+  if(beats.length>16){
+    let use=beats.map((_,i)=>i),A=0,Pm=60/bpm;
+    for(let it=0;it<3;it++){let sx=0,sy=0,sxx=0,sxy=0,n=use.length;for(const i of use){sx+=i;sy+=beats[i];sxx+=i*i;sxy+=i*beats[i];}
+      const den=n*sxx-sx*sx;Pm=(n*sxy-sx*sy)/den;A=(sy-Pm*sx)/n;use=use.filter(i=>Math.abs(beats[i]-(A+Pm*i))<0.03);if(use.length<beats.length*0.5)break;}
+    const res=beats.map((x,i)=>Math.abs(x-(A+Pm*i))).sort((p,q)=>p-q);
+    if(use.length>=beats.length*0.8&&res[res.length>>1]<0.012&&res[Math.floor(res.length*0.8)]<0.025){beats=beats.map((_,i)=>A+Pm*i);bpm=60/Pm;}
+  }
+  beats=beats.map(x=>+x.toFixed(4));
+  const beat=60/bpm;let off=((beats.find(x=>x>=0)??0)%beat+beat)%beat;
   // --- криві інтенсивності
   const R=40,nC=Math.ceil(dur*R)+1;
   const rs=movAvg(rms,Math.round(fps*0.4)),rq=quantile(rs,0.95)||1;
@@ -380,10 +451,10 @@ async function analyze(chans,sr,onProg){
   for(const d of dc){if(drops.length>=maxD)break;if(drops.every(x=>Math.abs(x-d.t)>18)){
     const pre=meanC(intC,d.t-6,d.t-0.5),post=meanC(intC,d.t,d.t+3.5),th=pre+0.45*(post-pre);let tt=d.t;
     for(let x=d.t-2.5;x<=d.t+0.5;x+=0.025)if(curveAt(intC,R,x)>th){tt=x;break;}
-    const q=Math.round((tt-off)/beat)*beat+off;drops.push(+q.toFixed(3));}}
+    let q=tt,bd=9;for(const x of beats){const d=Math.abs(x-tt);if(d<bd){bd=d;q=x;}}drops.push(+q.toFixed(3));}}
   drops.sort((a,b)=>a-b);
   onProg&&onProg(1);
-  return {dur,bpm:+bpm.toFixed(2),off:+off.toFixed(4),R,intC,kickC,cands,drops,eV:ton,pitch,vOn,fps,t0};
+  return {dur,bpm:+bpm.toFixed(2),off:+off.toFixed(4),R,intC,kickC,cands,drops,eV:ton,pitch,vOn,fps,t0,beats,rms,spec,kLo,NB,binHz};
 }
 
 /* ===================== ГЕНЕРАЦІЯ НОТ І ПОДІЙ ===================== */
@@ -391,12 +462,27 @@ function generateChart(F,diff,L,seed,title){
   const R=F.R,dur=F.dur,beat=60/F.bpm,off=F.off;
   const rnd=rng32((seed^Math.imul(diff+1,2654435761)^Math.imul(Math.round(L*100)+7,40503))>>>0);
   const intAt=t=>curveAt(F.intC,R,t);
+  const B=F.beats&&F.beats.length>4?F.beats:null;
+  const beatIdx=t=>{if(!B)return -1;let lo=0,hi=B.length-1;if(t<B[0])return -1;while(lo<hi){const m=(lo+hi+1)>>1;if(B[m]<=t)lo=m;else hi=m-1;}return lo;};
+  const beatLen=t=>{const k=beatIdx(t);return (B&&k>=0&&k<B.length-1)?B[k+1]-B[k]:beat;};
+  // найближча точка сітки: 1/16 (і тріолі, якщо allowTrip)
+  const gridSnap=(t,allowTrip)=>{
+    let b0,I;if(B){const k=beatIdx(t);if(k<0||k>=B.length-1){b0=off+Math.floor((t-off)/beat)*beat;I=beat;}else{b0=B[k];I=B[k+1]-B[k];}}else{b0=off+Math.floor((t-off)/beat)*beat;I=beat;}
+    const u=(t-b0)/I;let best=b0+Math.round(u*4)/4*I;
+    if(allowTrip){const tr=b0+Math.round(u*3)/3*I;if(Math.abs(tr-t)<Math.abs(best-t)*0.5&&Math.abs(tr-t)<0.02)best=tr;}
+    return best;
+  };
+  // тріолі — лише якщо в пісні їх справді багато
+  let TRIP=false;{let tr=0,st=0;for(const c of F.cands){if(c.s<0.3)continue;const s16=gridSnap(c.t,false),d16=Math.abs(s16-c.t);
+    let b0,I;const k=beatIdx(c.t);if(B&&k>=0&&k<B.length-1){b0=B[k];I=B[k+1]-B[k];}else{b0=off+Math.floor((c.t-off)/beat)*beat;I=beat;}
+    const t3=b0+Math.round((c.t-b0)/I*3)/3*I,d3=Math.abs(t3-c.t);if(d3<0.015&&d16>0.03)tr++;else if(d16<0.015)st++;}
+    TRIP=diff>=1&&tr>Math.max(6,st*0.15);}
   const drops=L>0.02?F.drops:[];
   const dEnd=d=>Math.min(dur,d+32*beat);
   const inDrop=t=>{for(const d of drops)if(t>=d&&t<dEnd(d))return true;return false;};
   const frac=[0.3,0.5,0.7,0.9][diff],gapB=[0.26,0.16,0.112,0.08][diff];
   const c2=F.cands.map(c=>{const it=intAt(c.t),w=c.type==='voc'?1.18:c.type==='hat'?0.6:c.type==='snare'?1.05:1;
-    return {t:c.t,type:c.type,p:c.p,s:c.s,e:c.s*w*(0.5+0.95*it)*(inDrop(c.t)?1+0.6*L:1)};});
+    return {o:c,t:c.t,type:c.type,p:c.p,s:c.s,e:c.s*w*(0.5+0.95*it)*(inDrop(c.t)?1+0.6*L:1)};});
   const byE=c2.slice().sort((a,b)=>b.e-a.e),keepN=Math.max(1,Math.round(byE.length*frac));
   const occ=new Uint8Array(Math.ceil(dur*200)+10),picked=[];
   for(let i=0;i<keepN;i++){
@@ -407,9 +493,8 @@ function generateChart(F,diff,L,seed,title){
     if(!ok)continue;occ[Math.round(c.t*200)]=1;picked.push(c);
   }
   picked.sort((a,b)=>a.t-b.t);
-  // прив'язка до сітки 1/16, якщо атака поруч
-  const sub=beat/4;
-  for(const c of picked){const q=Math.round((c.t-off)/sub)*sub+off;if(Math.abs(q-c.t)<0.035)c.t=q;}
+  // на сітку: тільки справжні атаки — дуже слабкі (шум, хвости звуків) і далекі від будь-якої долі (>32 мс) викидаємо
+  {const minS=[0.25,0.18,0.13,0.1][diff];for(let i=picked.length-1;i>=0;i--){const c=picked[i],q=gridSnap(c.t,TRIP);if(c.s<minS||Math.abs(q-c.t)>0.032)picked.splice(i,1);else c.t=q;}}
   const pk=[];for(const c of picked){if(pk.length&&c.t-pk[pk.length-1].t<0.03)continue;pk.push(c);}
   // напрямки стрілок: голос іде вгору/вниз — стрілки теж
   const notes=[];let lastLane=1,lastT=-9,lastP=0,hp=false,ka=0,sa=0;
@@ -426,17 +511,76 @@ function generateChart(F,diff,L,seed,title){
     if(lane===lastLane&&c.t-lastT<jack)lane=(lane+1+Math.floor(rnd()*3))%4;
     notes.push([+c.t.toFixed(4),lane,0,0,c]);lastLane=lane;lastT=c.t;
   }
-  // довгі ноти на протяжних звуках голосу
-  for(let i=0;i<notes.length;i++){
-    const n=notes[i],c=n[4];if(c.type!=='voc'||!c.p||!F.eV)continue;
-    const f0=Math.round((c.t-F.t0)*F.fps);if(f0<0||f0+3>=F.eV.length)continue;
-    const rv=Array.from(F.eV.slice(f0+2,f0+9)).sort((a,b)=>a-b),ref=rv[rv.length>>1]||0;
-    let j=f0+2,last=f0,miss=0;const mj=Math.min(F.eV.length,f0+Math.round(3*F.fps));
-    for(;j<mj;j++){const ok=F.eV[j]>ref*0.45&&F.pitch[j]&&Math.abs(F.pitch[j]-c.p)<1.6;if(ok){miss=0;last=j;}else if(++miss>5)break;}
-    let len=(last-f0)/F.fps,lim=(i+1<notes.length?notes[i+1][0]:dur)-n[0]-0.12;
-    lim=dur-n[0]-0.1;for(let k=i+1;k<notes.length;k++)if(notes[k][1]===n[1]){lim=notes[k][0]-n[0]-0.12;break;}
-    len=Math.min(len,lim,3);
-    if(len>=[0.6,0.45,0.38,0.32][diff])n[2]=+len.toFixed(3);
+  // довгі ноти: на будь-якому протяжному звуці (голос, синт, пад, бас), початок і кінець — на сітці
+  const minHold=[1,0.75,0.5,0.5][diff];
+  const nextAny=(i)=>i+1<notes.length?notes[i+1][0]:dur;
+  const nextSame=(i)=>{const n=notes[i];for(let k=i+1;k<notes.length;k++)if(notes[k][1]===n[1])return notes[k][0];return dur;};
+  const fitHold=(i,raw)=>{const n=notes[i],I=beatLen(n[0]);let end=snapEnd(n[0],raw);const lim=nextSame(i)-I/4;while(end>lim+1e-4)end-=I/4;const len=end-n[0];return len>=minHold*I-1e-3?+Math.min(len,4*I).toFixed(3):0;};
+  const snapEnd=(t0,raw)=>{const I=beatLen(t0),e=t0+raw;let q=gridSnap(e,false);if(q>e+I/8)q-=I/4;return q;};
+  // справжні мелодичні атаки: у цей момент гучність саме цієї висоти різко зростає (барабани так не роблять)
+  const hpAt=(p,j)=>{if(!F.spec||j<0||j>=F.eV.length)return 0;const fh=440*Math.pow(2,(p-69)/12);let m=0;for(let h=1;h<=3;h++){const k=Math.round(h*fh/F.binHz)-F.kLo;if(k<1||k>=F.NB-1)continue;const o=j*F.NB;m=Math.max(m,F.spec[o+k-1],F.spec[o+k],F.spec[o+k+1]);}return m;};
+  const med=a=>{a.sort((x,y)=>x-y);return a.length?a[a.length>>1]:0;};
+  const btAt=(p,j)=>{if(!F.spec||j<0||j>=F.eV.length)return 0;const fh=440*Math.pow(2,(p-69)/12);let s=0,n=0;for(const h of [1.5,2.5]){const k=Math.round(h*fh/F.binHz)-F.kLo;if(k<1||k>=F.NB-1)continue;s+=F.spec[j*F.NB+k];n++;}return n?s/n:0;};
+  // підйом саме на гармоніках мінус підйом між ними: шум (хети, малий) піднімає все однаково, нота — лише свої гармоніки
+  const riseAt=(p,fr)=>{const po=[],pr=[],bo=[],br=[];for(let j=fr+2;j<fr+7;j++){po.push(hpAt(p,j));bo.push(btAt(p,j));}for(let j=fr-9;j<fr-1;j++){pr.push(hpAt(p,j));br.push(btAt(p,j));}
+    const r=med(po)-med(pr),rb=med(bo)-med(br);return Math.min(r,r-rb+(globalThis.TUNE_C??0));};
+  // висота нової ноти = та, що найсильніше З'ЯВИЛАСЬ в момент атаки (фон, що тягнеться, так не з'являється)
+  // тональність: на гармоніках пік, а на чверть тону поруч — ні (шум рівний, тому піку не дає)
+  const hpRaw=(fh,j)=>{let m=0;for(let h=1;h<=3;h++){const k=Math.round(h*fh/F.binHz)-F.kLo;if(k<1||k>=F.NB-1)continue;m=Math.max(m,F.spec[j*F.NB+k]);}return m;};
+  const peakAt=(p,fr)=>{const fh=440*Math.pow(2,(p-69)/12),v=[];for(let j=fr+2;j<fr+7&&j<F.eV.length;j++){v.push(hpRaw(fh,j)-Math.max(hpRaw(fh*Math.pow(2,0.5/12),j),hpRaw(fh*Math.pow(2,-0.5/12),j)));}return med(v);};
+  const bestRise=fr=>{let bp=0,br=-9;for(let m=40;m<=88;m++){const r=riseAt(m,fr);if(r>br){br=r;bp=m;}}return [bp,br];};
+  const vocOn=[];if(F.spec)for(const c of F.cands){if(c.s<0.08)continue;const fr=Math.round((c.t-F.t0)*F.fps);let [bp,br]=bestRise(fr);
+    // якщо домінантна висота після атаки теж помітно зросла — беремо її (шум хетів дає хибні піки)
+    for(const q of [c.p2,c.p]){if(!q)continue;const rq=riseAt(Math.round(q),fr);if(rq>Math.max(1.0,br*0.6)){bp=Math.round(q);br=Math.max(br,rq);break;}}
+    c.bp=bp;c.br=br;if(br>(globalThis.TUNE_A??1.5))vocOn.push({t:gridSnap(c.t,TRIP),p:bp,br});}
+  const melOn=F.cands.filter(c=>c.v&&c.vs>0.25&&c.type!=='hat'&&c.type!=='snare'&&(c.br||0)>=0.8).map(c=>gridSnap(c.t,TRIP));
+  if(F.eV&&F.pitch){
+    for(let i=0;i<notes.length;i++){
+      const n=notes[i],c0=n[4].o||n[4];if(!c0.bp||c0.br<(globalThis.TUNE_B??1.5))continue;const c={p:c0.bp};
+      const f0=Math.round((n[0]-F.t0)*F.fps);if(f0<0||f0+3>=F.eV.length)continue;
+      // гучність саме цієї ноти: її частота і 2-3 гармоніки (з вузьким вікном ±1 бін)
+      const f0hz=440*Math.pow(2,(c.p-69)/12);
+      const hp=j=>{let m=0;for(let h=1;h<=3;h++){const k=Math.round(h*f0hz/F.binHz)-F.kLo;if(k<1||k>=F.NB-1)continue;const o=j*F.NB;m=Math.max(m,F.spec[o+k-1],F.spec[o+k],F.spec[o+k+1]);}return m;};
+      const rv=[];for(let j=f0+2;j<f0+9&&j<F.eV.length;j++)rv.push(hp(j));rv.sort((x,y)=>x-y);const ref=rv[rv.length>>1]||0;
+      // довга нота лише там, де ця висота саме ПОЧИНАЄ звучати (а не тягнеться з фону)
+      {const pv=[];for(let j=Math.max(0,f0-9);j<f0-1;j++)pv.push(hp(j));pv.sort((x,y)=>x-y);const pre=pv.length?pv[pv.length>>1]:0;if(ref-pre<1.0)continue;}
+      let last=f0,miss=0;const mj=Math.min(F.eV.length,f0+Math.round(4*F.fps));
+      let reF=mj;for(const mt of melOn){if(mt<=n[0]+0.06)continue;if(mt>n[0]+4.2)break;reF=Math.round((mt-F.t0)*F.fps)-2;break;}
+      for(const v of vocOn){if(Math.round((v.t-F.t0)*F.fps)-2>=reF)break;if(v.t<=n[0]+0.06)continue;if(v.t>n[0]+4.2)break;const vf=Math.round((v.t-F.t0)*F.fps);
+        if(v.p<c.p-9)continue;// нижчий голос (бас під мелодією) не обриває довгу
+        const same=Math.abs(((v.p-c.p)%12+18)%12-6)<0.8;
+        if(same){let mn=99;for(let j=vf-5;j<vf;j++)mn=Math.min(mn,hp(j));if(mn>ref-1.2&&v.br<2.0)continue;}
+        reF=vf-2;break;}
+      // зміна висоти (4+ кадри поспіль інша нота) = наступна нота мелодії, тут довга закінчується
+      for(let j=f0+2;j<Math.min(mj,reF);j++){if(hp(j)>ref-1.6){miss=0;last=j;}else if(++miss>14)break;}
+      const raw=(last-f0)/F.fps,I=beatLen(n[0]);if(raw<minHold*I*0.8)continue;
+      const end=snapEnd(n[0],raw),len=end-n[0];if(len>=minHold*I-1e-3)n[2]=+Math.min(len,4*I).toFixed(3);
+    }
+  }
+  // довга нота займає свою доріжку: ноти, що потрапили під неї, переносимо на вільну доріжку (або прибираємо)
+  {const holds=notes.filter(n=>n[2]>0).sort((x,y)=>x[0]-y[0]);
+   const laneBusy=(l,t,self)=>notes.some(m=>m!==self&&m[1]===l&&(Math.abs(m[0]-t)<0.07||(m[2]>0&&t>=m[0]-0.03&&t<=m[0]+m[2]+0.07)));
+   for(const h of holds){
+     if(!h[2])continue;const I=beatLen(h[0]),he=h[0]+h[2]+I/8;
+     for(let k=notes.length-1;k>=0;k--){const m=notes[k];if(m===h||m[1]!==h[1]||m[0]<=h[0]-0.03||m[0]>he)continue;
+       const free=[0,1,2,3].filter(l=>l!==h[1]&&!laneBusy(l,m[0],m)&&!(m[2]>0&&notes.some(o=>o!==m&&o[1]===l&&o[0]>m[0]&&o[0]<m[0]+m[2]+0.07)));
+       if(free.length){m[1]=free[Math.floor(rnd()*free.length)];}
+       else{let end=gridSnap(m[0]-I/4,false);while(end>m[0]-I/4+1e-4)end-=I/4;const nl=end-h[0];if(nl>=minHold*I-1e-3)h[2]=+nl.toFixed(3);else h[2]=0;break;}}
+   }}
+  // баланс: довгих не більше ~40% нот, пріоритет — найдовшим
+  {const hs=notes.filter(n=>n[2]>0).sort((x,y)=>y[2]-x[2]),cap=Math.round(notes.length*0.4);for(let i=cap;i<hs.length;i++)hs[i][2]=0;}
+  // ритмічні довгі: нота перед паузою, поки звук тягнеться (гучність тримається)
+  if(F.rms&&diff>=1){
+    const want=[0,0.1,0.13,0.15][diff];let have=notes.filter(n=>n[2]>0).length;
+    const order=notes.map((n,i)=>i).sort((x,y)=>(nextAny(y)-notes[y][0])-(nextAny(x)-notes[x][0]));
+    for(const i of order){
+      if(have>=notes.length*want)break;const n=notes[i];if(n[2]>0)continue;
+      const I=beatLen(n[0]),gap=nextAny(i)-n[0];if(gap<1.25*I)continue;
+      const f0=Math.round((n[0]-F.t0)*F.fps),r0=F.rms[Math.min(F.rms.length-1,f0+3)]||0;if(!r0)continue;
+      const fe=Math.min(F.rms.length-1,Math.round((n[0]+gap-I/4-F.t0)*F.fps));let ok=0,tot=0;
+      for(let j=f0+3;j<=fe;j++){tot++;if(F.rms[j]>=r0*0.55)ok++;}
+      if(tot&&ok/tot>0.8){const h=fitHold(i,gap-I/4);if(h){n[2]=h;have++;}}
+    }
   }
   if(diff===0){const hs=notes.filter(n=>n[2]>0);for(let i=notes.length-1;i>=0;i--){const n=notes[i];if(!n[2]&&hs.some(h=>n[0]>h[0]+0.01&&n[0]<h[0]+h[2]+0.1))notes.splice(i,1);}}
   const busyAt=(t,lane,pad)=>{for(const n of notes){if(n[0]>t+pad)break;if(n[1]===lane&&t>=n[0]-pad&&t<=n[0]+n[2]+pad)return true;}return false;};
@@ -450,8 +594,8 @@ function generateChart(F,diff,L,seed,title){
   // смертельні ноти
   const deaths=[];
   if(L>0.05){
-    const step=beat/2;
-    for(let t=off+step*Math.ceil((2.5-off)/step);t<dur-1;t+=step){
+    const pts=[];if(B){for(let k=0;k<B.length-1;k++){pts.push(B[k],(B[k]+B[k+1])/2);}}else{for(let t=off;t<dur;t+=beat/2)pts.push(t);}
+    for(const t of pts){if(t<2.5||t>dur-1)continue;
       const it=intAt(t);if(it<0.42)continue;
       if(rnd()>L*0.17*it*(inDrop(t)?1.7:1))continue;
       const free=[0,1,2,3].filter(l=>!busyAt(t,l,0.16)&&!extra.some(e=>e[1]===l&&Math.abs(e[0]-t)<0.16));
@@ -472,12 +616,13 @@ function generateChart(F,diff,L,seed,title){
     }
     const pl=16*beat;
     const busyEv=(a,b)=>events.some(e=>(e.k==='drop'||e.k==='build')&&a<e.e&&b>e.t);
-    for(let ps=off+pl*Math.ceil((4-off)/pl);ps+pl<dur-2;ps+=pl){
-      const pe=ps+pl;if(busyEv(ps,pe))continue;
-      let s=0;for(let t=ps;t<pe;t+=0.5)s+=intAt(t);const ai=s/(pl/0.5);
+    const phr=[];if(B){for(let k=0;k+16<B.length;k+=16)phr.push([B[k],B[k+16]]);}else{for(let ps=off;ps+pl<dur;ps+=pl)phr.push([ps,ps+pl]);}
+    for(const [ps,pe] of phr){
+      if(ps<4||pe>dur-2)continue;if(busyEv(ps,pe))continue;
+      let s=0;for(let t=ps;t<pe;t+=0.5)s+=intAt(t);const ai=s/Math.max(1,(pe-ps)/0.5);
       if(rnd()>L*0.7*(0.35+ai))continue;
       const pool=[];
-      if(L>0.12)pool.push('wave','spread');if(L>0.2)pool.push('zig','zig');if(L>0.3&&ai>0.4)pool.push('pulse');if(L>0.5)pool.push('torn');if(L>0.25)pool.push('swap','swap');
+      if(L>0.12)pool.push('wave','spread');if(L>0.3&&ai>0.4)pool.push('pulse');if(L>0.5)pool.push('torn');if(L>0.25)pool.push('swap','swap');
       if(L>0.45)pool.push('flip');if(L>0.6&&ai>0.45)pool.push('stealth');if(L>0.75)pool.push('spin');
       if(!pool.length)continue;
       const k=pool[Math.floor(rnd()*pool.length)],ev={k,t:+ps.toFixed(3),e:+pe.toFixed(3)};
@@ -785,7 +930,7 @@ function drawBg(t,int,kick,st,now){
 function laneX(side,lane,t,st){
   const cxp=side==='me'?G.myCx:G.opCx;
   let slot=lane;if(st.perm)slot=lerp(lane,st.perm[lane],st.pp);
-  let x=cxp+(slot-1.5)*G.lw*(1+st.spread*0.85+st.fly*0.16*(0.5+0.5*Math.sin(t*1.7)));
+  let x=cxp+(slot-1.5)*G.lw*(1+st.spread*0.85);
   if(st.wave)x+=Math.sin(t*3.2+lane*1.1)*G.lw*st.wave;
   return x;
 }
@@ -840,7 +985,7 @@ function drawStrum(side,t,st,int,kick,bump){
     if(n.k===2){const y=recY+dir*d;drawArrow(SPR.death,x+(Math.random()-0.5)*2,y,ROT[n.l],sideScale,a);continue;}
     if(isMe&&n.j===1)continue;
     if(!isMe&&n.t<=t)continue;
-    const zf=(st.zig+st.fly*0.3)*(n.len?0:1),far=clamp(d/(H*0.45),0,1);
+    const zf=0,far=clamp(d/(H*0.45),0,1);
     const nx=x+(zf?Math.sin(d/H*7+t*2.2+n.l*1.3)*G.lw*0.95*zf*far:0);
     const nr=ROT[n.l]+(st.torn?st.torn*far*far*Math.PI*2.5*(n.l%2?1:-1):0);
     drawArrow(SPR.note[n.l],nx,recY+dir*d,nr,sideScale*(1+st.pulse*0.25*bump),a);
@@ -935,9 +1080,9 @@ function frame(){
   const dropK=st.drop>=0?Math.max(0,1-st.drop/1.4):0;
   // камера
   let zoom=1+barBump*0.022*(0.5+int)+st.build*0.07+(st.drop>=0?bump*0.025:0);
-  let rot=st.build*0.035*Math.sin(t*5)+st.spin*0.09*Math.sin(t*2.3)+st.fly*0.075*Math.cos(t*0.75);
+  let rot=st.build*0.035*Math.sin(t*5)+st.spin*0.09*Math.sin(t*2.3);
   const launch=st.drop>=0&&st.drop<0.8?1-smooth(st.drop/0.8):0;
-  const flyX=st.fly*Math.sin(t*0.75)*W*(G.solo1?0.17:0.07),flyY=st.fly*Math.sin(t*1.25)*H*0.035+launch*H*(S.down?-0.3:0.3);
+  const flyX=0,flyY=0;
   const atkS=t<G.atkShake?16:0;const shakeA=(Math.pow(int,2)*5+kick*kick*9+dropK*22+G.hurt*14+atkS)*S.shake;
   if(G.state==='play')singUpdate(t);
   const sx=(Math.random()-0.5)*shakeA,sy=(Math.random()-0.5)*shakeA;
@@ -1772,7 +1917,7 @@ function bindUI(){
 
 
 /* ---------- версія сайту ---------- */
-const BUILD_ID="2026-10-29 14:20";
+const BUILD_ID="2026-10-29 14:51";
 function showBuild(){const [d,tm]=BUILD_ID.split(' ');const [y,m,dd]=d.split('-');$('#build-info').textContent=`Оновлено: ${dd}.${m}.${y} о ${tm}`;}
 async function checkUpdate(){
   if(!/^https?:$/.test(location.protocol)||G.state==='play')return;
