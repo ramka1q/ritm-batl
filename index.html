@@ -1320,7 +1320,7 @@ function netJoin(code){
   const p=new Peer('ritmbatl-v2-g-'+rid()+rid(),{debug:0});NET.peer=p;
   p.on('open',id=>{
     NET.myId=id;
-    const c=p.connect(peerId(code),{reliable:true,serialization:'json',metadata:{k:'main'}});NET.host=c;
+    const c=p.connect(peerId(code),{reliable:true,serialization:'binary',metadata:{k:'main'}});NET.host=c;
     c.on('open',()=>{c.send({t:'hi',name:S.name});NET.status='Підключено';clearInterval(NET.pingT);NET.pingT=setInterval(()=>NET.send({t:'ping',ts:performance.now()}),2000);sendGS();renderNet();});
     c.on('data',onGuestMsg);
     c.on('close',()=>{if(NET.host!==c)return;toast('Хост закрив кімнату');netLeave();});
@@ -1717,7 +1717,7 @@ function bindUI(){
 
 
 /* ---------- версія сайту ---------- */
-const BUILD_ID="2026-10-29 13:55";
+const BUILD_ID="2026-10-29 14:04";
 function showBuild(){const [d,tm]=BUILD_ID.split(' ');const [y,m,dd]=d.split('-');$('#build-info').textContent=`Оновлено: ${dd}.${m}.${y} о ${tm}`;}
 async function checkUpdate(){
   if(!/^https?:$/.test(location.protocol)||G.state==='play')return;
