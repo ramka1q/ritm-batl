@@ -76,6 +76,10 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
 .cal-dots i.on{background:var(--gold);border-color:var(--gold)}
 .cal-res{margin:0;font-family:var(--f-mono);font-weight:700;font-size:40px;color:var(--gold);min-height:1em}
 #scr-cal .card{touch-action:manipulation;user-select:none}
+.build{grid-column:2;margin:0;font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+#update-bar{position:fixed;z-index:30;top:max(10px,env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:12px;background:var(--text);color:#1a1033;font-weight:700;padding:8px 8px 8px 16px;border-radius:6px;box-shadow:0 10px 30px rgba(0,0,0,.45);max-width:calc(100% - 32px)}
+#update-bar[hidden]{display:none}
+#update-bar .play{flex:none;font-size:13px;padding:8px 12px}
 .ghost.small{padding:7px 12px;font-size:13px;align-self:flex-start}
 .seg button{background:var(--panel-2);border-color:var(--line);padding:10px 4px;font-weight:700;font-size:14px}
 .seg button[aria-pressed="true"]{background:var(--text);color:#1a1033;border-color:var(--text)}
@@ -142,6 +146,7 @@ input[type=text],#nm,#code,#lnk{background:#120e30;border:2px solid var(--line-2
       </div>
       <h1>Ритм-<span>Батл</span></h1>
       <p class="tag">Закинь будь-яку пісню чи відео — стрілки самі складуться під біт, бочку і голос. Гучніше й швидше музика — швидші стрілки і сильніша тряска.</p>
+      <p class="build" id="build-info"></p>
     </header>
     <div class="cols">
       <div class="col">
@@ -204,6 +209,7 @@ input[type=text],#nm,#code,#lnk{background:#120e30;border:2px solid var(--line-2
   <div class="card"><h2>Підбір затримки</h2><p class="note" id="cal-msg"></p><div class="cal-dots" id="cal-dots"></div><p class="cal-res" id="cal-res"></p>
   <div class="btns"><button id="cal-go" class="play">Почати</button><button id="cal-done" class="play" hidden>Готово</button><button id="cal-skip" class="ghost">Пропустити</button></div></div>
 </section>
+<div id="update-bar" hidden><span>Є нова версія гри</span><button id="btn-update" class="play small">Оновити</button></div>
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
@@ -1512,8 +1518,18 @@ function bindUI(){
   if(h.startsWith('#join-')){pendingCode=h.slice(6).toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);if(pendingCode)setTimeout(()=>{toast('Тебе запросили в кімнату '+pendingCode);netJoin(pendingCode);},300);}
 }
 
+
+/* ---------- версія сайту ---------- */
+const BUILD_ID="2026-10-29 13:47";
+function showBuild(){const [d,tm]=BUILD_ID.split(' ');const [y,m,dd]=d.split('-');$('#build-info').textContent=`Оновлено: ${dd}.${m}.${y} о ${tm}`;}
+async function checkUpdate(){
+  if(!/^https?:$/.test(location.protocol)||G.state==='play')return;
+  try{const r=await fetch(location.pathname+'?check='+Date.now(),{cache:'no-store'});if(!r.ok)return;const txt=await r.text();
+    const m=txt.match(/const BUILD_ID="([^"]+)"/);if(m&&m[1]>BUILD_ID)$('#update-bar').hidden=false;}catch(e){}
+}
 /* ---------- старт ---------- */
-resize();bindUI();renderKeys();renderMenu();showScreen('menu');
+resize();bindUI();renderKeys();renderMenu();showBuild();setTimeout(checkUpdate,4000);setInterval(checkUpdate,120000);
+$('#btn-update').onclick=()=>{location.href=location.pathname+'?v='+Date.now()+location.hash;};showScreen('menu');
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{});
 requestAnimationFrame(frame);
 
