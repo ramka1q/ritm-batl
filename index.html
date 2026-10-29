@@ -101,6 +101,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
 .have input{position:absolute;width:1px;height:1px;opacity:0}
 .have u{color:var(--gold)}
 .card{max-height:calc(100dvh - 40px);overflow-y:auto}
+.warn{color:var(--bad);font-weight:700}
 .ghost.small{padding:7px 12px;font-size:13px;align-self:flex-start}
 .seg button{background:var(--panel-2);border-color:var(--line);padding:10px 4px;font-weight:700;font-size:14px}
 .seg button[aria-pressed="true"]{background:var(--text);color:#1a1033;border-color:var(--text)}
@@ -1131,7 +1132,9 @@ async function setTrack({name,ab,mime,maybeVideo},asGuest,fileId){
   if(NET.role==='host')sendTrackAll();
   T.F=null;T.chart=null;T.rc=null;
   const chans=[];for(let i=0;i<Math.min(2,buf.numberOfChannels);i++)chans.push(buf.getChannelData(i));
-  T.F=await analyze(chans,buf.sampleRate,p=>setProg(p,`Слухаю біт і голос… ${Math.round(p*100)}%`));
+  let lastPrep=0;if(NET.role==='host')NET.send({t:'prep',p:0});
+  T.F=await analyze(chans,buf.sampleRate,p=>{setProg(p,`Слухаю біт і голос… ${Math.round(p*100)}%`);const n=performance.now();if(NET.role==='host'&&n-lastPrep>500){lastPrep=n;NET.send({t:'prep',p:+p.toFixed(3)});}});
+  if(NET.role==='host')NET.send({t:'prep',p:1});
   regenChart();
   setProg(null,`${T.isVideo?'Відео':'Аудіо'} · ${fmtTime(buf.duration)} · ${Math.round(T.F.bpm)} BPM`);
 }
@@ -1267,7 +1270,7 @@ function onHostMsg(id,m){
   switch(m.t){
     case 'hi':P.name=String(m.name||'Гравець').slice(0,20)||'Гравець';if(m.build!==BUILD_ID){P.old=true;toast(P.name+': у нього інша версія гри — хай оновить сторінку (Ctrl+F5)',7000);psend(P,{t:'oldver',build:BUILD_ID});}broadcastRoster();toast(P.name+' зайшов у кімнату');renderNet();break;
     case 'ping':psend(P,{t:'pong',ts:m.ts});break;
-    case 'gs':P.gs={file:m.file,chart:m.chart,ready:!!m.ready};if(m.prog!=null)P.rprog=m.prog;renderNet();break;
+    case 'gs':P.gs={file:m.file,chart:m.chart,ready:!!m.ready};P.rprog=m.prog;P.cprog=m.cprog;P.cbad=!!m.cbad;renderNet();break;
     case 'have':if(m.id===T.fileId){P.have=m.id;}break;
     case 'st':applySt(P,m);relay(id,m);break;
     case 'p':case 'k':onPress(id,m);relay(id,m);break;
@@ -1314,8 +1317,9 @@ function sendChartTo(P){
   if(!T.chart||!P||!P.conn||!P.conn.open)return;
   if(CHART_JSON.id!==T.chartId)CHART_JSON={id:T.chartId,s:JSON.stringify(T.chart)};
   const s=CHART_JSON.s,PART=4000,n=Math.ceil(s.length/PART);
-  for(let i=0;i<n;i++)psend(P,{t:'cp',id:T.chartId,i,n,s:s.slice(i*PART,(i+1)*PART)});
-  P.chartSent={id:T.chartId,at:performance.now(),tries:((P.chartSent&&P.chartSent.id===T.chartId)?P.chartSent.tries:0)+1};
+  const tries=((P.chartSent&&P.chartSent.id===T.chartId)?P.chartSent.tries:0)+1;
+  P.chartSent={id:T.chartId,at:performance.now(),tries};
+  for(let i=0;i<n;i++)psend(P,{t:'cp',id:T.chartId,i,n,tr:tries,s:s.slice(i*PART,(i+1)*PART)});
 }
 function sendChartAll(){if(!T.chart)return;for(const P of Object.values(NET.players))sendChartTo(P);}
 /* автоповтор: якщо гравець не підтвердив стрілки чи трек — шлемо ще раз */
@@ -1349,7 +1353,7 @@ function netJoin(code){
   });
   p.on('error',e=>{netError(e);if(e&&e.type==='peer-unavailable')netLeave(true);});
 }
-function sendGS(){NET.send({t:'gs',file:T.buf?T.fileId:null,chart:T.rc?T.chartId:null,ready:NET.myReady,prog:NET.rx?NET.rx.got/NET.rx.n:null});}
+function sendGS(){NET.send({t:'gs',file:T.buf?T.fileId:null,chart:T.rc?T.chartId:null,ready:NET.myReady,prog:NET.rx?NET.rx.got/NET.rx.n:null,cprog:NET.cparts?NET.cparts.got/NET.cparts.n:null,cbad:!!NET.chartBad});}
 let gsT=0;function sendGSsoon(){if(gsT)return;gsT=setTimeout(()=>{gsT=0;sendGS();},400);}
 function onRawChunk(d){
   const rx=NET.rx;if(!rx||!(d instanceof ArrayBuffer)||d.byteLength<8)return;
@@ -1358,7 +1362,7 @@ function onRawChunk(d){
 }
 function gotChunk(seq,i,bytes){
   const rx=NET.rx;if(!rx||seq!==rx.seq||i>=rx.n||rx.seen[i])return;
-  rx.buf.set(bytes,i*rx.CH);rx.seen[i]=1;rx.got++;rx.bytes+=bytes.length;
+  rx.buf.set(bytes,i*rx.CH);rx.seen[i]=1;rx.got++;rx.bytes+=bytes.length;rx.last=performance.now();
   if(rx.got%12===0||rx.got===rx.n){renderNet();sendGSsoon();}
   if(rx.got===rx.n)finishRx(rx);
 }
@@ -1389,12 +1393,14 @@ async function onGuestMsg(m){
       T.buf=null;T.fileId=null;$('#drop-title').textContent=NET.rx.name;renderMenu();break;
     case 'ch':{let bin;try{bin=atob(m.b64);}catch(e){break;}const u=new Uint8Array(bin.length);for(let j=0;j<bin.length;j++)u[j]=bin.charCodeAt(j);gotChunk(m.seq,m.i,u);break;}
     case 'cp':{
-      if(!NET.cparts||NET.cparts.id!==m.id)NET.cparts={id:m.id,n:m.n|0,got:0,p:new Array(m.n|0)};
-      const cp=NET.cparts;if(m.i<0||m.i>=cp.n||cp.p[m.i]!=null)break;
-      cp.p[m.i]=String(m.s||'');cp.got++;
-      if(cp.got===cp.n){let c;try{c=JSON.parse(cp.p.join(''));}catch(e){NET.cparts=null;break;}NET.cparts=null;
+      if(T.chartId===m.id&&T.rc){if(m.i===0)sendGS();break;}
+      if(!NET.cparts||NET.cparts.id!==m.id)NET.cparts={id:m.id,n:m.n|0,got:0,p:new Array(m.n|0),t0:performance.now()};
+      const cp=NET.cparts;cp.tr=m.tr|0;cp.last=performance.now();NET.chartWait=null;if(m.i<0||m.i>=cp.n||cp.p[m.i]!=null)break;
+      cp.p[m.i]=String(m.s||'');cp.got++;if(cp.got%4===0){renderNet();sendGSsoon();}
+      if(cp.got===cp.n){let c;try{c=JSON.parse(cp.p.join(''));}catch(e){NET.cparts=null;NET.chartBad=true;renderNet();break;}NET.cparts=null;NET.chartBad=false;
         if(c&&Array.isArray(c.notes)&&T.chartId!==m.id){T.chart=c;T.rc=prepareChart(c);T.chartId=m.id;sendGS();renderMenu();}else if(T.chartId===m.id)sendGS();}
       break;}
+    case 'prep':NET.prep=clamp(+m.p||0,0,1);if(!NET.prepT0||NET.prep===0)NET.prepT0=performance.now();renderNet();break;
     case 'chart':
       if(!m.c||!Array.isArray(m.c.notes))break;
       T.chart=m.c;T.rc=prepareChart(m.c);T.chartId=m.id;sendGS();renderMenu();break;
@@ -1473,8 +1479,14 @@ function renderNet(){
       if(!T.fileId)tr='чекає трек';
       else if(fileOk)tr='трек ✓';
       else if(P.send&&!P.send.done&&P.send.id===T.fileId){const el=(performance.now()-P.send.t0)/1000,sp=P.send.sent/Math.max(0.1,el);tr=`трек ${Math.round(P.send.sent/P.send.size*100)}% · ${(sp/1048576).toFixed(1)} МБ/с · ще ${fmtEta((P.send.size-P.send.sent)/sp)}`;}
-      else tr='отримує трек…';
-      const ch=T.chartId?(chartOk?'стрілки ✓':'стрілки йдуть…'):'стрілки готуються';
+      else tr=P.rprog!=null?`трек у гравця ${Math.round(P.rprog*100)}%`:'отримує трек…';
+      let ch;
+      if(!T.chartId)ch=busy?'стрілки готуються (аналіз)':'стрілки готуються';
+      else if(chartOk)ch='стрілки ✓';
+      else{const tr=P.chartSent&&P.chartSent.id===T.chartId?P.chartSent.tries:0;
+        ch=P.cbad?'<span class="warn">⚠ стрілки прийшли пошкоджені, шлю ще раз</span>':`стрілки ${P.cprog!=null?Math.round(P.cprog*100)+'%':'йдуть'}${tr>1?' · спроба '+tr:''}`;
+        if(tr>=3)ch+=' <span class="warn">⚠ не доходять — хай гравець перезайде або перевірить інтернет</span>';}
+      if(P.send&&P.send.done&&!fileOk&&T.fileId&&P.send.doneAt&&performance.now()-P.send.doneAt>6000)tr+=' <span class="warn">⚠ трек надіслано, але гравець не підтвердив — повторюю</span>';
       const ok=fileOk&&chartOk&&g.ready;
       return `<li class="${ok?'ok':''}"><i></i><span><b>${esc(P.name)}</b> · ${tr} · ${ch} · ${g.ready?'готовий':'не натиснув «Готовий»'}</span></li>`;
     }).join('');
@@ -1493,11 +1505,22 @@ function renderNet(){
     if(rx){const el=(performance.now()-rx.t0)/1000,sp=rx.bytes/Math.max(0.1,el);
       trackTxt=`Отримую «${esc(rx.name)}» · ${Math.round(rx.got/Math.max(1,rx.n)*100)}% · ${fmtBytes(rx.bytes)} з ${fmtBytes(rx.size)} · ${(sp/1048576).toFixed(1)} МБ/с · ще ${rx.bytes>0?fmtEta((rx.size-rx.bytes)/sp):'…'}`;}
     else trackTxt=T.buf?`Трек: ${esc(T.name)}`:'Чекаю, поки хост вибере трек';
+    if(rx&&rx.last&&performance.now()-rx.last>10000)trackTxt+=' <span class="warn">⚠ трек завис: 10 с нічого не приходить — хост повторить відправку</span>';
+    if(rx&&!rx.last&&performance.now()-rx.t0>10000)trackTxt+=' <span class="warn">⚠ трек не починає йти — перевір інтернет або перезайди</span>';
+    let chTxt;const cp=NET.cparts,now=performance.now();
+    if(T.rc)chTxt='Стрілки готові';
+    else if(NET.chartBad)chTxt='<span class="warn">⚠ Стрілки прийшли пошкоджені — хост надішле ще раз</span>';
+    else if(cp){const el=(now-cp.t0)/1000,rate=cp.got/Math.max(0.05,el);chTxt=`Отримую стрілки… ${Math.round(cp.got/cp.n*100)}% (${cp.got}/${cp.n}) · ще ~${fmtEta((cp.n-cp.got)/Math.max(rate,0.1))}${cp.tr>1?' · спроба '+cp.tr:''}`;
+      if(cp.tr>=3)chTxt+=' <span class="warn">⚠ стрілки не доходять з кількох спроб — перевір інтернет або перезайди</span>';}
+    else if(NET.prep!=null&&NET.prep<1){const el=(now-(NET.prepT0||now))/1000,rate=NET.prep/Math.max(0.5,el);chTxt=`Хост аналізує трек і робить стрілки… ${Math.round(NET.prep*100)}%${NET.prep>0.05?' · ще ~'+fmtEta((1-NET.prep)/Math.max(rate,0.001)):''}`;}
+    else if(T.buf||rx){if(!NET.chartWait)NET.chartWait=now;const w=(now-NET.chartWait)/1000;chTxt='Чекаю стрілки від хоста…'+(w>6?` <span class="warn">⚠ вже ${Math.round(w)} с — хост повторює відправку</span>`:'');}
+    else chTxt='Чекаю стрілки';
+    if(!connected)chTxt+=' <span class="warn">⚠ немає зв\'язку з хостом</span>';
     const ready=!!(T.buf&&T.rc);
     const who=[(NET.players.host&&NET.players.host.name)||'Хост'].concat(Object.values(NET.players).filter(P=>P.id!=='host').map(P=>P.name));
     box.innerHTML=`<div class="room"><span class="small">Кімната</span><b class="code">${esc(NET.code)}</b></div>
       <p class="note">У кімнаті: ${who.map(esc).join(', ')} і ти</p>
-      <ul class="steps"><li class="${connected?'ok':''}"><i></i>${connected?'Підключено':esc(NET.status)}</li><li class="${T.buf?'ok':''}"><i></i>${trackTxt}</li><li class="${T.rc?'ok':''}"><i></i>${T.rc?'Стрілки готові':(T.buf||rx?'Хост готує стрілки…':'Чекаю стрілки')}</li></ul>
+      <ul class="steps"><li class="${connected?'ok':''}"><i></i>${connected?'Підключено':esc(NET.status)}</li><li class="${T.buf?'ok':''}"><i></i><span>${trackTxt}</span></li><li class="${T.rc?'ok':''}"><i></i><span>${chTxt}</span></li></ul>
       ${rx||(!T.buf&&NET.meta)?`<label class="have"><input type="file" id="have-file" accept="audio/*,video/*">У тебе вже є цей трек? <u>Вибери його</u> — і чекати не треба</label>`:''}
       <div class="row"><button id="btn-ready" class="play small" ${ready&&!NET.myReady?'':'disabled'}>${NET.myReady?'Готовий — чекаю старту':'Я готовий'}</button><button id="btn-leave" class="ghost">Вийти</button></div>
       <p class="note">Складність, події і швидкість стрілок вибирає хост. Тряска, затримка і клавіші — твої.</p>${err}`;
@@ -1749,7 +1772,7 @@ function bindUI(){
 
 
 /* ---------- версія сайту ---------- */
-const BUILD_ID="2026-10-29 14:12";
+const BUILD_ID="2026-10-29 14:16";
 function showBuild(){const [d,tm]=BUILD_ID.split(' ');const [y,m,dd]=d.split('-');$('#build-info').textContent=`Оновлено: ${dd}.${m}.${y} о ${tm}`;}
 async function checkUpdate(){
   if(!/^https?:$/.test(location.protocol)||G.state==='play')return;
