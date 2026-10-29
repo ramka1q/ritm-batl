@@ -70,6 +70,12 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
 .kbtn:hover{border-color:var(--l1)}
 .kbtn.wait{border-color:var(--gold);color:var(--gold);font-family:var(--f-body);font-size:12px;animation:blink .8s steps(2) infinite}
 @keyframes blink{50%{opacity:.5}}
+.cal-dots{display:flex;flex-wrap:wrap;gap:8px;padding:6px 0}
+.cal-dots i{width:18px;height:18px;border-radius:50%;border:2px solid var(--line-2)}
+.cal-dots i.l{border-style:dashed}
+.cal-dots i.on{background:var(--gold);border-color:var(--gold)}
+.cal-res{margin:0;font-family:var(--f-mono);font-weight:700;font-size:40px;color:var(--gold);min-height:1em}
+#scr-cal .card{touch-action:manipulation;user-select:none}
 .ghost.small{padding:7px 12px;font-size:13px;align-self:flex-start}
 .seg button{background:var(--panel-2);border-color:var(--line);padding:10px 4px;font-weight:700;font-size:14px}
 .seg button[aria-pressed="true"]{background:var(--text);color:#1a1033;border-color:var(--text)}
@@ -165,7 +171,7 @@ input[type=text],#nm,#code,#lnk{background:#120e30;border:2px solid var(--line-2
         <div class="field"><label for="smax">Найшвидше — гучні місця <b id="smax-val">2.7×</b></label><input type="range" id="smax" min="0.6" max="4.5" step="0.1" value="2.7">
           <p class="hint">У кожній пісні найтихіше місце дає мінімум, найгучніше — максимум. Постав обидва однаково — швидкість буде рівна.</p></div>
         <div class="field"><label for="shake">Тряска екрану <b id="shake-val">100%</b></label><input type="range" id="shake" min="0" max="150" step="10" value="100"></div>
-        <div class="field"><label for="offset">Затримка звуку <b id="offset-val">0 мс</b></label><input type="range" id="offset" min="-250" max="250" step="5" value="0"><p class="hint">Тиснеш вчасно, а пише «рано» — рухай вправо. Для блютуз-навушників часто +120…+200.</p></div>
+        <div class="field"><label for="offset">Затримка звуку <b id="offset-val">0 мс</b></label><input type="range" id="offset" min="-250" max="400" step="5" value="0"><button id="btn-cal" class="ghost small">Підібрати затримку автоматично</button><p class="hint">Тиснеш вчасно, а пише «рано» — рухай вправо. Для блютуз-навушників часто +120…+200.</p></div>
         <div class="field"><span class="flabel">Де стоять стрілки</span>
           <div class="seg seg3" id="seg-pos" role="group" aria-label="Де стоять стрілки"><button data-v="left" aria-pressed="false">Зліва</button><button data-v="center" aria-pressed="false">По центру</button><button data-v="right" aria-pressed="true">Справа</button></div></div>
         <div class="field"><span class="flabel">Звідки летять ноти</span>
@@ -193,6 +199,10 @@ input[type=text],#nm,#code,#lnk{background:#120e30;border:2px solid var(--line-2
 </section>
 <section id="scr-results" class="screen center" hidden>
   <div class="card"><div id="res"></div><p class="note" id="res-note"></p><div class="btns"><button id="btn-again" class="play">Ще раз</button><button id="btn-res-menu" class="ghost">В меню</button></div></div>
+</section>
+<section id="scr-cal" class="screen center" hidden>
+  <div class="card"><h2>Підбір затримки</h2><p class="note" id="cal-msg"></p><div class="cal-dots" id="cal-dots"></div><p class="cal-res" id="cal-res"></p>
+  <div class="btns"><button id="cal-go" class="play">Почати</button><button id="cal-done" class="play" hidden>Готово</button><button id="cal-skip" class="ghost">Пропустити</button></div></div>
 </section>
 <div id="toast" role="status" aria-live="polite"></div>
 
@@ -483,7 +493,7 @@ const JUDGE=[{n:'ІДЕАЛЬНО',w:0.045,sc:350,acc:1,hp:0.023,c:'#7ff7ff'},{n
 const MISSW=0.166;
 
 /* ---------- налаштування гравця (лише в цьому браузері) ---------- */
-const DEF={diff:1,ev:50,smin:0.9,smax:2.7,shake:1,offset:0,down:false,pos:'right',nofail:false,name:''};
+const DEF={cal:false,diff:1,ev:50,smin:0.9,smax:2.7,shake:1,offset:0,down:false,pos:'right',nofail:false,name:''};
 let S={...DEF};
 try{Object.assign(S,JSON.parse(localStorage.getItem('ritmbatl')||'{}'));}catch(e){}
 if(!S.name)S.name='Гравець'+(100+Math.random()*900|0);
@@ -1015,7 +1025,7 @@ function drawKaraoke(t){
 }
 
 /* ===================== ІНТЕРФЕЙС ===================== */
-const SCREENS=['menu','pause','dead','results'];
+const SCREENS=['menu','pause','dead','results','cal'];
 function showScreen(name){for(const s of SCREENS)$('#scr-'+s).hidden=s!==name;}
 let toastT=0;
 function toast(msg,ms=3200){const t=$('#toast');t.textContent=msg;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),ms);}
@@ -1259,7 +1269,7 @@ function renderNet(){
       `<p class="note">Друг відкриває цей самий файл гри, натискає «Увійти» і вводить код.</p>`}
       <ul class="steps">${row(connected,connected?esc(R.name)+' у кімнаті':esc(NET.status||'Чекаю друга'))}${row(fileOk,T.fileId?'Трек у друга'+(fileOk?'':sending):'Вибери трек')}${row(chartOk,'Стрілки у друга')}${row(g.ready&&connected,'Друг натиснув «Готовий»')}</ul>
       <div class="row"><button id="btn-start" class="play small" ${can?'':'disabled'}>Старт для обох</button><button id="btn-leave" class="ghost">Вийти</button></div>${err}`;
-    $('#btn-start').onclick=netHostStart;$('#btn-leave').onclick=()=>netLeave();
+    $('#btn-start').onclick=()=>{if(!S.cal){openCal(()=>showScreen('menu'));return;}netHostStart();};$('#btn-leave').onclick=()=>netLeave();
     const cp=$('#btn-copy');if(cp)cp.onclick=()=>{const v=$('#lnk').value;const done=()=>toast('Посилання скопійовано — кидай другу');
       if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(v).then(done,()=>{$('#lnk').select();toast('Виділив посилання — скопіюй вручну');});else{$('#lnk').select();toast('Виділив посилання — скопіюй вручну');}};
   }else{
@@ -1270,7 +1280,7 @@ function renderNet(){
       <ul class="steps"><li class="${connected?'ok':''}"><i></i>${connected?'Хост: '+esc(R.name):esc(NET.status)}</li><li class="${T.buf?'ok':''}"><i></i>${trackTxt}</li><li class="${T.rc?'ok':''}"><i></i>${T.rc?'Стрілки готові':'Чекаю стрілки'}</li></ul>
       <div class="row"><button id="btn-ready" class="play small" ${ready&&!NET.myReady?'':'disabled'}>${NET.myReady?'Готовий — чекаю старту':'Я готовий'}</button><button id="btn-leave" class="ghost">Вийти</button></div>
       <p class="note">Складність і події вибирає хост. Швидкість, тряска і затримка — твої.</p>${err}`;
-    $('#btn-ready').onclick=()=>{ac();NET.myReady=true;sendGS();renderNet();};
+    $('#btn-ready').onclick=()=>{ac();const go=()=>{showScreen('menu');NET.myReady=true;sendGS();renderNet();};if(!S.cal)openCal(go);else go();};
     $('#btn-leave').onclick=()=>netLeave();
   }
 }
@@ -1298,6 +1308,62 @@ function onCapture(e){
   }
   renderKeys();
 }
+
+/* ---------- підбір затримки ---------- */
+const CAL={run:false,clicks:[],taps:[],T0:0,after:null,beat:0.6,n:18,listen:4,raf:0};
+function openCal(after){
+  CAL.after=after||null;CAL.run=false;
+  $('#cal-msg').textContent='Слухай клацання. Перші 4 просто слухай, далі тисни будь-яку клавішу або тапай по екрану рівно під кожне клацання. Дивись не на екран, а слухай.';
+  $('#cal-res').textContent='';$('#cal-go').textContent='Почати';$('#cal-go').hidden=false;$('#cal-done').hidden=true;$('#cal-skip').hidden=false;
+  calDots(-1);showScreen('cal');
+}
+function calDots(idx){
+  const box=$('#cal-dots');let h='';
+  for(let i=0;i<CAL.n;i++)h+=`<i class="${i<CAL.listen?'l':''}${i<=idx?' on':''}"></i>`;
+  box.innerHTML=h;
+}
+function calStart(){
+  const a=ac();CAL.taps=[];CAL.clicks=[];CAL.run=true;G.oInit=false;nowCtx();
+  const T0=a.currentTime+0.8;CAL.T0=T0;
+  for(let i=0;i<CAL.n;i++){
+    const t=T0+i*CAL.beat,o=a.createOscillator(),g=a.createGain();
+    o.type='square';o.frequency.value=i%4===0?1500:1000;
+    g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.35,t+0.002);g.gain.exponentialRampToValueAtTime(0.0001,t+0.05);
+    o.connect(g);g.connect(a.destination);o.start(t);o.stop(t+0.07);CAL.clicks.push(t);
+  }
+  $('#cal-go').hidden=true;$('#cal-skip').hidden=true;$('#cal-res').textContent='';
+  $('#cal-msg').textContent='Слухай… а з 5-го клацання тисни в такт';
+  const tick=()=>{
+    if(!CAL.run)return;
+    const now=nowCtx(),idx=Math.floor((now-CAL.T0)/CAL.beat+0.02);
+    calDots(Math.min(idx,CAL.listen-1));
+    if(idx>=CAL.listen)$('#cal-msg').textContent='Тисни в такт! '+CAL.taps.length+' / '+(CAL.n-CAL.listen);
+    if(now>CAL.T0+CAL.n*CAL.beat+0.3){calFinish();return;}
+    CAL.raf=requestAnimationFrame(tick);
+  };
+  CAL.raf=requestAnimationFrame(tick);
+}
+function calTap(e){
+  if(!CAL.run)return;nowCtx();
+  const tt=(typeof e.timeStamp==='number'&&e.timeStamp>0?e.timeStamp/1000+G.o:nowCtx());
+  if(tt<CAL.T0+(CAL.listen-0.5)*CAL.beat)return;
+  let best=null;for(const c of CAL.clicks){if(!best||Math.abs(tt-c)<Math.abs(tt-best))best=c;}
+  const d=tt-best;if(Math.abs(d)<0.42)CAL.taps.push(d);
+  const box=$('#cal-dots');const i=Math.round((best-CAL.T0)/CAL.beat);const el=box.children[i];if(el)el.classList.add('on');
+}
+function calFinish(){
+  CAL.run=false;cancelAnimationFrame(CAL.raf);
+  $('#cal-go').hidden=false;$('#cal-go').textContent='Ще раз';$('#cal-skip').hidden=false;
+  if(CAL.taps.length<6){$('#cal-msg').textContent='Замало натискань — спробуй ще раз і тисни під кожне клацання.';return;}
+  const s=CAL.taps.slice().sort((a,b)=>a-b),med=s[s.length>>1];
+  const dev=s.map(x=>Math.abs(x-med)).sort((a,b)=>a-b)[s.length>>1];
+  const off=clamp(Math.round(med*1000/5)*5,-250,400);
+  S.offset=off;S.cal=true;saveS();renderMenu();
+  $('#cal-res').textContent=(off>0?'+':'')+off+' мс';
+  $('#cal-msg').textContent=dev>0.05?'Готово, але натискання були нерівні. Можна пройти ще раз для точності.':'Готово! Затримку збережено, її можна змінити повзунком у меню.';
+  $('#cal-done').hidden=false;$('#cal-skip').hidden=true;
+}
+function calExit(){CAL.run=false;cancelAnimationFrame(CAL.raf);const f=CAL.after;CAL.after=null;if(f)f();else showScreen('menu');}
 
 /* ---------- результати ---------- */
 function statBlock(name,st,acc,isMe){
@@ -1383,9 +1449,15 @@ function bindUI(){
       SING.on=true;toast('Мікрофон увімкнено. Краще в навушниках, щоб гра чула тебе, а не колонки');}
     else{SING.on=false;micOff();}
   };
+  $('#cal-go').onclick=calStart;
+  $('#cal-done').onclick=calExit;
+  $('#cal-skip').onclick=()=>{S.cal=true;saveS();calExit();};
+  addEventListener('keydown',e=>{if(CAL.run&&!e.repeat){e.preventDefault();calTap(e);}},true);
+  $('#scr-cal').addEventListener('pointerdown',e=>{if(CAL.run&&!(e.target.closest&&e.target.closest('button')))calTap(e);});
   $('#keys-reset').onclick=()=>{S.keys=DEF_KEYS.map(k=>k.slice());saveS();buildKeymap();capturing=null;window.keyCapture=null;renderKeys();toast('Клавіші скинуто');};
   $('#nofail').onchange=e=>{S.nofail=e.target.checked;saveS();};
-  $('#btn-solo').onclick=()=>{if(T.rc&&!NET.role){ac();startGame('solo');}};
+  $('#btn-solo').onclick=()=>{if(T.rc&&!NET.role){ac();if(!S.cal)openCal(()=>startGame('solo'));else startGame('solo');}};
+  $('#btn-cal').onclick=()=>openCal(()=>showScreen('menu'));
   $('#btn-resume').onclick=resumeGame;
   $('#btn-pause-menu').onclick=toMenu;
   $('#btn-retry').onclick=()=>{ac();startGame('solo');};
