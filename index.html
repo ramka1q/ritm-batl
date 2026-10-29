@@ -1241,7 +1241,7 @@ function netHost(){
       const P={id:c.peer,name:'',conn:c,fconn:(NET.pendF&&NET.pendF[c.peer])||null,gs:{file:null,chart:null,ready:false},st:newSt(),send:null,have:null};
       if(NET.pendF)delete NET.pendF[c.peer];
       NET.players[c.peer]=P;
-      psend(P,{t:'welcome',id:c.peer,name:S.name});
+      psend(P,{t:'welcome',id:c.peer,name:S.name,build:BUILD_ID});
       if(!NET.pingT)NET.pingT=setInterval(()=>NET.send({t:'ping',ts:performance.now()}),2000);
       if(T.file)setTimeout(()=>sendTrackTo(P),300);
       if(T.chart)psend(P,{t:'chart',id:T.chartId,c:T.chart});
@@ -1264,7 +1264,7 @@ function broadcastRoster(){
 function onHostMsg(id,m){
   const P=NET.players[id];if(!P||!m||typeof m!=='object')return;
   switch(m.t){
-    case 'hi':P.name=String(m.name||'Гравець').slice(0,20)||'Гравець';broadcastRoster();toast(P.name+' зайшов у кімнату');renderNet();break;
+    case 'hi':P.name=String(m.name||'Гравець').slice(0,20)||'Гравець';if(m.build!==BUILD_ID){P.old=true;toast(P.name+': у нього інша версія гри — хай оновить сторінку (Ctrl+F5)',7000);psend(P,{t:'oldver',build:BUILD_ID});}broadcastRoster();toast(P.name+' зайшов у кімнату');renderNet();break;
     case 'ping':psend(P,{t:'pong',ts:m.ts});break;
     case 'gs':P.gs={file:m.file,chart:m.chart,ready:!!m.ready};if(m.prog!=null)P.rprog=m.prog;renderNet();break;
     case 'have':if(m.id===T.fileId){P.have=m.id;}break;
@@ -1321,7 +1321,7 @@ function netJoin(code){
   p.on('open',id=>{
     NET.myId=id;
     const c=p.connect(peerId(code),{reliable:true,serialization:'binary',metadata:{k:'main'}});NET.host=c;
-    c.on('open',()=>{c.send({t:'hi',name:S.name});NET.status='Підключено';clearInterval(NET.pingT);NET.pingT=setInterval(()=>NET.send({t:'ping',ts:performance.now()}),2000);sendGS();renderNet();});
+    c.on('open',()=>{c.send({t:'hi',name:S.name,build:BUILD_ID});NET.status='Підключено';clearInterval(NET.pingT);NET.pingT=setInterval(()=>NET.send({t:'ping',ts:performance.now()}),2000);sendGS();renderNet();});
     c.on('data',onGuestMsg);
     c.on('close',()=>{if(NET.host!==c)return;toast('Хост закрив кімнату');netLeave();});
     const f=p.connect(peerId(code),{reliable:true,serialization:'raw',metadata:{k:'file'}});NET.hostF=f;
@@ -1352,7 +1352,8 @@ async function onGuestMsg(m){
   if(!m||typeof m!=='object')return;
   const from=m.from||'host';
   switch(m.t){
-    case 'welcome':NET.myId=m.id;break;
+    case 'welcome':NET.myId=m.id;if(m.build&&m.build!==BUILD_ID)versionMismatch(m.build);break;
+    case 'oldver':versionMismatch(m.build);break;
     case 'roster':{
       const keep=NET.players;NET.players={};
       for(const r of m.list||[]){if(r.id===NET.myId)continue;NET.players[r.id]=keep[r.id]||{id:r.id,name:'',st:newSt()};NET.players[r.id].name=String(r.name||'Гравець').slice(0,20);}
@@ -1389,6 +1390,10 @@ async function useOwnCopy(file){
   NET.send({t:'have',id:meta.id});sendGS();toast('Готово — взяв твій файл, передача не потрібна');renderMenu();
 }
 
+function versionMismatch(hb){
+  const bar=$('#update-bar');bar.firstElementChild.textContent=hb>BUILD_ID?'У хоста новіша версія гри — онови сторінку':'У хоста стара версія — хай він оновить сторінку (Ctrl+F5)';
+  if(hb>BUILD_ID)bar.hidden=false;else toast('У хоста стара версія гри — хай він натисне Ctrl+F5 і створить кімнату знову',8000);
+}
 /* спільне */
 function applySt(P,m){
   const s=P.st;
@@ -1717,7 +1722,7 @@ function bindUI(){
 
 
 /* ---------- версія сайту ---------- */
-const BUILD_ID="2026-10-29 14:04";
+const BUILD_ID="2026-10-29 14:11";
 function showBuild(){const [d,tm]=BUILD_ID.split(' ');const [y,m,dd]=d.split('-');$('#build-info').textContent=`Оновлено: ${dd}.${m}.${y} о ${tm}`;}
 async function checkUpdate(){
   if(!/^https?:$/.test(location.protocol)||G.state==='play')return;
