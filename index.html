@@ -139,6 +139,10 @@ table.res tr.me td{background:rgba(255,210,63,.07)}
 .achnew{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:6px 0 10px}.achnew .ach{font-size:14px;font-weight:700}
 .rpb{padding:4px 8px}
 .picksel{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px}.picksel select{background:#0b0920;border:1px solid var(--acc);color:var(--text);border-radius:8px;padding:6px 8px;font:13px Onest;max-width:100%}
+/* телефон: сторінка не повинна сама збільшуватись (iPhone зумить поля з шрифтом менше 16px, подвійний тап теж зумить) */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;overflow-x:hidden}
+body{touch-action:manipulation;overscroll-behavior-x:none}
+@media (max-width:860px),(pointer:coarse){input[type=text],input[type=number],select,textarea{font-size:16px!important}}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -215,6 +219,8 @@ table.res tr.me td{background:rgba(255,210,63,.07)}
         <div class="field"><div class="t">Ім'я гравця</div><input type="text" id="inName" maxlength="16" placeholder="Як тебе звати?"></div>
         <div class="field"><div class="t">Складність <b id="lockNote1" class="mut" hidden>керує хост</b></div>
           <div class="seg" id="segDiff"><button data-v="0">Легко</button><button data-v="1">Норм</button><button data-v="2">Важко</button><button data-v="3">Жесть</button></div></div>
+        <div class="field"><div class="t">Чутливість стрілок <b id="lbSens"></b></div><input type="range" id="rgSens" min="0" max="100" step="5">
+          <div class="hint">Менше — тільки головні удари. Більше — стрілка майже на кожен звук.</div></div>
         <div class="field"><div class="t">Події під музику <b id="lbEv"></b></div><input type="range" id="rgEv" min="0" max="100" step="5"></div>
         <div class="field"><div class="t">Найповільніше — тихі місця <b id="lbSmin"></b></div><input type="range" id="rgSmin" min="0.5" max="3" step="0.1"></div>
         <div class="field"><div class="t">Найшвидше — гучні місця <b id="lbSmax"></b></div><input type="range" id="rgSmax" min="1" max="5" step="0.1"></div>
@@ -279,7 +285,7 @@ table.res tr.me td{background:rgba(255,210,63,.07)}
     <button id="edReset">Скинути до авто</button><button id="edSave" class="acc">Зберегти</button><button id="edExit">Вийти</button>
   </div>
   <canvas id="edCv"></canvas>
-  <div id="edHelp">Клік — поставити ноту · тягни вгору від ноти — довга нота · клік по ноті — прибрати · колесо — прокрутка · Пробіл — грати/пауза · під час гри стрілки/DFJK ставлять ноти в такт</div>
+  <div id="edHelp">Пунктир — почута нота без стрілки (клік на ньому ставить стрілку точно туди) · Клік — поставити ноту · тягни вгору від ноти — довга нота · клік по ноті — прибрати · колесо — прокрутка · Пробіл — грати/пауза · під час гри стрілки/DFJK ставлять ноти в такт</div>
 </div>
 
 <div id="stOv" hidden>
@@ -303,8 +309,8 @@ table.res tr.me td{background:rgba(255,210,63,.07)}
 <script>
 'use strict';
 // ====================== БАЗА ======================
-const BUILD_ID='2026-10-30T10:05:38Z';
-const GAME_VER='1.1';
+const BUILD_ID='2026-10-30T13:10:08Z';
+const GAME_VER='1.2';
 const BUILD=(()=>{if(!BUILD_ID.startsWith('__'))return BUILD_ID;const d=new Date(document.lastModified);return isNaN(d)?'0':d.toISOString()})();
 const LANE_COL=['#c24b99','#00e5f2','#2ff06a','#f9393f'];
 const LANE_ARR=['←','↓','↑','→'];
@@ -331,7 +337,7 @@ function hexA(hex,a){const n=parseInt(hex.slice(1),16);return`rgba(${n>>16},${n>
 
 // ====================== НАЛАШТУВАННЯ ======================
 const DEF_KEYS=[['ArrowLeft','KeyD'],['ArrowDown','KeyF'],['ArrowUp','KeyJ'],['ArrowRight','KeyK']];
-const S={name:'',diff:1,events:50,smin:0.9,smax:2.7,shake:100,side:1,scroll:0,keys:DEF_KEYS.map(k=>k.slice()),offset:0,nofail:false,sing:false,calibrated:false,color:'#00b8c4',hitsound:false,hitvol:60,vibro:true,skin:0,chars:true};
+const S={name:'',diff:1,events:50,smin:0.9,smax:2.7,shake:100,side:1,scroll:0,keys:DEF_KEYS.map(k=>k.slice()),offset:0,nofail:false,sing:false,calibrated:false,sens:50,color:'#00b8c4',hitsound:false,hitvol:60,vibro:true,skin:0,chars:true};
 try{const o=JSON.parse(localStorage.getItem('ritmbatl')||'{}');for(const k in S)if(o[k]!==undefined&&typeof o[k]===typeof S[k])S[k]=o[k];
   if(!Array.isArray(S.keys)||S.keys.length!==4||S.keys.some(k=>!Array.isArray(k)||k.length!==2))S.keys=DEF_KEYS.map(k=>k.slice());}catch(e){}
 function saveS(){try{localStorage.setItem('ritmbatl',JSON.stringify(S))}catch(e){}}
@@ -343,8 +349,13 @@ function keyLabel(code){if(!code)return '—';const m={ArrowLeft:'←',ArrowDown
 let AC=null;
 function getAC(){if(!AC){const C=window.AudioContext||window.webkitAudioContext;try{AC=new C({latencyHint:'interactive'})}catch(e){AC=new C()}}return AC}
 // час, який зараз реально звучить у колонках (з урахуванням затримки виводу)
-function outTs(){const ac=getAC();if(ac.getOutputTimestamp){const t=ac.getOutputTimestamp();if(t&&t.contextTime>0&&t.performanceTime>0)return t}
-  return{contextTime:Math.max(0,ac.currentTime-(ac.outputLatency||ac.baseLatency||0)),performanceTime:performance.now()}}
+// деякі браузери/звукові карти віддають «биті» мітки (зсув на секунди) — тоді їм не віримо
+let TS_BAD=0;
+function outTs(){const ac=getAC(),pn=performance.now();
+  if(ac.getOutputTimestamp){const t=ac.getOutputTimestamp();
+    if(t&&t.contextTime>0&&t.performanceTime>0&&Math.abs(pn-t.performanceTime)<1000){const lag=ac.currentTime-(t.contextTime+(pn-t.performanceTime)/1000);if(lag>-0.05&&lag<0.8)return t}
+    if(ac.state==='running'&&ac.currentTime>1)TS_BAD++}
+  return{contextTime:Math.max(0,ac.currentTime-Math.min(0.5,ac.outputLatency||ac.baseLatency||0)),performanceTime:pn}}
 function evPerf(e){let ts=e&&e.timeStamp;const pn=performance.now();if(!(ts>0)||Math.abs(pn-ts)>1000)ts=pn;return ts}
 
 // ====================== ТРЕК ======================
@@ -430,7 +441,7 @@ async function rebuildChart(){
 }
 
 // ====================== КЕШ ТРЕКІВ (IndexedDB) ======================
-const ANA_VER=4,CACHE_MAX=700*1048576,CACHE_FILE_MAX=250*1048576;
+const ANA_VER=5,CACHE_MAX=700*1048576,CACHE_FILE_MAX=250*1048576;
 let _db=null;
 function idb(){if(_db)return _db;_db=new Promise((res,rej)=>{if(!window.indexedDB)return rej('no idb');const r=indexedDB.open('ritmbatl',2);
   r.onupgradeneeded=()=>{const d=r.result;for(const[s,k]of[['meta','fp'],['tracks','fp'],['feat','k'],['charts','k'],['songs','id']])if(!d.objectStoreNames.contains(s))d.createObjectStore(s,{keyPath:k})};
@@ -605,16 +616,22 @@ async function analyzeAudio(buf,onProg){
   const re=new Float32Array(FN),im=new Float32Array(FN),prev=new Float32Array(FN/2);
   const bn=f=>Math.max(1,Math.min(FN/2-1,Math.round(f*FN/sr)));
   const b0=bn(30),b1=bn(160),b2=bn(2500),b3=bn(10000),v0=bn(200),v1=bn(3000);
+  // тональні піки (ноти піаніно, голосу, гітари) — окремо від широкосмугових ударів барабанів
+  const t0b=bn(110),t1b=bn(4000),mag=new Float32Array(FN/2),pmag=new Float32Array(FN/2),tFl=new Float32Array(F),tEn=new Float32Array(F);
   for(let f=0;f<F;f++){
     const off=f*HOP;let e=0;
     for(let i=0;i<FN;i++){const v=x[off+i]||0;e+=v*v;re[i]=v*win[i];im[i]=0}
     rms[f]=Math.sqrt(e/FN);fft(re,im);
     let l=0,m=0,h=0,me=0;
-    for(let k=b0;k<=b3;k++){const mg=Math.sqrt(re[k]*re[k]+im[k]*im[k]),lg=Math.log1p(mg*10),d=lg-prev[k];prev[k]=lg;
+    for(let k=b0;k<=b3;k++){const mg=Math.sqrt(re[k]*re[k]+im[k]*im[k]),lg=Math.log1p(mg*10),d=lg-prev[k];prev[k]=lg;mag[k]=mg;
       if(d>0){if(k<b1)l+=d;else if(k<b2)m+=d;else h+=d}
       if(k>=v0&&k<=v1)me+=mg*mg}
     if(f>0){fL[f]=l/(b1-b0);fM[f]=m/(b2-b1);fH[f]=h/(b3-b2+1)}
     mid[f]=Math.sqrt(me);
+    {let tf=0,te=0;for(let k=t0b+4;k<=t1b-4;k++){const v=mag[k];if(v<=mag[k-1]||v<mag[k+1])continue;
+        let avg=0;for(let q=k-4;q<=k+4;q++)avg+=mag[q];avg/=9;if(v<2.2*avg)continue; // вузький пік = нота, а не шум/удар
+        te+=v;const pv=Math.max(pmag[k-1],pmag[k],pmag[k+1]);if(v>2.5*pv)tf+=Math.log1p(v*10)-Math.log1p(pv*10)} // тільки нова нота, а не «тремтіння» гучності
+      tFl[f]=f>0?tf:0;tEn[f]=te;for(let k=t0b;k<=t1b;k++)pmag[k]=Math.max(mag[k],pmag[k]*0.8)} // «пам'ять» на ~70 мс: биття синта не вважається новою нотою
     if((f&2047)===0){onProg(0.02+0.5*f/F);await nextFrame()}
   }
   const tF=f=>(f*HOP+FN/2)/sr; // центр кадру
@@ -651,8 +668,7 @@ async function analyzeAudio(buf,onProg){
     if((f&255)===0){onProg(0.55+0.25*f/F2);await nextFrame()}
   }
   const eGate=pctl(pcE,0.3);
-  const mel=[];{
-    const pcS=new Int8Array(F2).fill(-1);
+  const pcS=new Int8Array(F2).fill(-1);const mel=[];{
     for(let f=0;f<F2;f++){if(pcC[f]<0.16||pcE[f]<eGate)continue;const cnt=new Int8Array(12);
       for(let k=f-2;k<=f+2;k++)if(k>=0&&k<F2&&pcA[k]>=0&&pcC[k]>=0.14)cnt[pcA[k]]++;
       let b=pcA[f];for(let p=0;p<12;p++)if(cnt[p]>cnt[b])b=p;pcS[f]=b}
@@ -685,8 +701,12 @@ async function analyzeAudio(buf,onProg){
   const coh=(P,ps)=>{let c=0,s=0,w=0;const k=2*Math.PI/P;for(const p of ps){const a=k*p.t;c+=p.w*Math.cos(a);s+=p.w*Math.sin(a);w+=p.w}return[Math.hypot(c,s)/(w||1),Math.atan2(s,c)]};
   const search=(c,span,steps,ps)=>{let bP=c,bv=coh(c,ps);for(let i=-steps;i<=steps;i++){const p=c*(1+span*i/steps),v=coh(p,ps);if(v[0]>bv[0]){bv=v;bP=p}}return[bP,bv]};
   const fit=(Pg,ps,span)=>{let P,b;[P,b]=search(Pg,span,200,ps);[P,b]=search(P,0.0008,80,ps);[P,b]=search(P,0.00006,30,ps);
-    const bR=Math.round(60/P*2)/2;if(Math.abs(60/P-bR)<0.15){const v=coh(60/bR,ps);if(v[0]>=b[0]*0.96){P=60/bR;b=v}}
-    let ph=b[1]/(2*Math.PI)*P;ph=((ph%P)+P)%P;return{P,c:b[0],ph}};
+    for(const bR of[Math.round(60/P),Math.round(60/P*2)/2]){if(Math.abs(60/P-bR)<0.35){const v=coh(60/bR,ps);if(v[0]>=b[0]*0.96){P=60/bR;b=v;break}}} // спершу ціле BPM, потім .5
+    // фаза: не «середнє» всіх ударів (сильні проміжні удари свінгу тягнуть його вбік), а місце, де б'є найбільше сильних ударів
+    let ph=b[1]/(2*Math.PI)*P;ph=((ph%P)+P)%P;
+    {let bs=-1,bp=ph;for(let c=0;c<P;c+=0.002){let s=0;for(const p of ps){let d=((p.t-c)%P+P)%P;if(d>P/2)d-=P;s+=p.w*p.w*Math.exp(-0.5*(d/0.012)**2)}if(s>bs){bs=s;bp=c}}
+      ph=((bp%P)+P)%P;for(let c=bp-0.002;c<=bp+0.002;c+=0.0002){let s=0;for(const p of ps){let d=((p.t-c)%P+P)%P;if(d>P/2)d-=P;s+=p.w*p.w*Math.exp(-0.5*(d/0.012)**2)}if(s>bs){bs=s;ph=((c%P)+P)%P}}}
+    return{P,c:b[0],ph}};
   const glob=fit(60/bpm,peaks,0.02);
   const oAt=t=>{const fi=Math.round((t*sr-FN/2)/HOP);let m=0;for(let k=fi-2;k<=fi+2;k++)if(k>=0&&k<F&&ohB[k]>m)m=ohB[k];return m};
   // --- зміни темпу посеред пісні: локальний темп у вікнах по 8 с ---
@@ -768,10 +788,13 @@ async function analyzeAudio(buf,onProg){
   const drops=[];{const cands=[];
     for(let b=down0+4*Math.ceil(Math.max(0,8-down0)/4);b<NB-8;b+=4){const bef=bAvg(b-8,b),aft=bAvg(b,b+8);let kick=0;for(let k=b;k<b+8;k++)kick+=winMax(nL,beats[k]);kick/=8;
       if(aft>0.6&&aft-bef>0.2)cands.push({b,s:(aft-bef)*(0.6+0.4*Math.min(2,kick)/2)+((b-ph16)%16===0?0.08:0)})}
-    cands.sort((a,c)=>c.s-a.s);
-    for(const c of cands){if(drops.length>=5)break;if(drops.some(d=>Math.abs(d.b-c.b)<32))continue;drops.push(c)}
+    // дроп — тільки якщо гучно тримається мінімум 10 секунд (коротка гучна вставка — не дроп)
+    const runEnd=b=>{const base=bAvg(b,b+8);let e=b+4;while(e<NB-4&&e<b+128&&bAvg(e,e+4)>base-0.28)e+=4;return Math.min(NB-1,e)};
+    for(const c of cands)c.e=runEnd(c.b);
+    const long=cands.filter(c=>beats[c.e]-beats[c.b]>=10).sort((a,c)=>c.s-a.s);
+    for(const c of long){if(drops.length>=5)break;if(drops.some(d=>Math.abs(d.b-c.b)<32))continue;drops.push(c)}
     drops.sort((a,c)=>a.b-c.b);
-    for(const d of drops){const base=bAvg(d.b,d.b+8);let e=d.b+16;while(e<Math.min(NB-4,d.b+48)&&bAvg(e,e+4)>base-0.28)e+=4;d.t=beats[d.b];d.end=beats[Math.min(NB-1,e)]}
+    for(const d of drops){d.t=beats[d.b];d.end=beats[Math.min(d.e,d.b+48)]}
   }
 
   // --- слоти сітки (1/16) ---
@@ -785,34 +808,89 @@ async function analyzeAudio(buf,onProg){
       const fi=clamp(Math.round((slots[i].t*sr-FN/2)/HOP),0,F-1);let pk=-99;for(let k=Math.max(0,fi-2);k<=Math.min(F-1,fi+6);k++)pk=Math.max(pk,db[k]);if(pk<-55)n=0;slots[i].n=n}}
   const mid50=resample(mid,fps,50,dur);{const mx=pctl(mid50,0.98)||1;for(let i=0;i<mid50.length;i++)mid50[i]=Math.min(1.5,mid50[i]/mx)}
   const kick50=resample(nL,fps,50,dur);{const sm=movAvg(kick50,1),mx=pctl(sm,0.97)||1;for(let i=0;i<kick50.length;i++)kick50[i]=clamp(sm[i]/mx,0,1)}
+
+  // --- окремі ноти: кожен чутний звук, поріг — від тиші навколо, а не від найгучніших ударів ---
+  const onsets=[];let triplet=false,gridStats=null;{
+    const pick=(arr,harm)=>{const R=Math.round(0.75*fps),sq=new Float32Array(F);for(let f=0;f<F;f++)sq[f]=arr[f]*arr[f];
+      const pos=[];for(let f=0;f<F;f++)if(arr[f]>0)pos.push(arr[f]);
+      const mu=movAvg(arr,R),m2=movAvg(sq,R),p90=pctl(pos,0.9)||1e-6,out=[];
+      for(let f=4;f<F-4;f++){const v=arr[f];if(v<=0)continue;let ok=true;for(let q=f-4;q<=f+4;q++)if(arr[q]>v||(arr[q]===v&&q<f)){ok=false;break}if(!ok)continue;
+        let pk=-99;for(let q=f-1;q<=f+6&&q<F;q++)pk=Math.max(pk,db[q]);if(pk<-55)continue; // тиша
+        const sd=Math.sqrt(Math.max(0,m2[f]-mu[f]*mu[f])),z=(v-mu[f])/(sd+0.03*p90),a=v/p90;if(z<1.3&&!(a>=0.45&&z>=0.5))continue;
+        const y0=arr[f-1],y2=arr[f+1],den=y0-2*v+y2,dd=den<0?clamp((y0-y2)/(2*den),-0.5,0.5):0;out.push({t:tF(f+dd),z,a,h:harm})}
+      return out};
+    const ohT=hp(normMean(tFl));
+    const all=pick(oh,false).concat(pick(ohT,true)).sort((a,b)=>a.t-b.t);
+    for(const e of all){const last=onsets[onsets.length-1];
+      if(last&&e.t-last.t<0.035){if(Math.max(e.z/3,e.a)>Math.max(last.z/3,last.a)){e.h=e.h||last.h;e.p=!e.h||last.p;onsets[onsets.length-1]=e}else{last.h=last.h||e.h}continue}
+      e.p=!e.h;onsets.push(e)}
+    // точний початок звуку (крок 1 мс) — тільки для різких атак
+    const blk=Math.max(1,Math.round(sr*0.001)),bt=blk/sr,NE=Math.floor(N/blk),le=new Float32Array(NE);
+    for(let k=0;k<NE;k++){let s=0;const o0=k*blk;for(let i=0;i<blk;i++){const v=x[o0+i];s+=v*v}le[k]=Math.log(s/blk+1e-9)}
+    for(const e of onsets){const k0=Math.round((e.t-0.03)/bt),k1=Math.round((e.t+0.012)/bt);let bd=-1e9,bk=-1;
+      for(let k=Math.max(2,k0);k<=Math.min(NE-1,k1);k++){const d=le[k]-le[k-2];if(d>bd){bd=d;bk=k}}if(bk>0&&bd>0.6)e.t=(bk-1)*bt;
+      if(!e.h&&bd<0.25&&e.z<2.5)e.del=true} // гучність не росте — це хвіст звуку, а не нова нота
+    for(let i=onsets.length-1;i>=0;i--)if(onsets[i].del)onsets.splice(i,1);
+    // сітка: звичайні 1/16 чи тріолі/свінг (1/3 долі)?
+    const frac=t=>{let lo=0,hi=NB-1;if(t<beats[0]||t>=beats[NB-1])return null;while(hi-lo>1){const m=(lo+hi)>>1;if(beats[m]<=t)lo=m;else hi=m}return{b:lo,f:(t-beats[lo])/(beats[lo+1]-beats[lo]),len:beats[lo+1]-beats[lo]}};
+    let c4=0,c3=0;for(const e of onsets){if(e.z<2&&e.a<0.6)continue;const q=frac(e.t);if(!q)continue;
+      const d4=Math.min(...[0.25,0.5,0.75].map(g=>Math.abs(q.f-g)))*q.len,d3=Math.min(...[1/3,2/3].map(g=>Math.abs(q.f-g)))*q.len;
+      if(d4<0.02&&d4<d3)c4++;else if(d3<0.02&&d3<d4)c3++}
+    triplet=c3>=12&&c3>c4*1.4;gridStats={c3,c4};
+    const G=triplet?[[0,0],[1/6,1],[1/3,2],[1/2,1],[2/3,2],[5/6,1],[1,0]]:[[0,0],[0.25,1],[0.5,2],[0.75,3],[1,0]];
+    for(const e of onsets){const q=frac(e.t);e.k=4;e.bi=q?q.b:0;
+      if(q){let bg=null,bd=1e9;for(const[g,k]of G){const d=Math.abs(q.f-g)*q.len;if(d<bd){bd=d;bg=[g,k]}}
+        if(bd<=0.035){e.t=beats[q.b]+bg[0]*q.len;e.k=bg[1];if(bg[0]===1)e.bi=q.b+1}} // близько до сітки — точно на сітку; далеко — лишаємо справжній час
+      e.L=winMax(nL,e.t);e.M=winMax(nM,e.t);e.H=winMax(nH,e.t);e.loud=loudAt(e.t)}
+    for(let i=onsets.length-1;i>0;i--)if(Math.abs(onsets[i].t-onsets[i-1].t)<0.02)onsets.splice(onsets[i].z>onsets[i-1].z?i-1:i,1);
+  }
+  // тональна енергія (для довгих нот: тягнеться звук чи згасає) і висота нот
+  const h50=resample(tEn,fps,50,dur);{const mx=pctl(h50,0.98)||1;for(let i=0;i<h50.length;i++)h50[i]=Math.min(1.5,h50[i]/mx)}
+  const chp=Int8Array.from(pcS),chpRate=sr/CHP,chpOff=CN/2/sr;
   onProg(1);
-  return{dur,bpm,P,beats,tempos,down0,ph16,drops,slots,mel,loud20,kick50,mid50};
+  return{dur,bpm,P,beats,tempos,down0,ph16,drops,slots,mel,loud20,kick50,mid50,onsets,triplet,gridStats,h50,chp,chpRate,chpOff,sus:true};
 }
 
 // ====================== ГЕНЕРАЦІЯ СТРІЛОК ======================
 // w = вага за позицією в долі: [на долю, 1/16, 1/8, 1/16]
 const DIFFS=[
   {w:[1,0,0.5,0],thr:0.5,gap:0.24,nps:3,jack:0.4,chord:0,holdMin:1,holdMax:8,holdFrac:0.16,fill:true,fillEven:true,overlap:false,death:0.5,ev:0.6},
-  {w:[1,0.3,0.85,0.3],thr:0.42,gap:0.14,nps:5.5,jack:0.24,chord:0.06,holdMin:0.75,holdMax:6,holdFrac:0.18,fill:true,overlap:false,death:0.8,ev:0.85},
+  {w:[1,0.3,0.85,0.3],thr:0.42,gap:0.14,nps:5.5,jack:0.24,chord:0.06,holdMin:0.75,holdMax:6,holdFrac:0.18,fill:true,overlap:true,death:0.8,ev:0.85},
   {w:[1,0.7,0.95,0.7],thr:0.36,gap:0.1,nps:8.5,jack:0.16,chord:0.14,holdMin:0.5,holdMax:6,holdFrac:0.18,fill:true,overlap:true,death:1,ev:1},
   {w:[1,0.9,1,0.9],thr:0.28,gap:0.075,nps:12,jack:0.12,chord:0.26,holdMin:0.5,holdMax:6,holdFrac:0.16,fill:true,overlap:true,death:1.2,ev:1.15}];
 
-function buildChart(F,diff,ev){
-  const D=DIFFS[diff],R=rng(hashStr((F.fp||'x')+'|'+diff+'|'+Math.round(ev*100))),P=F.P,beats=F.beats,NB=beats.length;
-  const evOn=ev>0.001;
+const WOFF=[0.45,0.7,0.85,0.95]; // вага нот поза сіткою (живе виконання)
+function buildChart(F,diff,ev,sens){
+  if(sens==null)sens=S.sens!=null?S.sens:50;
+  const D=DIFFS[diff],R=rng(hashStr((F.fp||'x')+'|'+diff+'|'+Math.round(ev*100)+'|'+sens)),P=F.P,beats=F.beats,NB=beats.length;
+  const evOn=ev>0.001,sensMul=sens<=50?lerp(1.6,1,sens/50):lerp(1,0.5,(sens-50)/50);
   const inDrop=t=>F.drops.some(d=>t>=d.t&&t<d.end);
   const gridAt=(t)=>{let lo=0,hi=NB-1;if(t<=beats[0])return beats[0];while(hi-lo>1){const m=(lo+hi)>>1;if(beats[m]<=t)lo=m;else hi=m}
-    const b0=beats[lo],b1=lo+1<NB?beats[lo+1]:b0+P,q=Math.round((t-b0)/(b1-b0)*4)/4;return b0+(b1-b0)*q};
+    const dv=F.triplet?6:4,b0=beats[lo],b1=lo+1<NB?beats[lo+1]:b0+P,q=Math.round((t-b0)/(b1-b0)*dv)/dv;return b0+(b1-b0)*q};
+  // довга нота — тільки якщо звук справді тягнеться: тональна енергія тримається і висота не змінюється
+  const pcAt=t=>{if(!F.chp)return -1;const i=Math.round((t-F.chpOff)*F.chpRate);return i>=0&&i<F.chp.length?F.chp[i]:-1};
+  const onT=F.onsets?F.onsets.filter(o=>o.h&&Math.max(clamp((o.z-1)/3,0,1.3),clamp(o.a,0,1.3))>=0.3).map(o=>o.t):[]; // довгу ноту обриває тільки НОВА нота, а не удар барабана
+  const nextOnset=t=>{let lo=0,hi=onT.length;while(lo<hi){const m=(lo+hi)>>1;if(onT[m]<=t)lo=m+1;else hi=m}return lo<onT.length?onT[lo]:F.dur};
+  const susLen=t=>{const h=F.h50,i0=Math.round(t*50);if(!h||i0>=h.length)return 0;let pk=0;for(let i=Math.max(0,i0-1);i<=Math.min(h.length-1,i0+5);i++)pk=Math.max(pk,h[i]);
+    if(pk<0.08)return 0;let ref=0;for(let i=Math.max(0,i0-150);i<Math.min(h.length,i0+150);i++)ref=Math.max(ref,h[i]);if(pk<0.22*ref)return 0;
+    const stop=nextOnset(t+0.08),pc0=pcAt(t+0.1);let i=i0+6,sum=0,n=0;
+    while(i<h.length&&i/50<stop-0.04&&h[i]>=0.6*pk){const pc=pcAt(i/50);if(pc0>=0&&pc>=0&&pc!==pc0)break;sum+=h[i];n++;i++}
+    return n&&sum/n>=0.68*pk?i/50-t:0};
   const melAt=t=>{for(const m of F.mel){if(m.t>t+0.06)break;if(m.e>t+0.02&&m.t<=t+0.06)return m}return null};
   const sustain=(t,len)=>{const a=Math.round((t+0.12)*50),b=Math.round((t+len-0.08)*50);if(b<=a)return 0;let s=0;for(let i=a;i<b;i++)s+=F.mid50[i]||0;s/=(b-a);
     let pk=0;for(let i=Math.round((t-0.02)*50);i<=Math.round((t+0.1)*50);i++)pk=Math.max(pk,F.mid50[i]||0);return pk>0.05?s/pk:0};
 
   // 1) вибір слотів
   const sel=[];
-  for(const s of F.slots){
+  if(F.onsets){ // трек з файлу: стрілка на кожну чутну ноту, у тихих місцях теж
+    for(const o of F.onsets){
+      if(o.t<0.25||o.t>F.dur-0.25)continue;const w=o.k===4?WOFF[diff]:D.w[o.k];if(!w)continue;
+      const sal=Math.max(clamp((o.z-1)/3,0,1.3),clamp(o.a,0,1.3)),sc=sal*w*(0.85+0.3*o.loud)*(inDrop(o.t)?1.2:1);
+      if(sc>=D.thr*sensMul)sel.push({t:o.t,sc,s:{L:o.L,M:o.M,H:o.H,n:sal,loud:o.loud},k:o.k===4?3:o.k,bi:o.bi})}}
+  else for(const s of F.slots){ // пісня зі студії: ноти відомі точно
     if(s.t<0.25||s.t>F.dur-0.25)continue;const w=D.w[s.k];if(!w)continue;
-    const boost=inDrop(s.t)?1.25:1;let sc=s.n*w*(0.7+0.6*s.loud)*boost,on=sc>=D.thr;
-    if(!on&&D.fill&&s.k===0&&s.n>=0.12&&s.loud>=(D.fillEven?0.5:0.35)&&(!D.fillEven||s.bi%2===0)){on=true;sc=Math.max(sc,D.thr*0.9)}
+    const boost=inDrop(s.t)?1.25:1;let sc=s.n*w*(0.7+0.6*s.loud)*boost,on=sc>=D.thr*sensMul;
+    if(!on&&D.fill&&sens>=40&&s.k===0&&s.n>=0.12&&s.loud>=(D.fillEven?0.5:0.35)&&(!D.fillEven||s.bi%2===0)){on=true;sc=Math.max(sc,D.thr*0.9)}
     if(on)sel.push({t:s.t,sc,s,k:s.k,bi:s.bi})}
   // 2) мінімальний проміжок
   let out=[];
@@ -843,8 +921,11 @@ function buildChart(F,diff,ev){
     const lane=pickNear(cand,t,dtp<D.jack?lastLane:-1);if(lane<0)continue;
     // довга нота?
     let len=0;
-    const limit=D.overlap?(F.dur-t):(nextT-t);
-    if(m&&m.e-t>=D.holdMin*P*0.95)len=m.e-t;
+    let limit=D.overlap?(F.dur-t):(nextT-t);
+    if(F.sus){len=susLen(t);
+      // на «Легко» під довгою нотою нічого не б'ємо: дрібні удари під нею пропускаємо, щоб довга стрілка лишилась
+      if(!D.overlap&&len>=D.holdMin*P){const end=t+Math.min(len,D.holdMax*P)+0.1;while(i+1<out.length&&out[i+1].t<end&&out[i+1].sc<c.sc*1.6)out.splice(i+1,1);limit=(i+1<out.length?out[i+1].t:F.dur)-t}}
+    else if(m&&m.e-t>=D.holdMin*P*0.95)len=m.e-t;
     else if(nextT-t>=1.5*P&&sustain(t,nextT-t)>0.5)len=nextT-t-0.5*P;
     if(len>0){len=Math.min(len,D.holdMax*P,limit-Math.max(0.25*P,0.13));
       let end=gridAt(t+len);if(end>t+len+0.01)end-=P/4;len=end-t;if(len<D.holdMin*P*0.9)len=0}
@@ -854,17 +935,7 @@ function buildChart(F,diff,ev){
     if(D.chord&&c.k===0&&s.n>0.85&&R()<D.chord*(inDrop(t)?2:1)*(0.5+s.loud)){const l2=pickNear(3-lane,t,lane);if(l2>=0&&l2!==lane){notes.push({t,lane:l2,len:0,type:0,sc:c.sc,chord:1});busy[l2]=t+0.02}}
     lastLane=lane;lastT=t;if(pc>=0)lastPc=pc;
   }
-  // 5) гарантуємо довгі ноти
-  {const single=notes.filter(n=>!n.chord);const times=[...new Set(notes.map(n=>n.t))].sort((a,b)=>a-b);
-    const nextOf=t=>{let lo=0,hi=times.length;while(lo<hi){const m=(lo+hi)>>1;if(times[m]<=t+1e-6)lo=m+1;else hi=m}return lo<times.length?times[lo]:F.dur};
-    let have=single.filter(n=>n.len>0).length;const target=Math.round(single.length*D.holdFrac);
-    // на Норм і вище довга нота може тягнутись, поки інші руки б'ють по сусідніх доріжках
-    const nextSame=n=>{let b=F.dur;for(const o of notes)if(o.lane===n.lane&&o.t>n.t+1e-6&&o.t<b){b=o.t;break}return b};
-    const gapOf=n=>diff>=1?Math.min(nextSame(n),n.t+4*P,nextOf(n.t)+(diff>=2?4*P:2*P))-n.t:nextOf(n.t)-n.t;
-    const cands=single.filter(n=>n.len===0&&n.t>1&&!notes.some(o=>o!==n&&Math.abs(o.t-n.t)<0.001)).map(n=>({n,gap:gapOf(n)}))
-      .filter(c=>c.gap>=Math.max(0.75*P,0.4)).sort((a,b)=>b.gap-a.gap+(R()-0.5)*0.05);
-    for(const c of cands){if(have>=target)break;let end=gridAt(c.n.t+c.gap-Math.max(0.25*P,0.15));if(end>c.n.t+c.gap-0.12)end-=P/4;
-      const len=Math.min(end-c.n.t,D.holdMax*P);if(len>=0.45*P){c.n.len=len;have++}}}
+  // 5) примусових довгих нот більше немає — довга стрілка тільки там, де звук справді тягнеться
   // 6) смертельні ноти на вільних доріжках
   if(evOn){const pool=notes.filter(n=>n.t>8&&!n.chord);const want=Math.round(notes.length*ev*0.06*D.death);let made=0,guard=0;
     while(made<want&&guard++<want*12&&pool.length){const n=pool[Math.floor(R()*pool.length)];if(!inDrop(n.t)&&R()<0.45)continue;
@@ -959,7 +1030,7 @@ function drawSpr(c,spr,x,y,s,rot,alpha){const w=spr.width/G.dpr*s;c.globalAlpha=
 function startGame(o){
   const ac=getAC();ac.resume();
   stopMenuBg();
-  $('#menu').hidden=true;$('#game').hidden=false;$('#resOv').hidden=true;$('#pauseOv').hidden=true;
+  $('#menu').hidden=true;$('#game').hidden=false;$('#resOv').hidden=true;document.body.style.overflow='hidden';$('#pauseOv').hidden=true;
   $('#btnPause').hidden=o.mode==='online'||o.mode==='spectate';
   const ch=o.chart,rate=o.rate||1,s0=o.startAt||0;
   G={on:true,mode:o.mode,opts:o,ch,P:60/ch.bpm,smin:o.smin,smax:o.smax,rate,s0,loopEnd:o.loopEnd||0,specGlow:{},pPose:null,oPose:null,pMiss:0,
@@ -1016,7 +1087,12 @@ function gameLoop(){
   const pn=performance.now(),dt=Math.min(0.05,(pn-(G.lastPn||pn))/1000);G.lastPn=pn;
   syncClock();const tv=songAt(pn)-S.offset/1000;G.tv=tv;
   if(!G.paused&&!G.ended)update(tv,dt);
-  if(G.video&&!G.paused){const v=$('#vid'),st=songAt(pn);if(st>=0&&st<G.ch.dur){if(v.paused)v.play().catch(()=>{});if(Math.abs(v.currentTime-st)>0.18)try{v.currentTime=st}catch(e){}}}
+  // відео: маленьке розходження — плавно підганяємо швидкість; велике — перемотуємо, але не частіше раз на 1.5 с
+  // (раніше відео перемотувалось щокадру, і на важких файлах вічно відставало на час перемотки — 1–2 с)
+  if(G.video&&!G.paused){const v=$('#vid'),st=songAt(pn);if(st>=0&&st<G.ch.dur){if(v.paused&&!v.seeking)v.play().catch(()=>{});
+    if(!v.seeking){const d=v.currentTime-st;G.vDrift=d;
+      if(Math.abs(d)>0.5&&pn-(G.vSeek||0)>1500){G.vSeek=pn;try{v.currentTime=st+0.12*G.rate}catch(e){}}
+      else{const r=G.rate*clamp(1-d*0.9,0.9,1.1);if(Math.abs(v.playbackRate-r)>0.004)v.playbackRate=r}}}}
   render(tv,G.paused?0:dt);
 }
 
@@ -1348,7 +1424,7 @@ function finishGame(){if(G.ended)return;G.ended=true;for(let l=0;l<4;l++)G.hold[
 function failGame(){if(G.ended)return;G.st.failed=true;G.ended=true;stopAudio();micStop();banner('ТИ ВИБУВ','#ff4d6a',3,true);
   const fs=finalStats();if(G.rec)G.replay={name:S.name||'Гравець',col:S.color,ev:G.rec,atk:G.recAtk};G.newAch=profileAfterGame(fs);setTimeout(()=>showSoloResults(fs),900)}
 function exitGame(){G.on=false;G.ended=true;cancelAnimationFrame(G.raf);try{G.src&&G.src.stop()}catch(e){}micStop();if(AC&&AC.state==='suspended')AC.resume();
-  $('#vid').pause();$('#game').hidden=true;$('#pauseOv').hidden=true;$('#resOv').hidden=true;$('#menu').hidden=false;startMenuBg()}
+  $('#vid').pause();$('#game').hidden=true;$('#pauseOv').hidden=true;$('#resOv').hidden=true;$('#menu').hidden=false;document.body.style.overflow='';startMenuBg()}
 function timelineHTML(missT,deathT,cls){return`<div class="tl ${cls||''}">${(missT||[]).map(p=>`<i class="m" style="left:${(p*100).toFixed(2)}%"></i>`).join('')}${(deathT||[]).map(p=>`<i class="d" style="left:${(p*100).toFixed(2)}%"></i>`).join('')}</div>`}
 function avgTxt(a){const m=Math.round(a);return Math.abs(m)<2?'точно в біт':(m<0?'рано':'пізно')+' на '+Math.abs(m)+' мс'}
 // ---------- рекорди на кожен трек і складність ----------
@@ -1463,6 +1539,9 @@ function showTestResult(){
 function pauseGame(){if(!G.on||G.ended)return;
   if(G.mode==='online'||G.mode==='spectate'){$('#pauseNote').textContent='В онлайні пауза неможлива — гра йде далі';$('#btnRestart').hidden=true}
   else{G.paused=true;AC.suspend();$('#vid').pause();$('#pauseNote').textContent='Esc / P — продовжити';$('#btnRestart').hidden=false}
+  // діагностика синхрону — щоб було видно, якщо щось відстає
+  {const ts=outTs(),lat=Math.round((AC.currentTime-(ts.contextTime+(performance.now()-ts.performanceTime)/1000))*1000);
+    $('#pauseNote').textContent+=` · звук виводиться із затримкою ${lat} мс${TS_BAD?' (мітки браузера биті — рахую сам)':''}${G.video?` · відео ${G.vDrift>=0?'+':''}${Math.round((G.vDrift||0)*1000)} мс`:''} · твоя затримка ${S.offset} мс`}
   $('#pauseOv').hidden=false}
 function resumeGame(){$('#pauseOv').hidden=true;if(!G.paused)return;AC.resume().then(()=>{G.paused=false;G.clockInit=false;
   for(let l=0;l<4;l++)if(G.hold[l]&&!keyHeld(l))release(l,G.tv)})}
@@ -1575,7 +1654,7 @@ function drawKaraoke(c,tv,u){
 
 // ====================== ОНЛАЙН ======================
 const NET={role:null,peer:null,code:'',conns:new Map(),host:null,hostRaw:null,myId:'',cfg:null,lobby:[],results:new Map(),best:{},live:{},leader:null,g:{},resList:[]};
-const hostCfg=()=>({diff:S.diff,events:S.events,smin:S.smin,smax:S.smax});
+const hostCfg=()=>({diff:S.diff,events:S.events,smin:S.smin,smax:S.smax,sens:S.sens});
 // STUN — щоб знайти пряму дорогу; TURN — запасний ретранслятор, коли пряме з'єднання блокує роутер
 const PEER_OPTS={debug:1,config:{iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:global.stun.twilio.com:3478'},
   {urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}]}};
@@ -2006,6 +2085,12 @@ function edLoop(){
   for(const n of ED.notes){if(n.t+n.len<t0-0.5||n.t>t1+0.5)continue;const x=g.x0+(n.lane+0.5)*g.LW,y=edY(n.t,g);
     if(n.len>0){const y2=edY(n.t+n.len,g);c.fillStyle=hexA(LANE_COL[n.lane],0.75);c.fillRect(x-A*0.15,y2,A*0.3,y-y2);c.beginPath();c.arc(x,y2,A*0.15,0,Math.PI*2);c.fill()}
     const s=ED.spr[n.type===1?'death':'note'][n.lane],w=s.width/dpr;c.drawImage(s,x-w/2,y-w/2,w,w)}
+  // підказки: почуті ноти, на які ще немає стрілки (пунктир) — клік на цій лінії ставить ноту точно в цей момент
+  ED.ghosts=[];const ons=T.feat&&T.feat.onsets;
+  if(ons)for(const o of ons){if(o.t<t0-0.2||o.t>t1+0.2)continue;const sal=Math.max(clamp((o.z-1)/3,0,1.3),clamp(o.a,0,1.3));if(sal<0.25)continue;
+    if(ED.notes.some(n=>Math.abs(n.t-o.t)<0.04))continue;ED.ghosts.push(o.t);const y=edY(o.t,g);
+    c.strokeStyle=o.h?'rgba(0,229,242,.55)':'rgba(255,210,63,.55)';c.setLineDash([5,5]);c.lineWidth=1.5;c.beginPath();c.moveTo(g.x0,y);c.lineTo(g.x0+4*g.LW,y);c.stroke();c.setLineDash([]);
+    c.fillStyle=c.strokeStyle;c.beginPath();c.arc(g.x0-8,y,4,0,Math.PI*2);c.fill()}
   // лінія відтворення
   c.fillStyle='#ffd23f';c.fillRect(g.x0-14,g.py-1.5,4*g.LW+28,3);
   $('#edTime').textContent=fmtTime(Math.max(0,ED.t))+'.'+String(Math.floor((Math.max(0,ED.t)%1)*100)).padStart(2,'0')+' / '+fmtTime(ch.dur);
@@ -2015,7 +2100,7 @@ function edDown(e){
   const h=edHit(e);if(h.lane<0||h.lane>3)return;e.preventDefault();
   const near=ED.notes.find(n=>n.lane===h.lane&&Math.abs(edY(n.t,h.g)-h.y)<h.g.LW*0.4);
   if(near){ED.notes.splice(ED.notes.indexOf(near),1);ED.dirty=true;edSync();return}
-  const t=edSnapT(h.t);if(t<0||t>T.chart.dur)return;
+  const gh=(ED.ghosts||[]).find(gt=>Math.abs(edY(gt,h.g)-h.y)<9),t=gh!=null?gh:edSnapT(h.t);if(t<0||t>T.chart.dur)return;
   const n={t,lane:h.lane,len:0,type:ED.type};ED.notes.push(n);ED.drag={n};ED.dirty=true;edSync();
   $('#edCv').setPointerCapture&&$('#edCv').setPointerCapture(e.pointerId)}
 function edMove(e){if(!ED.drag||ED.drag.n.type!==0)return;const h=edHit(e),n=ED.drag.n,end=edSnapT(h.t);n.len=end-n.t>0.05?end-n.t:0}
@@ -2109,7 +2194,9 @@ function songFeat(song){
   const kick50=new Float32Array(Math.ceil(dur*50)+1);for(let s=0;s<total;s++)if(L[s]>0.4){const t0=O+s*sd;for(let i=Math.floor(t0*50);i<Math.min(kick50.length,t0*50+15);i++)kick50[i]=Math.max(kick50[i],Math.exp(-(i/50-t0)/0.08))}
   const mid50=new Float32Array(Math.ceil(dur*50)+1).map((_,i)=>i/50<O+total*sd&&i/50>=O?(at(held,i/50)?1:0.15):0);
   const drops=[],bl=b=>{let s=0,n=0;for(let q=b*4;q<Math.min(total,(b+8)*4);q++){s+=loudS[q];n++}return n?s/n:0},bb=b=>{let s=0,n=0;for(let q=Math.max(0,(b-8)*4);q<b*4;q++){s+=loudS[q];n++}return n?s/n:0};
-  for(let b=8;b<song.bars*4-8;b+=4){const aft=bl(b),bef=bb(b);if(aft>0.6&&aft-bef>0.2&&!drops.some(d=>Math.abs(d.b-b)<32)){let e=b+16;while(e<song.bars*4-4&&bl(e)>aft-0.28&&e<b+48)e+=4;drops.push({b,t:O+b*P,end:O+Math.min(e,song.bars*4)*P})}}
+  for(let b=8;b<song.bars*4-8;b+=4){const aft=bl(b),bef=bb(b);if(aft>0.6&&aft-bef>0.2&&!drops.some(d=>Math.abs(d.b-b)<32)){
+    let e=b+4;while(e<song.bars*4&&e<b+128&&bl(e)>aft-0.28)e+=4;e=Math.min(e,song.bars*4);
+    if((e-b)*P>=10)drops.push({b,t:O+b*P,end:O+Math.min(e,b+48)*P})}} // дроп — мінімум 10 с гучно
   return{dur,bpm:song.bpm,P,beats,tempos:[song.bpm],down0:0,ph16:0,drops,slots,mel,loud20,kick50,mid50,fp:'song-'+song.id}}
 
 // ---------- готові заготовки ----------
@@ -2256,7 +2343,8 @@ function evLabel(v){return(v===0?'вимкнено':v<=30?'трохи':v<=60?'н
 function applyLock(){
   const lock=NET.role==='guest';const cfg=lock&&NET.cfg?NET.cfg:S,fileLock=lock&&!amPicker();
   document.querySelectorAll('#segDiff button').forEach(b=>{b.disabled=lock;b.classList.toggle('on',+b.dataset.v===cfg.diff)});
-  for(const id of['#rgEv','#rgSmin','#rgSmax'])$(id).disabled=lock;
+  for(const id of['#rgEv','#rgSmin','#rgSmax','#rgSens'])$(id).disabled=lock;
+  {const v=cfg.sens!=null?+cfg.sens:50;$('#rgSens').value=v;$('#lbSens').textContent=(v<25?'тільки головне':v<45?'менше нот':v<=60?'звичайно':v<80?'більше нот':'кожен звук')+' · '+v+(lock?' (хост)':'')}
   $('#rgEv').value=cfg.events;$('#rgSmin').value=cfg.smin;$('#rgSmax').value=cfg.smax;
   $('#lbEv').textContent=evLabel(+cfg.events)+(lock?' (хост)':'');$('#lbSmin').textContent=(+cfg.smin).toFixed(1)+'×'+(lock?' (хост)':'');$('#lbSmax').textContent=(+cfg.smax).toFixed(1)+'×'+(lock?' (хост)':'');
   $('#lockNote1').hidden=!lock;
@@ -2306,6 +2394,7 @@ async function checkUpdate(){
   $('#inName').oninput=e=>{S.name=e.target.value.trim().slice(0,16);saveS();if(NET.role==='host')hostLobby()};
   document.querySelectorAll('#segDiff button').forEach(b=>b.onclick=()=>{S.diff=+b.dataset.v;onSetChange(true)});
   $('#rgEv').oninput=e=>{S.events=+e.target.value;onSetChange(true)};
+  $('#rgSens').oninput=e=>{S.sens=+e.target.value;onSetChange(true)};
   $('#rgSmin').oninput=e=>{S.smin=+e.target.value;if(S.smax<S.smin)S.smax=S.smin;onSetChange(false)};
   $('#rgSmax').oninput=e=>{S.smax=+e.target.value;if(S.smin>S.smax)S.smin=S.smax;onSetChange(false)};
   $('#rgShake').oninput=e=>{S.shake=+e.target.value;saveS();syncUI()};
@@ -2342,7 +2431,13 @@ async function checkUpdate(){
   $('#haveIn').onchange=e=>{const f=e.target.files[0];if(f)guestUseLocal(f);e.target.value=''};
   $('#btnUpd').onclick=()=>location.reload();
   // клавіатура
+  // під час гри браузер не повинен змінювати масштаб: «щипок» тачпада / Ctrl+колесо / Ctrl+«+»/«−»
+  // «щипок» тачпада ноутбука при гортанні меню браузер сприймає як Ctrl+колесо і збільшує сторінку — блокуємо скрізь
+  // (у студії Ctrl+колесо масштабує сітку — там свій обробник)
+  document.addEventListener('wheel',e=>{if(e.ctrlKey)e.preventDefault()},{passive:false});
+  {let dpr0=window.devicePixelRatio||1;window.addEventListener('resize',()=>{const d=window.devicePixelRatio||1;if(Math.abs(d-dpr0)>0.01){dpr0=d;if(G.on)resizeGame();toast('Масштаб сторінки змінився — Ctrl+0 поверне як було')}})}
   document.addEventListener('keydown',e=>{
+    if((e.ctrlKey||e.metaKey)&&G.on&&!G.ended&&['Equal','Minus','NumpadAdd','NumpadSubtract','Digit0','Numpad0'].includes(e.code)){e.preventDefault();return}
     if(ED.on){edKey(e);return}
     if(ST.on){stKey(e);return}
     if(KEYWAIT){e.preventDefault();if(e.code!=='Escape'){const{l,i}=KEYWAIT;for(let a=0;a<4;a++)for(let b=0;b<2;b++)if(S.keys[a][b]===e.code)S.keys[a][b]=S.keys[l][i];S.keys[l][i]=e.code;saveS()}KEYWAIT=null;renderKeys();return}
