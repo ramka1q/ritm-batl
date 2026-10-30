@@ -222,7 +222,7 @@ table.res tr.me td{background:rgba(255,210,63,.07)}
 <script>
 'use strict';
 // ====================== БАЗА ======================
-const BUILD_ID='2026-10-30T08:52:12Z';
+const BUILD_ID='2026-10-30T08:54:47Z';
 const GAME_VER='1.0';
 const BUILD=(()=>{if(!BUILD_ID.startsWith('__'))return BUILD_ID;const d=new Date(document.lastModified);return isNaN(d)?'0':d.toISOString()})();
 const LANE_COL=['#c24b99','#00e5f2','#2ff06a','#f9393f'];
@@ -936,8 +936,7 @@ function updateEffects(tv,dt){
   G.flip+=(flip-G.flip)*Math.min(1,dt*5);
   if(drop>0&&Math.random()<dt*40*drop)G.streaks.push({x:G.W+50,y:Math.random()*G.H,len:80+Math.random()*260,sp:1600+Math.random()*1800,col:LANE_COL[Math.floor(Math.random()*4)]});
 }
-function dropBoom(){G.flash=1;G.hitShake=Math.max(G.hitShake,0.8);const L=G.lay;if(!L)return;
-  for(let i=0;i<70;i++){const a=Math.random()*Math.PI*2,s=300+Math.random()*900;G.parts.push({x:G.W/2,y:G.H/2,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:1.2+Math.random()*0.6,max:1.8,lane:i%4,rot:Math.random()*6,vr:(Math.random()-0.5)*10,s:0.35+Math.random()*0.4,k:'arrow'})}}
+function dropBoom(){G.flash=1;G.hitShake=Math.max(G.hitShake,0.8)}
 function sparks(l){const L=G.lay;if(!L)return;const x=G.lastLaneX?G.lastLaneX[l]:G.W/2,y=G.lastRecY||100;
   for(let i=0;i<10;i++){const a=Math.random()*Math.PI*2,s=120+Math.random()*320;G.parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:0.35+Math.random()*0.2,max:0.55,lane:l,s:2+Math.random()*3,k:'spark'})}}
 
