@@ -307,7 +307,7 @@ body{touch-action:manipulation;overscroll-behavior-x:none}
 <script>
 'use strict';
 // ====================== БАЗА ======================
-const BUILD_ID='20261030183121';
+const BUILD_ID='20261030183806';
 const GAME_VER='1.2';
 const BUILD=(()=>{if(!BUILD_ID.startsWith('__'))return BUILD_ID;const d=new Date(document.lastModified);return isNaN(d)?'0':d.toISOString()})();
 const LANE_COL=['#c24b99','#00e5f2','#2ff06a','#f9393f'];
@@ -443,7 +443,7 @@ async function rebuildChart(){
 }
 
 // ====================== КЕШ ТРЕКІВ (IndexedDB) ======================
-const ANA_VER=5,CACHE_MAX=700*1048576,CACHE_FILE_MAX=250*1048576;
+const ANA_VER=6,CACHE_MAX=700*1048576,CACHE_FILE_MAX=250*1048576;
 let _db=null;
 function idb(){if(_db)return _db;_db=new Promise((res,rej)=>{if(!window.indexedDB)return rej('no idb');const r=indexedDB.open('ritmbatl',2);
   r.onupgradeneeded=()=>{const d=r.result;for(const[s,k]of[['meta','fp'],['tracks','fp'],['feat','k'],['charts','k'],['songs','id']])if(!d.objectStoreNames.contains(s))d.createObjectStore(s,{keyPath:k})};
@@ -796,7 +796,14 @@ async function analyzeAudio(buf,onProg){
     const long=cands.filter(c=>beats[c.e]-beats[c.b]>=10).sort((a,c)=>c.s-a.s);
     for(const c of long){if(drops.length>=5)break;if(drops.some(d=>Math.abs(d.b-c.b)<32))continue;drops.push(c)}
     drops.sort((a,c)=>a.b-c.b);
-    for(const d of drops){d.t=beats[d.b];d.end=beats[Math.min(d.e,d.b+48)]}
+    // уточнюємо початок дропу до долі: шукаємо найрізкіший стрибок сирої гучності (без згладжування) в ±6 долях
+    const rawB=b=>{const f0=Math.max(0,Math.floor(beats[b]*fps)),f1=Math.min(F,Math.max(f0+1,Math.floor((b+1<NB?beats[b+1]:beats[b]+P)*fps)));let s=0;for(let f=f0;f<f1;f++)s+=db[f];return s/(f1-f0)};
+    for(const d of drops){let best=d.b,bs=-1e9;
+      for(let b=Math.max(2,d.b-6);b<=Math.min(NB-3,d.b+6);b++){const j=(rawB(b)+rawB(b+1))/2-(rawB(b-1)+rawB(b-2))/2+(b===d.b?0.3:0);if(j>bs){bs=j;best=b}}
+      d.e+=best-d.b;d.b=best;
+      // і кінець — найрізкіше падіння гучності біля знайденого кінця
+      if(d.e<NB-3){let be=d.e,bv=-1e9;for(let b=Math.max(d.b+8,d.e-6);b<=Math.min(NB-3,d.e+6);b++){const j=(rawB(b-1)+rawB(b-2))/2-(rawB(b)+rawB(b+1))/2;if(j>bv){bv=j;be=b}}d.e=be}
+      d.t=beats[d.b];d.end=beats[Math.min(NB-1,d.e,d.b+48)]}
   }
 
   // --- слоти сітки (1/16) ---
@@ -1093,12 +1100,17 @@ function autoSpeed(ch,drops,dt,n,fix){const V=new Float32Array(n);if(fix){V.fill
     let v=0.85+1.85*(0.55*loud+0.2*tf+0.25*df);
     for(const e of drops)if(t>=e.t0&&t<e.t1)v*=1.12;
     V[i]=v}
-  // згладжування ~1.5 с (три проходи ковзного середнього ≈ гаусс)
-  const w=Math.round(0.9/dt),tmp=new Float32Array(n),pre=new Float64Array(n+1);
-  for(let k=0;k<3;k++){for(let i=0;i<n;i++)pre[i+1]=pre[i]+V[i];
+  // гучність уже трохи згладжена й відстає — дивимось на 0.7 с уперед (лише для розгону, не для гальмування)
+  {const la=Math.round(0.7/dt),R=V.slice();for(let i=0;i<n;i++){let m=R[i];for(let k=1;k<=la&&i+k<n;k++)if(R[i+k]>m)m=R[i+k];V[i]=m}}
+  // легке згладжування ~0.3 с, щоб прибрати дрижання
+  const w=Math.round(0.25/dt),tmp=new Float32Array(n),pre=new Float64Array(n+1);
+  for(let k=0;k<2;k++){for(let i=0;i<n;i++)pre[i+1]=pre[i]+V[i];
     for(let i=0;i<n;i++){const l=Math.max(0,i-w),r=Math.min(n,i+w+1);tmp[i]=(pre[r]-pre[l])/(r-l)}V.set(tmp)}
-  // обмеження прискорення: не більше 0.5× за секунду в обидва боки
-  const m=0.5*dt;for(let i=1;i<n;i++)V[i]=clamp(V[i],V[i-1]-m,V[i-1]+m);for(let i=n-2;i>=0;i--)V[i]=clamp(V[i],V[i+1]-m,V[i+1]+m);
+  // плавні переходи без запізнення: розгін починається ЗАЗДАЛЕГІДЬ і закінчується рівно на гучному місці,
+  // а гальмування — тільки ПІСЛЯ того, як стало тихо
+  const up=0.9*dt,dn=0.5*dt;
+  for(let i=n-2;i>=0;i--)V[i]=Math.max(V[i],V[i+1]-up);
+  for(let i=1;i<n;i++)V[i]=Math.max(V[i],V[i-1]-dn);
   return V}
 function spdAt(t){const V=G.V;if(!V)return 1.6;return V[clamp(Math.round(t/0.01),0,V.length-1)]}
 // наскільки кольорова стрілка: повільно — чорно-біла, швидко — яскрава
