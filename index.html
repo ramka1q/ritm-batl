@@ -307,7 +307,7 @@ body{touch-action:manipulation;overscroll-behavior-x:none}
 <script>
 'use strict';
 // ====================== БАЗА ======================
-const BUILD_ID='20261030184838';
+const BUILD_ID='20261030185218';
 const GAME_VER='1.2';
 const BUILD=(()=>{if(!BUILD_ID.startsWith('__'))return BUILD_ID;const d=new Date(document.lastModified);return isNaN(d)?'0':d.toISOString()})();
 const LANE_COL=['#c24b99','#00e5f2','#2ff06a','#f9393f'];
@@ -1023,7 +1023,7 @@ function startGame(o){
   $('#menu').hidden=true;$('#game').hidden=false;$('#resOv').hidden=true;document.body.style.overflow='hidden';$('#pauseOv').hidden=true;
   $('#btnPause').hidden=o.mode==='online'||o.mode==='spectate';
   const ch=o.chart,rate=o.rate||1,s0=o.startAt||0;
-  G={on:true,mode:o.mode,opts:o,ch,P:60/ch.bpm,fixSpd:o.fixSpd||0,rate,s0,loopEnd:o.loopEnd||0,specGlow:{},pPose:null,oPose:null,pMiss:0,
+  G={on:true,mode:o.mode,opts:o,ch,P:60/ch.bpm,fixSpd:o.fixSpd||0,rate,s0,loopEnd:o.loopEnd||0,specGlow:{},pPose:null,oPose:null,poses:{},pMiss:0,
     notes:ch.notes.map(n=>({t:n.t,lane:n.lane,len:n.len,type:n.type,j:false,hit:false})),
     ev:ch.ev.filter(e=>e.type!=="drop").map(e=>Object.assign({},e)),
     st:{score:0,combo:0,maxCombo:0,cnt:[0,0,0,0],miss:0,death:0,holdDrop:0,accSum:0,accN:0,offs:[],missT:[],deathT:[],voice:0,failed:false},
@@ -1336,15 +1336,24 @@ function rr(c,x,y,w,h,r){c.beginPath();if(c.roundRect)c.roundRect(x,y,w,h,r);els
 function circ(c,x,y,r){c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.fill();c.stroke()}
 function seg(c,a,b,x,y){c.beginPath();c.moveTo(a,b);c.lineTo(x,y);c.stroke()}
 function drawStage(c,W,H){
-  const now=performance.now(),bob=Math.exp(-G.beatFrac*6),h=H*0.34,y=H*0.985,L=G.lay;
+  const now=performance.now(),bob=Math.exp(-G.beatFrac*6),y=H*0.985,L=G.lay;
   const pose=(p,miss)=>miss&&now-miss<450?'miss':p&&now-p.t<380?p.l:'idle';
+  // онлайн — по чоловічку на кожного гравця; інакше — бот
+  let others;
+  if(G.mode==='online'){others=(G.board||[]).filter(p=>p.id!==NET.myId).map(p=>({kind:'rival',pose:pose(G.poses[p.id],0),col:p.col&&p.col!==S.color?p.col:null,name:p.name}));
+    if(!others.length)others=[{kind:'rival',pose:pose(G.oPose,0),col:null}]}
+  else others=[{kind:'bot',pose:pose(G.oPose,0),col:null}];
+  const n=others.length+1,h=H*0.34*(n<=2?1:n===3?0.85:n===4?0.75:0.62);
   // ставимо персонажів туди, де немає стрілок
   const spans=[[L.pcx,2.4*L.A]];if(L.ocx!=null)spans.push([L.ocx,2.4*L.A*L.os]);
   const free=(x,taken)=>spans.every(([cx,hw])=>Math.abs(x-cx)>hw+h*0.28)&&taken.every(t=>Math.abs(x-t)>h*0.6);
   const pick=(prefs,taken)=>{for(const f of prefs){const x=W*f;if(free(x,taken))return x}return null};
-  const ox=pick([0.085,0.2,0.25,0.3,0.915,0.8],[]),px=pick([0.915,0.8,0.75,0.7,0.085,0.2],ox!=null?[ox]:[]);
-  const b=G.board||[],riv=b[0]&&b[0].id===NET.myId?b[1]:b[0],rc=G.mode==='online'&&riv&&riv.col&&riv.col!==S.color?riv.col:null;
-  if(ox!=null)drawChar(c,ox,y,h,G.mode==='online'?'rival':'bot',pose(G.oPose,0),bob,ox<W/2,rc);
+  const grid=[];for(let f=0.06;f<=0.94;f+=0.02)grid.push(f);
+  const px=pick([0.915,0.8,0.75,0.7,0.085,0.2,...grid],[]),taken=px!=null?[px]:[];
+  const oPrefs=[0.085,0.2,0.3,0.25,0.8,0.7,0.75,...grid];
+  for(const o of others){const x=pick(oPrefs,taken);if(x==null)break;taken.push(x);
+    drawChar(c,x,y,h,o.kind,o.pose,bob,x<W/2,o.col);
+    if(n>2&&o.name)drawText(c,o.name,x,y-h*1.08,Math.max(11,Math.round(h*0.085)),'#efecff',{f:'Onest, sans-serif',w:800})}
   if(px!=null)drawChar(c,px,y,h,'me',pose(G.pPose,G.pMiss),bob,px<W/2,G.mode==='replay'&&G.rp.col?G.rp.col:S.color);
 }
 function drawFace(c,kind,miss,sing,k){
@@ -1761,7 +1770,8 @@ function hostCommon(id,name,m){
   if(NET.role!=='host')return;
   switch(m.t){
     case 'sc':NET.live[id]={id,name,s:m.s,a:m.a,c:m.c,col:m.col};break;
-    case 'pr':if(id===NET.leader){netBroadcast({t:'lp',l:m.l},id);if(id!=='host'&&G.on){G.oppGlow[m.l]=1;G.oPose={l:m.l,t:performance.now()}}}
+    case 'pr':{const ld=id===NET.leader;netBroadcast({t:'lp',id,l:m.l,ld:ld?1:0},id); // натискання кожного — всім (для їхніх чоловічків)
+      if(id!=='host'&&G.on){G.poses[id]={l:m.l,t:performance.now()};if(ld){G.oppGlow[m.l]=1;G.oPose={l:m.l,t:performance.now()}}}}
       for(const p of NET.conns.values())if(p.spec&&p.conn.open)p.conn.send({t:'pp',id,l:m.l});break;
     case 'atk':{const pl={t:'atk',k:m.k,from:name};if(m.to==='host')receiveAttack(m.k,name);else{const p=NET.conns.get(m.to);if(p&&p.conn.open)p.conn.send(pl)}break}
     case 'fin':{NET.results.set(id,{id,name,st:m.st,rp:m.rp||null});if(!NET.best[name]||NET.best[name]<m.st.score)NET.best[name]=m.st.score;
@@ -1957,7 +1967,7 @@ function guestMsg(m){
     case 'pong':{const rtt=now-m.c;g.pings.push({rtt,off:m.h+rtt/2-now});if(g.pings.length>12)g.pings.shift();const b=g.pings.reduce((a,x)=>x.rtt<a.rtt?x:a);g.off=b.off;g.rtt=b.rtt;break}
     case 'start':guestStart(m);break;
     case 'board':if(G.on&&(G.mode==='online'||G.mode==='spectate')){G.board=m.l;NET.leader=m.lead}break;
-    case 'lp':if(G.on){G.oppGlow[m.l]=1;G.oPose={l:m.l,t:performance.now()}}break;
+    case 'lp':if(G.on){const now=performance.now();if(m.id&&G.poses)G.poses[m.id]={l:m.l,t:now};if(m.ld!==0){G.oppGlow[m.l]=1;G.oPose={l:m.l,t:now}}}break;
     case 'pp':if(G.on&&G.specGlow){(G.specGlow[m.id]||(G.specGlow[m.id]=[0,0,0,0]))[m.l]=1}break;
     case 'atk':receiveAttack(m.k,m.from);break;
     case 'res':NET.resList=m.l||[];NET.best=m.best||{};if(NET.showingRes)showOnlineResults();break;
