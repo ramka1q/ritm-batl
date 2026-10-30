@@ -121,6 +121,16 @@ table.res tr.me td{background:rgba(255,210,63,.07)}
 #edCv{flex:1;display:block;width:100%;min-height:0;touch-action:none;cursor:crosshair}
 #edHelp{font-size:12px;color:var(--mut);padding:6px 10px;border-top:1px solid var(--line);background:var(--panel)}
 .recline{margin-top:8px;font-size:13px;color:var(--acc)}
+#stOv{position:fixed;inset:0;z-index:40;background:var(--bg);display:flex;flex-direction:column}
+.stbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 10px;border-bottom:1px solid var(--line);background:var(--panel)}
+.stbar button{padding:7px 10px;font-size:13px}.stbar .on{background:var(--acc);color:#1a1300;border-color:var(--acc)}.stbar small{opacity:.7;font-family:'JetBrains Mono',monospace}
+.stbar .sp{flex:1}.stbar label{font-size:13px;color:var(--mut);display:flex;gap:6px;align-items:center}
+.stbar input[type=number],.stbar input[type=text],.stbar select{background:#0b0920;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:6px 8px;font:13px Onest}
+.stbar input[type=number]{width:64px}#stName{width:170px}
+#stCv{flex:1;display:block;width:100%;min-height:0;touch-action:none;cursor:pointer}
+#stScroll{width:100%;margin:0;accent-color:var(--acc)}
+.sthelp{font-size:12px;color:var(--mut);padding:6px 10px;border-top:1px solid var(--line);background:var(--panel)}
+#stInfo{font:700 12px 'JetBrains Mono',monospace;color:var(--acc)}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -144,6 +154,7 @@ table.res tr.me td{background:rgba(255,210,63,.07)}
           <button id="btnFile">Вибрати файл</button>
           <button id="btnDemo">Згенерувати демо-біт</button>
         </div>
+        <div class="row"><button id="btnStudio" class="acc">🎹 Своя музика — студія</button></div>
         <input type="file" id="fileIn" hidden accept="audio/*,video/*,.mp3,.wav,.ogg,.oga,.flac,.m4a,.aac,.opus,.webm,.mp4,.m4v,.mov,.mkv,.3gp,.aiff,.aif,.wma,.caf">
         <div id="recent"></div>
         <div id="anaBox" hidden><div class="st" id="anaText"></div><div class="bar"><i id="anaBar"></i></div></div>
@@ -255,11 +266,28 @@ table.res tr.me td{background:rgba(255,210,63,.07)}
   <div id="edHelp">Клік — поставити ноту · тягни вгору від ноти — довга нота · клік по ноті — прибрати · колесо — прокрутка · Пробіл — грати/пауза · під час гри стрілки/DFJK ставлять ноти в такт</div>
 </div>
 
+<div id="stOv" hidden>
+  <div class="stbar">
+    <input type="text" id="stName" maxlength="30" placeholder="Назва пісні">
+    <label>BPM <input type="number" id="stBpm" min="60" max="200"></label>
+    <label>Тактів <input type="number" id="stBars" min="2" max="64"></label>
+    <button id="stPlay">▶ Грати</button><button id="stUndo" title="Ctrl+Z">↶ Назад</button>
+    <select id="stList"></select><button id="stNew">Нова</button>
+    <span id="stInfo"></span><span class="sp"></span>
+    <button id="stSave">Зберегти</button><button id="stGo" class="acc">Готово — грати!</button><button id="stExit">Вийти</button>
+  </div>
+  <div class="stbar" id="stTabs"></div>
+  <div class="stbar" id="stPresets"></div>
+  <canvas id="stCv"></canvas>
+  <input type="range" id="stScroll" min="0" max="1000" value="0">
+  <div class="sthelp">Клік — поставити/прибрати ноту · у піаніно, басі й синті тягни вправо — довга нота · клік по номерах тактів — звідки грати · колесо — прокрутка, Ctrl+колесо — масштаб · Пробіл — грати/стоп · стрілки зверху ставляться самі під твою музику</div>
+</div>
+
 <div id="toasts"></div>
 <script>
 'use strict';
 // ====================== БАЗА ======================
-const BUILD_ID='2026-10-30T09:23:51Z';
+const BUILD_ID='2026-10-30T09:30:35Z';
 const GAME_VER='1.1';
 const BUILD=(()=>{if(!BUILD_ID.startsWith('__'))return BUILD_ID;const d=new Date(document.lastModified);return isNaN(d)?'0':d.toISOString()})();
 const LANE_COL=['#c24b99','#00e5f2','#2ff06a','#f9393f'];
@@ -388,8 +416,8 @@ async function rebuildChart(){
 // ====================== КЕШ ТРЕКІВ (IndexedDB) ======================
 const ANA_VER=4,CACHE_MAX=700*1048576,CACHE_FILE_MAX=250*1048576;
 let _db=null;
-function idb(){if(_db)return _db;_db=new Promise((res,rej)=>{if(!window.indexedDB)return rej('no idb');const r=indexedDB.open('ritmbatl',1);
-  r.onupgradeneeded=()=>{const d=r.result;for(const[s,k]of[['meta','fp'],['tracks','fp'],['feat','k'],['charts','k']])if(!d.objectStoreNames.contains(s))d.createObjectStore(s,{keyPath:k})};
+function idb(){if(_db)return _db;_db=new Promise((res,rej)=>{if(!window.indexedDB)return rej('no idb');const r=indexedDB.open('ritmbatl',2);
+  r.onupgradeneeded=()=>{const d=r.result;for(const[s,k]of[['meta','fp'],['tracks','fp'],['feat','k'],['charts','k'],['songs','id']])if(!d.objectStoreNames.contains(s))d.createObjectStore(s,{keyPath:k})};
   r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});_db.catch(()=>{});return _db}
 async function dbReq(store,mode,fn){try{const d=await idb();return await new Promise(res=>{const tx=d.transaction(store,mode),q=fn(tx.objectStore(store));let out=null;
   if(q)q.onsuccess=()=>{out=q.result};tx.oncomplete=()=>res(out);tx.onerror=tx.onabort=()=>res(null)})}catch(e){return null}}
@@ -1838,6 +1866,198 @@ async function edReset(){if(!confirm('Прибрати всі твої прав�
   await dbDel('charts',T.fp+'|'+T.chart.diff);await rebuildChart();ED.notes=T.chart.notes.map(n=>({...n}));ED.dirty=false;edSync();toast('Повернув автоматичні стрілки')}
 function edExit(){if(ED.dirty&&!confirm('Є незбережені правки. Вийти без збереження?'))return;edPlay(false);ED.on=false;$('#edOv').hidden=true;startMenuBg()}
 
+// ====================== СТУДІЯ: СВОЯ МУЗИКА ======================
+const NOTE_N=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const INST={drums:{name:'🥁 Барабани',rows:['Бочка','Малий','Хлопок','Хет','Відкр. хет','Том','Тарілка']},
+  piano:{name:'🎹 Піаніно',lo:48,hi:72},bass:{name:'🎸 Бас',lo:28,hi:52},lead:{name:'🎛 Синт',lo:60,hi:84}};
+const DROW_COL=['#c24b99','#f9393f','#ff8a3d','#00e5f2','#7fd8ff','#2ff06a','#ffd23f'];
+const INST_COL={piano:'#00e5f2',bass:'#c24b99',lead:'#2ff06a'};
+const SONG_OFF=0.5; // пів секунди тиші на початку, щоб перший удар теж мав стрілку
+const ST={on:false,song:null,tab:'drums',zoom:18,sx:0,playing:false,hist:[],dirty:false,chart:null,playFrom:0,drag:null,spr:null};
+function newSong(){return{v:1,id:'s'+Date.now().toString(36),name:'Мій трек',bpm:120,bars:16,vol:{drums:0.9,piano:0.7,bass:0.8,lead:0.6},drums:[],piano:[],bass:[],lead:[]}}
+// ---------- звуки (працюють і наживо, і при записі у файл) ----------
+const NOISE=new WeakMap();
+function noiseBuf(ac){let b=NOISE.get(ac);if(!b){b=ac.createBuffer(1,ac.sampleRate,ac.sampleRate);const d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;NOISE.set(ac,b)}return b}
+const mtof=m=>440*Math.pow(2,(m-69)/12);
+function envG(ac,o,t,a,peak,dec){const g=ac.createGain();g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(Math.max(0.0002,peak),t+a);g.gain.exponentialRampToValueAtTime(0.0001,t+dec);g.connect(o);return g}
+function nz(ac,t,len,type,f,q,g){const s=ac.createBufferSource();s.buffer=noiseBuf(ac);const fl=ac.createBiquadFilter();fl.type=type;fl.frequency.value=f;if(q)fl.Q.value=q;s.connect(fl).connect(g);s.start(t,Math.random()*0.5);s.stop(t+len)}
+function osc(ac,type,f,g,t,len){const o=ac.createOscillator();o.type=type;o.frequency.value=f;o.connect(g);o.start(t);o.stop(t+len);return o}
+const DRUM=[
+  (ac,o,t,v)=>{const os=osc(ac,'sine',160,envG(ac,o,t,0.002,v,0.42),t,0.45);os.frequency.setValueAtTime(160,t);os.frequency.exponentialRampToValueAtTime(42,t+0.13)},
+  (ac,o,t,v)=>{nz(ac,t,0.22,'bandpass',1800,0.8,envG(ac,o,t,0.001,v*0.6,0.2));const os=osc(ac,'triangle',220,envG(ac,o,t,0.001,v*0.35,0.1),t,0.12);os.frequency.setValueAtTime(220,t);os.frequency.exponentialRampToValueAtTime(150,t+0.08)},
+  (ac,o,t,v)=>{for(const d of[0,0.011,0.022])nz(ac,t+d,0.03,'bandpass',1300,1.2,envG(ac,o,t+d,0.001,v*0.45,0.025));nz(ac,t+0.03,0.2,'bandpass',1300,1,envG(ac,o,t+0.03,0.001,v*0.35,0.18))},
+  (ac,o,t,v)=>nz(ac,t,0.06,'highpass',7500,0,envG(ac,o,t,0.001,v*0.22,0.045)),
+  (ac,o,t,v)=>nz(ac,t,0.32,'highpass',7000,0,envG(ac,o,t,0.002,v*0.2,0.3)),
+  (ac,o,t,v)=>{const os=osc(ac,'sine',190,envG(ac,o,t,0.002,v*0.8,0.3),t,0.32);os.frequency.setValueAtTime(190,t);os.frequency.exponentialRampToValueAtTime(85,t+0.25)},
+  (ac,o,t,v)=>nz(ac,t,1.6,'highpass',5000,0,envG(ac,o,t,0.002,v*0.22,1.5))];
+function playInst(ac,o,inst,t,m,len,v){
+  const f=mtof(m),L=Math.max(0.12,len);
+  if(inst==='piano'){const g=ac.createGain();g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(v*0.3,t+0.004);g.gain.exponentialRampToValueAtTime(v*0.11,t+0.35);
+    g.gain.setValueAtTime(v*0.11,t+Math.max(0.35,L));g.gain.exponentialRampToValueAtTime(0.0001,t+Math.max(0.35,L)+0.3);g.connect(o);
+    for(const[ty,mul,a]of[['triangle',1,1],['sine',2,0.35],['sine',3,0.12]]){const gg=ac.createGain();gg.gain.value=a;gg.connect(g);osc(ac,ty,f*mul,gg,t,Math.max(0.35,L)+0.35)}}
+  else if(inst==='bass'){const fl=ac.createBiquadFilter(),g=ac.createGain();fl.type='lowpass';fl.Q.value=4;fl.frequency.setValueAtTime(1100,t);fl.frequency.exponentialRampToValueAtTime(220,t+Math.min(0.4,L));
+    g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(v*0.4,t+0.006);g.gain.setValueAtTime(v*0.32,t+L-0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+L+0.06);fl.connect(g).connect(o);osc(ac,'sawtooth',f,fl,t,L+0.08)}
+  else{const fl=ac.createBiquadFilter(),g=ac.createGain();fl.type='lowpass';fl.frequency.value=2800;fl.Q.value=2;
+    g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(v*0.13,t+0.01);g.gain.setValueAtTime(v*0.11,t+L-0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+L+0.1);fl.connect(g).connect(o);
+    for(const d of[-8,8]){const os=osc(ac,'sawtooth',f,fl,t,L+0.12);os.detune.value=d}osc(ac,'square',f/2,(()=>{const q=ac.createGain();q.gain.value=0.25;q.connect(fl);return q})(),t,L+0.12)}
+}
+function mkShaper(ac){const w=ac.createWaveShaper(),n=1024,c=new Float32Array(n);for(let i=0;i<n;i++){const x=i/(n-1)*2-1;c[i]=Math.tanh(x*1.3)/Math.tanh(1.3)}w.curve=c;return w}
+function stIndex(song){const total=song.bars*16,by=Array.from({length:total},()=>[]);
+  for(const[r,s]of song.drums)if(s<total)by[s].push(['drums',r]);
+  for(const k of['piano','bass','lead'])for(const[m,s,len]of song[k])if(s<total)by[s].push([k,m,len]);return by}
+function stStep(by,song,ac,o,s,t,sd){const v=song.vol;for(const e of by[s]||[]){if(e[0]==='drums')DRUM[e[1]](ac,o,t,v.drums);else playInst(ac,o,e[0],t,e[1],e[2]*sd,v[e[0]])}}
+// ---------- запис пісні у WAV (точно в сітку, без затримок компресора) ----------
+async function stRender(song){
+  const sr=44100,sd=60/song.bpm/4,total=song.bars*16,dur=SONG_OFF+total*sd+2.5,oc=new OfflineAudioContext(2,Math.ceil(dur*sr),sr);
+  const bus=oc.createGain();bus.gain.value=0.75;bus.connect(mkShaper(oc)).connect(oc.destination);const by=stIndex(song);
+  const sched=b=>{for(let s=b*16;s<Math.min(total,b*16+16);s++)stStep(by,song,oc,bus,s,SONG_OFF+s*sd,sd)};
+  sched(0);for(let b=1;b<song.bars;b++)oc.suspend(Math.floor((SONG_OFF+b*16*sd-0.2)*sr/128)*128/sr).then(()=>{sched(b);oc.resume()});
+  return encodeWav(await oc.startRendering())}
+// ---------- стрілки прямо з нот пісні (без аналізу — ідеально в такт) ----------
+function songFeat(song){
+  const P=60/song.bpm,sd=P/4,total=song.bars*16,O=SONG_OFF,dur=O+total*sd+2.5;
+  const beats=[];for(let b=0;b<=song.bars*4;b++)beats.push(O+b*P);
+  const L=new Float32Array(total),M=new Float32Array(total),H=new Float32Array(total),dens=new Float32Array(total),held=new Float32Array(total);
+  const DW=[[1,0,0],[0,1,0],[0,0.9,0],[0,0,0.35],[0,0,0.5],[0.3,0.6,0],[0,0.3,0.6]];
+  for(const[r,s]of song.drums)if(s<total){L[s]+=DW[r][0];M[s]+=DW[r][1];H[s]+=DW[r][2];dens[s]+=1}
+  const IW={piano:0.7,bass:0.5,lead:0.9};
+  for(const k of['piano','bass','lead']){const seen=new Set();for(const[m,s,len]of song[k]){if(s>=total)continue;
+    if(!seen.has(s)){seen.add(s);if(k==='bass')L[s]=Math.max(L[s],0.45);M[s]=Math.max(M[s],IW[k])}
+    for(let q=s;q<Math.min(total,s+len);q++)held[q]=Math.max(held[q],1)}}
+  // гучність: щільність звуків навколо (±1 такт), нормована під пісню
+  const act=new Float32Array(total);for(let s=0;s<total;s++)act[s]=dens[s]+held[s]*1.5+(song.piano.length&&held[s]?0:0);
+  const lS=movAvg(act,16);let mx=0;for(const v of lS)mx=Math.max(mx,v);const loudS=lS.map(v=>mx?clamp(v/mx,0,1):0);
+  const slots=[];for(let b=0;b<song.bars*4;b++)for(let k=0;k<4;k++){const s=b*4+k,str=L[s]+M[s]+H[s];slots.push({t:O+s*sd,k,bi:b,s:str,L:L[s],M:M[s],H:H[s],loud:loudS[s],n:Math.min(1.6,str)})}
+  // мелодія для довгих нот: синт, а якщо його нема — верхня нота піаніно
+  const src=song.lead.length?song.lead:song.piano,top=new Map();for(const[m,s,len]of src)if(!top.has(s)||top.get(s)[0]<m)top.set(s,[m,s,len]);
+  const mel=[...top.values()].sort((a,b)=>a[1]-b[1]).map(([m,s,len])=>({t:O+s*sd,e:O+(s+len)*sd,pc:m%12}));
+  const at=(arr,t)=>t<O?0:arr[clamp(Math.floor((t-O)/sd),0,total-1)];
+  const loud20=new Float32Array(Math.ceil(dur*20)+1).map((_,i)=>i/20<O+total*sd?at(loudS,i/20):0);
+  const kick50=new Float32Array(Math.ceil(dur*50)+1);for(let s=0;s<total;s++)if(L[s]>0.4){const t0=O+s*sd;for(let i=Math.floor(t0*50);i<Math.min(kick50.length,t0*50+15);i++)kick50[i]=Math.max(kick50[i],Math.exp(-(i/50-t0)/0.08))}
+  const mid50=new Float32Array(Math.ceil(dur*50)+1).map((_,i)=>i/50<O+total*sd&&i/50>=O?(at(held,i/50)?1:0.15):0);
+  const drops=[],bl=b=>{let s=0,n=0;for(let q=b*4;q<Math.min(total,(b+8)*4);q++){s+=loudS[q];n++}return n?s/n:0},bb=b=>{let s=0,n=0;for(let q=Math.max(0,(b-8)*4);q<b*4;q++){s+=loudS[q];n++}return n?s/n:0};
+  for(let b=8;b<song.bars*4-8;b+=4){const aft=bl(b),bef=bb(b);if(aft>0.6&&aft-bef>0.2&&!drops.some(d=>Math.abs(d.b-b)<32)){let e=b+16;while(e<song.bars*4-4&&bl(e)>aft-0.28&&e<b+48)e+=4;drops.push({b,t:O+b*P,end:O+Math.min(e,song.bars*4)*P})}}
+  return{dur,bpm:song.bpm,P,beats,tempos:[song.bpm],down0:0,ph16:0,drops,slots,mel,loud20,kick50,mid50,fp:'song-'+song.id}}
+
+// ---------- готові заготовки ----------
+const DPAT={
+  'Хаус':{0:'x...x...x...x...',2:'....x.......x...',3:'..x...x...x...x.',4:'..............x.'},
+  'Хіп-хоп':{0:'x......x..x.....',1:'....x.......x...',3:'x.x.x.x.x.x.x.x.'},
+  'Драм-н-бейс':{0:'x.........x.....',1:'....x.......x...',3:'x.xxx.x.x.xxx.x.'},
+  'Трап':{0:'x.....x...x.....',2:'........x.......',3:'xxxxxxxxxxxxxxxx'},
+  'Рок':{0:'x.......x.x.....',1:'....x.......x...',3:'x.x.x.x.x.x.x.x.'}};
+const CHORDS={Am:[57,60,64],F:[57,60,65],C:[55,60,64],G:[55,59,62],Dm:[57,62,65],Bb:[58,62,65],Em:[55,59,64],E:[56,59,64]};
+const PROGS={'Am–F–C–G':['Am','F','C','G'],'C–G–Am–F':['C','G','Am','F'],'Dm–B♭–F–C':['Dm','Bb','F','C'],'Am–Em–F–E':['Am','Em','F','E']};
+const ROOT={Am:33,F:29,C:36,G:31,Dm:38,Bb:34,Em:40,E:40};
+function stChordsOf(song){ // акорд у кожному такті — з піаніно (найнижча нота), інакше Am–F–C–G
+  return Array.from({length:song.bars},(_,b)=>{const ns=song.piano.filter(n=>n[1]>=b*16&&n[1]<b*16+16);if(!ns.length)return ROOT[['Am','F','C','G'][b%4]];const lo=Math.min(...ns.map(n=>n[0]));let r=lo%12+24;while(r<28)r+=12;return r})}
+function stPreset(name){
+  const s=ST.song,B=s.bars;stHist();
+  if(ST.tab==='drums'){s.drums=[];if(name!=='Очистити'){const p=DPAT[name];for(let b=0;b<B;b++){for(const r in p)for(let q=0;q<16;q++)if(p[r][q]==='x')s.drums.push([+r,b*16+q]);if(b%8===0)s.drums.push([6,b*16])}}}
+  else if(ST.tab==='piano'){s.piano=[];if(name==='Арпеджіо'){for(let b=0;b<B;b++){const c=CHORDS[['Am','F','C','G'][b%4]];for(let q=0;q<8;q++)s.piano.push([c[q%3]+(q>=3&&q<6?12:0),b*16+q*2,2])}}
+    else if(PROGS[name]){const p=PROGS[name];for(let b=0;b<B;b++)for(const m of CHORDS[p[b%4]])s.piano.push([m,b*16,16])}}
+  else if(ST.tab==='bass'){s.bass=[];if(name!=='Очистити'){const roots=stChordsOf(s);for(let b=0;b<B;b++){const r=roots[b];
+    if(name==='Бас довгий')s.bass.push([r,b*16,16]);else if(name==='Бас вісімками')for(let q=0;q<8;q++)s.bass.push([r+(q===7?12:0),b*16+q*2,2]);
+    else{for(const[q,l]of[[0,3],[3,3],[6,2],[8,4],[12,2],[14,2]])s.bass.push([r+(q===12?7:0),b*16+q,l])}}}}
+  else if(ST.tab==='lead'){s.lead=[];if(name!=='Очистити'){const R=rng(Date.now()),scale=[57,60,62,64,67,69,72,74,76,79,81];let i=5;
+    const rh=[[4,4,8],[2,2,4,8],[8,8],[4,2,2,8],[6,2,8],[4,4,4,4]];
+    for(let b=0;b<B;b++){if(b%8===7&&R()<0.5)continue;let q=0;for(const l of rh[Math.floor(R()*rh.length)]){i=clamp(i+Math.round((R()-0.5)*4),0,scale.length-1);const m=scale[i]+(scale[i]<60?12:0);if(m<=84)s.lead.push([m,b*16+q,l]);q+=l}}}}
+  stChanged()}
+const PRESETS={drums:['Хаус','Хіп-хоп','Драм-н-бейс','Трап','Рок','Очистити'],piano:[...Object.keys(PROGS),'Арпеджіо','Очистити'],bass:['Бас по акордах','Бас вісімками','Бас довгий','Очистити'],lead:['Мелодія навмання','Очистити']};
+
+// ---------- інтерфейс студії ----------
+function openStudio(song){
+  ST.on=true;ST.song=song||ST.song||newSong();ST.hist=[];ST.dirty=false;ST.sx=0;ST.playFrom=0;
+  $('#stOv').hidden=false;stopMenuBg();stRenderBars();stChanged(true);stList();requestAnimationFrame(stLoop)}
+function stRenderBars(){const s=ST.song;$('#stName').value=s.name;$('#stBpm').value=s.bpm;$('#stBars').value=s.bars;
+  $('#stTabs').innerHTML=Object.keys(INST).map(k=>`<button data-tab="${k}" class="${k===ST.tab?'on':''}">${INST[k].name} <small>${k==='drums'?s.drums.length:s[k].length}</small></button>`).join('')+
+    `<span class="mut" style="margin-left:8px">Гучність</span><input type="range" id="stVol" min="0" max="1" step="0.05" value="${s.vol[ST.tab]}" style="width:110px">`;
+  $('#stPresets').innerHTML='<span class="mut">Готове:</span>'+PRESETS[ST.tab].map(p=>`<button data-p="${esc(p)}">${esc(p)}</button>`).join('');
+  document.querySelectorAll('#stTabs [data-tab]').forEach(b=>b.onclick=()=>{ST.tab=b.dataset.tab;stRenderBars()});
+  $('#stVol').oninput=e=>{s.vol[ST.tab]=+e.target.value;ST.dirty=true};
+  document.querySelectorAll('#stPresets [data-p]').forEach(b=>b.onclick=()=>stPreset(b.dataset.p));
+  $('#stPlay').textContent=ST.playing?'⏹ Стоп':'▶ Грати'}
+function stHist(){ST.hist.push(JSON.stringify(ST.song));if(ST.hist.length>60)ST.hist.shift()}
+let stTimer=0;
+function stChanged(now){ST.dirty=!now;ST.by=stIndex(ST.song);document.querySelectorAll('#stTabs [data-tab] small').forEach(el=>{const k=el.parentNode.dataset.tab;el.textContent=k==='drums'?ST.song.drums.length:ST.song[k].length});
+  clearTimeout(stTimer);stTimer=setTimeout(()=>{try{ST.chart=buildChart(songFeat(ST.song),S.diff,S.events/100);const n=ST.chart.notes.filter(x=>x.type===0);
+    $('#stInfo').textContent=n.length+' стрілок · '+n.filter(x=>x.len>0).length+' довгих · '+fmtTime(ST.song.bars*16*15/ST.song.bpm)}catch(e){console.error(e)}},now?0:250)}
+function stPlay(on){
+  if(ST.timer){clearInterval(ST.timer);ST.timer=0}if(ST.bus){try{ST.bus.disconnect()}catch(e){}ST.bus=null}
+  ST.playing=on;$('#stPlay').textContent=on?'⏹ Стоп':'▶ Грати';if(!on)return;
+  const ac=getAC();ac.resume();ST.bus=ac.createGain();ST.bus.gain.value=0.75;ST.bus.connect(mkShaper(ac)).connect(ac.destination);
+  const sd=60/ST.song.bpm/4;let total=ST.song.bars*16;ST.next=clamp(Math.floor(ST.playFrom),0,total-1);ST.t0=ac.currentTime+0.08-ST.next*sd;ST.sd=sd;
+  ST.timer=setInterval(()=>{total=ST.song.bars*16;const lim=ac.currentTime+0.15;
+    while(ST.t0+ST.next*sd<lim){if(ST.next>=total){ST.t0+=total*sd;ST.next=0;continue}stStep(ST.by,ST.song,ac,ST.bus,ST.next,ST.t0+ST.next*sd,sd);ST.next++}},25)}
+function stPos(){if(!ST.playing)return ST.playFrom;const ts=outTs(),out=ts.contextTime+(performance.now()-ts.performanceTime)/1000,total=ST.song.bars*16;return(((out-ST.t0)/ST.sd)%total+total)%total}
+function stGeo(){const cv=$('#stCv'),W=cv.clientWidth,H=cv.clientHeight,LW=Math.min(92,W*0.2),H0=86,inst=INST[ST.tab];
+  const rows=ST.tab==='drums'?inst.rows.length:inst.hi-inst.lo+1,rh=clamp((H-H0)/rows,10,40),cw=ST.zoom;return{cv,W,H,LW,H0,rows,rh,cw}}
+const stX=(g,step)=>g.LW+step*g.cw-ST.sx;
+function stLoop(){
+  if(!ST.on)return;requestAnimationFrame(stLoop);
+  const g=stGeo(),cv=g.cv,dpr=Math.min(2,devicePixelRatio||1);if(cv.width!==Math.round(g.W*dpr)||cv.height!==Math.round(g.H*dpr)){cv.width=Math.round(g.W*dpr);cv.height=Math.round(g.H*dpr)}
+  const c=cv.getContext('2d'),s=ST.song,total=s.bars*16,inst=INST[ST.tab];c.setTransform(dpr,0,0,dpr,0,0);c.fillStyle='#0c0a1d';c.fillRect(0,0,g.W,g.H);
+  const maxSx=Math.max(0,total*g.cw-(g.W-g.LW)+40);ST.sx=clamp(ST.sx,0,maxSx);$('#stScroll').max=Math.round(maxSx);$('#stScroll').value=Math.round(ST.sx);
+  const pos=stPos();if(ST.playing&&ST.follow!==false){const px=stX(g,pos);if(px>g.W-60||px<g.LW)ST.sx=clamp(pos*g.cw-(g.W-g.LW)*0.15,0,maxSx)}
+  const s0=Math.max(0,Math.floor(ST.sx/g.cw)),s1=Math.min(total,Math.ceil((ST.sx+g.W)/g.cw));
+  // рядки
+  for(let r=0;r<g.rows;r++){const y=g.H0+r*g.rh,m=inst.hi-r,black=ST.tab!=='drums'&&[1,3,6,8,10].includes(m%12);c.fillStyle=black?'#100d26':r%2?'#16122e':'#191435';c.fillRect(g.LW,y,g.W,g.rh)}
+  // сітка
+  for(let q=s0;q<=s1;q++){const x=stX(g,q);c.fillStyle=q%16===0?'rgba(255,210,63,.5)':q%4===0?'rgba(255,255,255,.18)':'rgba(255,255,255,.05)';c.fillRect(x,g.H0-18,1,g.H);
+    if(q%16===0&&q<total)drawText(c,String(q/16+1),x+4,g.H0-9,11,'#ffd23f',{f:'JetBrains Mono, monospace',w:700,a:'left',stroke:false})}
+  // ноти
+  if(ST.tab==='drums'){for(const[r,q]of s.drums){if(q<s0-1||q>s1)continue;c.fillStyle=DROW_COL[r];const x=stX(g,q),y=g.H0+r*g.rh;c.beginPath();c.roundRect?c.roundRect(x+2,y+2,g.cw-4,g.rh-4,4):c.rect(x+2,y+2,g.cw-4,g.rh-4);c.fill()}}
+  else for(const[m,q,len]of s[ST.tab]){if(q+len<s0||q>s1||m<inst.lo||m>inst.hi)continue;const x=stX(g,q),y=g.H0+(inst.hi-m)*g.rh;c.fillStyle=INST_COL[ST.tab];c.globalAlpha=0.9;
+    c.beginPath();c.roundRect?c.roundRect(x+1,y+1,len*g.cw-2,g.rh-2,4):c.rect(x+1,y+1,len*g.cw-2,g.rh-2);c.fill();c.globalAlpha=1;c.fillStyle='rgba(255,255,255,.6)';c.fillRect(x+1,y+1,3,g.rh-2)}
+  // інші інструменти — тінню, щоб бачити, що вже звучить
+  if(ST.tab!=='drums')for(const k of['piano','bass','lead']){if(k===ST.tab)continue;for(const[m,q,len]of s[k]){if(q+len<s0||q>s1||m<inst.lo||m>inst.hi)continue;c.strokeStyle=hexA(INST_COL[k],0.35);c.strokeRect(stX(g,q)+1.5,g.H0+(inst.hi-m)*g.rh+1.5,len*g.cw-3,g.rh-3)}}
+  // стрілки, які вийдуть у грі (оновлюються самі)
+  c.fillStyle='#0b0920';c.fillRect(g.LW,0,g.W,g.H0-20);const lh=(g.H0-24)/4;
+  if(ST.chart){const sd=60/s.bpm/4;if(!ST.spr||ST.sprK!==S.skin){ST.sprK=S.skin;ST.spr={note:[0,1,2,3].map(l=>makeSprite(Math.round(lh*dpr*0.9),l,'note')),death:[0,1,2,3].map(l=>makeSprite(Math.round(lh*dpr*0.9),l,'death'))}}
+    for(const n of ST.chart.notes){const q=(n.t-SONG_OFF)/sd;if(q+n.len/sd<s0-1||q>s1+1)continue;const x=stX(g,q),y=2+n.lane*lh+lh/2;
+      if(n.len>0){c.fillStyle=hexA(LANE_COL[n.lane],0.6);c.fillRect(x,y-lh*0.15,n.len/sd*g.cw,lh*0.3)}const sp=ST.spr[n.type===1?'death':'note'][n.lane],w=sp.width/dpr;c.drawImage(sp,x-w/2,y-w/2,w,w)}}
+  // підписи рядків
+  c.fillStyle='#16122e';c.fillRect(0,0,g.LW,g.H);
+  drawText(c,'Стрілки →',8,(g.H0-20)/2,11,'#9a93c7',{f:'Onest, sans-serif',w:700,a:'left',stroke:false});
+  for(let r=0;r<g.rows;r++){const y=g.H0+r*g.rh+g.rh/2;let lb;if(ST.tab==='drums')lb=inst.rows[r];else{const m=inst.hi-r;lb=NOTE_N[m%12]+(Math.floor(m/12)-1);if(g.rh<13&&m%12!==0&&m%12!==9)continue}
+    drawText(c,lb,8,y,Math.min(12,g.rh*0.7),ST.tab==='drums'?DROW_COL[r]:(lb.startsWith('C')&&!lb.includes('#')?'#ffd23f':'#9a93c7'),{f:'Onest, sans-serif',w:700,a:'left',stroke:false})}
+  // лінія відтворення
+  const px=stX(g,pos);if(px>=g.LW){c.fillStyle='#ffd23f';c.fillRect(px-1,0,2,g.H)}
+}
+function stHit(e){const g=stGeo(),r=g.cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;return{g,x,y,step:Math.floor((x-g.LW+ST.sx)/g.cw),row:Math.floor((y-g.H0)/g.rh)}}
+function stDown(e){
+  const h=stHit(e),s=ST.song,total=s.bars*16;if(h.x<h.g.LW)return;e.preventDefault();
+  if(h.y<h.g.H0){ST.playFrom=clamp(Math.round((h.x-h.g.LW+ST.sx)/h.g.cw),0,total-1);if(ST.playing){stPlay(false);stPlay(true)}return}
+  if(h.step<0||h.step>=total||h.row<0||h.row>=h.g.rows)return;
+  const ac=getAC();ac.resume();
+  if(ST.tab==='drums'){const i=s.drums.findIndex(([r,q])=>r===h.row&&q===h.step);stHist();if(i>=0)s.drums.splice(i,1);else{s.drums.push([h.row,h.step]);DRUM[h.row](ac,ac.destination,ac.currentTime,s.vol.drums*0.8)}stChanged();return}
+  const m=INST[ST.tab].hi-h.row,arr=s[ST.tab],i=arr.findIndex(([mm,q,len])=>mm===m&&h.step>=q&&h.step<q+len);stHist();
+  if(i>=0){arr.splice(i,1);stChanged();return}
+  const n=[m,h.step,1];arr.push(n);ST.drag={n,start:h.step};playInst(ac,ac.destination,ST.tab,ac.currentTime,m,0.25,s.vol[ST.tab]);stChanged();
+  $('#stCv').setPointerCapture&&$('#stCv').setPointerCapture(e.pointerId)}
+function stMove(e){if(!ST.drag)return;const h=stHit(e),n=ST.drag.n;n[2]=clamp(h.step-n[1]+1,1,ST.song.bars*16-n[1])}
+function stUp(){if(ST.drag){ST.drag=null;stChanged()}}
+async function stList(){const all=((await dbAll('songs'))||[]).sort((a,b)=>b.t-a.t);$('#stList').innerHTML='<option value="">📂 Мої пісні…</option>'+all.map(s=>`<option value="${esc(s.id)}">${esc(s.name)} · ${s.bpm} BPM · ${s.bars} т.</option>`).join('')}
+async function stSave(quiet){const s=ST.song;s.name=($('#stName').value||'Мій трек').slice(0,30);s.t=Date.now();await dbPut('songs',JSON.parse(JSON.stringify(s)));ST.dirty=false;stList();if(!quiet)toast('Пісню збережено: '+s.name,'ok')}
+async function stGo(){
+  const s=ST.song;if(!s.drums.length&&!s.piano.length&&!s.bass.length&&!s.lead.length){toast('Пісня порожня — постав хоч кілька нот або візьми готове','err');return}
+  if(NET.role==='guest'){await stSave(true);toast('Збережено. У кімнаті трек вибирає хост — зіграти свою пісню можна в соло або як хост');return}
+  stPlay(false);await stSave(true);const b=$('#stGo');b.disabled=true;b.textContent='Записую…';
+  try{const blob=await stRender(s),ab=await blob.arrayBuffer(),fp=fingerprint(ab),feat=songFeat(s);feat.fp=fp;
+    await dbPut('feat',{k:fp,v:ANA_VER,feat}); // стрілки вже готові — аналіз не потрібен
+    ST.on=false;$('#stOv').hidden=true;startMenuBg();
+    await loadTrackFile(new File([ab],(s.name||'Мій трек').replace(/[\\/:*?"<>|]/g,'')+'.wav',{type:'audio/wav'}));
+    toast(NET.role==='host'?'Твоя пісня в кімнаті — трек і стрілки йдуть усім гравцям':'Твоя пісня готова — тисни «Грати соло»!','ok')}
+  catch(e){console.error(e);toast('Не вдалося записати пісню','err')}
+  b.disabled=false;b.textContent='Готово — грати!'}
+function stExit(){if(ST.dirty&&!confirm('Є незбережені зміни. Вийти без збереження?'))return;stPlay(false);ST.on=false;$('#stOv').hidden=true;startMenuBg()}
+function stKey(e){
+  if(e.target&&(e.target.tagName==='INPUT'&&e.target.type!=='range'||e.target.tagName==='SELECT'))return;
+  if(e.code==='Space'){e.preventDefault();if(!e.repeat)stPlay(!ST.playing)}
+  else if(e.code==='KeyZ'&&(e.ctrlKey||e.metaKey)){e.preventDefault();stUndo()}
+  else if(e.code==='Escape'){e.preventDefault();stExit()}}
+function stUndo(){const h=ST.hist.pop();if(!h){toast('Нема що скасовувати');return}ST.song=JSON.parse(h);stRenderBars();stChanged()}
+
 // ====================== МЕНЮ: фон, UI ======================
 const MB={on:false,arr:[],spr:null};
 function startMenuBg(){
@@ -1947,6 +2167,7 @@ async function checkUpdate(){
   // клавіатура
   document.addEventListener('keydown',e=>{
     if(ED.on){edKey(e);return}
+    if(ST.on){stKey(e);return}
     if(KEYWAIT){e.preventDefault();if(e.code!=='Escape'){const{l,i}=KEYWAIT;for(let a=0;a<4;a++)for(let b=0;b<2;b++)if(S.keys[a][b]===e.code)S.keys[a][b]=S.keys[l][i];S.keys[l][i]=e.code;saveS()}KEYWAIT=null;renderKeys();return}
     if(CAL.on){if(e.code==='Escape'){calClose(false);return}if(!e.repeat&&!CAL.done){e.preventDefault();calTap(e)}return}
     if(!G.on)return;
@@ -1989,6 +2210,17 @@ async function checkUpdate(){
     document.querySelectorAll('#edBar [data-snap]').forEach(b=>b.onclick=()=>{ED.snap=+b.dataset.snap;edSync()});
     $('#edTypeN').onclick=()=>{ED.type=0;edSync()};$('#edTypeD').onclick=()=>{ED.type=1;edSync()};
     $('#edSave').onclick=edSave;$('#edReset').onclick=edReset;$('#edExit').onclick=edExit}
+  // студія
+  $('#btnStudio').onclick=()=>openStudio();
+  {const sc=$('#stCv');sc.addEventListener('pointerdown',stDown);sc.addEventListener('pointermove',stMove);sc.addEventListener('pointerup',stUp);sc.addEventListener('pointercancel',stUp);
+    sc.addEventListener('wheel',e=>{e.preventDefault();if(e.ctrlKey){ST.zoom=clamp(ST.zoom*(e.deltaY<0?1.15:1/1.15),8,60);return}ST.sx+=(Math.abs(e.deltaX)>Math.abs(e.deltaY)?e.deltaX:e.deltaY);ST.follow=false;setTimeout(()=>ST.follow=true,1500)},{passive:false});
+    $('#stScroll').oninput=e=>{ST.sx=+e.target.value;ST.follow=false;setTimeout(()=>ST.follow=true,1500)};
+    $('#stPlay').onclick=()=>stPlay(!ST.playing);$('#stUndo').onclick=stUndo;$('#stSave').onclick=()=>stSave();$('#stGo').onclick=stGo;$('#stExit').onclick=stExit;
+    $('#stNew').onclick=()=>{if(ST.dirty&&!confirm('Почати нову? Незбережені зміни пропадуть.'))return;stPlay(false);ST.song=newSong();ST.hist=[];stRenderBars();stChanged(true)};
+    $('#stList').onchange=async e=>{const id=e.target.value;if(!id)return;if(ST.dirty&&!confirm('Відкрити іншу пісню? Незбережені зміни пропадуть.')){e.target.value='';return}const s=await dbGet('songs',id);e.target.value='';if(s){stPlay(false);ST.song=s;ST.hist=[];stRenderBars();stChanged(true);toast('Відкрито: '+s.name)}};
+    $('#stName').oninput=e=>{ST.song.name=e.target.value;ST.dirty=true};
+    $('#stBpm').onchange=e=>{stHist();ST.song.bpm=clamp(Math.round(+e.target.value||120),60,200);e.target.value=ST.song.bpm;if(ST.playing){stPlay(false);stPlay(true)}stChanged()};
+    $('#stBars').onchange=e=>{stHist();const nb=clamp(Math.round(+e.target.value||16),2,64),s=ST.song;s.bars=nb;e.target.value=nb;const tot=nb*16;s.drums=s.drums.filter(n=>n[1]<tot);for(const k of['piano','bass','lead'])s[k]=s[k].filter(n=>n[1]<tot).map(n=>[n[0],n[1],Math.min(n[2],tot-n[1])]);if(ST.playing){stPlay(false);stPlay(true)}stChanged()}}
   renderRecent();
 })();
 </script>
