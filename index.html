@@ -307,7 +307,7 @@ body{touch-action:manipulation;overscroll-behavior-x:none}
 <script>
 'use strict';
 // ====================== БАЗА ======================
-const BUILD_ID='20261030185712';
+const BUILD_ID='2026-10-30T16:58:14Z';
 const GAME_VER='1.2';
 const BUILD=(()=>{if(!BUILD_ID.startsWith('__'))return BUILD_ID;const d=new Date(document.lastModified);return isNaN(d)?'0':d.toISOString()})();
 const LANE_COL=['#c24b99','#00e5f2','#2ff06a','#f9393f'];
@@ -2413,7 +2413,8 @@ async function checkUpdate(){
 
 // ====================== СТАРТ СТОРІНКИ ======================
 (function init(){
-  const d=new Date(BUILD);$('#buildInfo').textContent=isNaN(d)?'Оновлено: —':'Оновлено: '+d.toLocaleDateString('uk-UA')+' о '+d.toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'});
+  // BUILD може бути ISO-датою або 20261030131500 (UTC)
+  const cm=/^(\d{4})(\d\d)(\d\d)(\d\d)(\d\d)(\d\d)$/.exec(BUILD),d=cm?new Date(Date.UTC(+cm[1],cm[2]-1,+cm[3],+cm[4],+cm[5],+cm[6])):new Date(BUILD);$('#buildInfo').textContent=isNaN(d)?'Оновлено: —':'Оновлено: '+d.toLocaleDateString('uk-UA')+' о '+d.toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'});
   syncUI();startMenuBg();
   // трек
   const fi=$('#fileIn'),dz=$('#dropZone');
