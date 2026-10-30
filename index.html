@@ -307,7 +307,7 @@ body{touch-action:manipulation;overscroll-behavior-x:none}
 <script>
 'use strict';
 // ====================== БАЗА ======================
-const BUILD_ID='20261030182927';
+const BUILD_ID='20261030183121';
 const GAME_VER='1.2';
 const BUILD=(()=>{if(!BUILD_ID.startsWith('__'))return BUILD_ID;const d=new Date(document.lastModified);return isNaN(d)?'0':d.toISOString()})();
 const LANE_COL=['#c24b99','#00e5f2','#2ff06a','#f9393f'];
@@ -338,8 +338,9 @@ function hexA(hex,a){const n=parseInt(hex.slice(1),16);return`rgba(${n>>16},${n>
 
 // ====================== НАЛАШТУВАННЯ ======================
 const DEF_KEYS=[['ArrowLeft','KeyD'],['ArrowDown','KeyF'],['ArrowUp','KeyJ'],['ArrowRight','KeyK']];
-const S={name:'',diff:1,events:50,smin:0.9,smax:2.7,shake:100,side:1,scroll:0,keys:DEF_KEYS.map(k=>k.slice()),offset:0,nofail:false,sing:false,calibrated:false,sens:50,color:'#00b8c4',hitsound:false,hitvol:60,vibro:true,skin:0,chars:true};
+const S={name:'',diff:1,events:50,smin:0.9,smax:2.7,shake:100,side:1,scroll:0,keys:DEF_KEYS.map(k=>k.slice()),offset:0,nofail:false,sing:false,calibrated:false,sens:100,sensV:1,color:'#00b8c4',hitsound:false,hitvol:60,vibro:true,skin:0,chars:true};
 try{const o=JSON.parse(localStorage.getItem('ritmbatl')||'{}');for(const k in S)if(o[k]!==undefined&&typeof o[k]===typeof S[k])S[k]=o[k];
+  if(!o.sensV){if(S.sens===50)S.sens=100;S.sensV=1} // старий стандарт 50 → новий 100
   if(!Array.isArray(S.keys)||S.keys.length!==4||S.keys.some(k=>!Array.isArray(k)||k.length!==2))S.keys=DEF_KEYS.map(k=>k.slice());}catch(e){}
 function saveS(){try{localStorage.setItem('ritmbatl',JSON.stringify(S))}catch(e){}}
 function keyLane(code){for(let l=0;l<4;l++)if(S.keys[l][0]===code||S.keys[l][1]===code)return l;return -1}
@@ -862,7 +863,7 @@ const DIFFS=[
 
 const WOFF=[0.45,0.7,0.85,0.95]; // вага нот поза сіткою (живе виконання)
 function buildChart(F,diff,ev,sens){
-  if(sens==null)sens=S.sens!=null?S.sens:50;
+  if(sens==null)sens=S.sens!=null?S.sens:100;
   const D=DIFFS[diff],R=rng(hashStr((F.fp||'x')+'|'+diff+'|'+Math.round(ev*100)+'|'+sens)),P=F.P,beats=F.beats,NB=beats.length;
   const evOn=ev>0.001,sensMul=sens<=50?lerp(1.6,1,sens/50):lerp(1,0.5,(sens-50)/50);
   const inDrop=t=>F.drops.some(d=>t>=d.t&&t<d.end);
@@ -2369,7 +2370,7 @@ function applyLock(){
   const lock=NET.role==='guest';const cfg=lock&&NET.cfg?NET.cfg:S,fileLock=lock&&!amPicker();
   document.querySelectorAll('#segDiff button').forEach(b=>{b.disabled=lock;b.classList.toggle('on',+b.dataset.v===cfg.diff)});
   for(const id of['#rgEv','#rgSens'])$(id).disabled=lock;
-  {const v=cfg.sens!=null?+cfg.sens:50;$('#rgSens').value=v;$('#lbSens').textContent=(v<25?'тільки головне':v<45?'менше нот':v<=60?'звичайно':v<80?'більше нот':'кожен звук')+' · '+v+(lock?' (хост)':'')}
+  {const v=cfg.sens!=null?+cfg.sens:100;$('#rgSens').value=v;$('#lbSens').textContent=(v<25?'тільки головне':v<45?'менше нот':v<=60?'звичайно':v<80?'більше нот':'кожен звук')+' · '+v+(lock?' (хост)':'')}
   $('#rgEv').value=cfg.events;
   $('#lbEv').textContent=evLabel(+cfg.events)+(lock?' (хост)':'');
   $('#lockNote1').hidden=!lock;
