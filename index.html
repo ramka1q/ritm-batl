@@ -222,7 +222,7 @@ table.res tr.me td{background:rgba(255,210,63,.07)}
 <script>
 'use strict';
 // ====================== БАЗА ======================
-const BUILD_ID='2026-10-30T08:41:53Z';
+const BUILD_ID='2026-10-30T08:43:09Z';
 const GAME_VER='1.0';
 const BUILD=(()=>{if(!BUILD_ID.startsWith('__'))return BUILD_ID;const d=new Date(document.lastModified);return isNaN(d)?'0':d.toISOString()})();
 const LANE_COL=['#c24b99','#00e5f2','#2ff06a','#f9393f'];
@@ -1593,7 +1593,7 @@ function onSetChange(rebuild){saveS();applyLock();if(NET.role==='host')netBroadc
 async function checkUpdate(){
   if($('#menu').hidden||G.on)return;
   try{const r=await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)return;const tx=await r.text();
-    const m=tx.match(/const BUILD_ID='2026-10-30T08:41:53Z']+)'/);let newer=false;
+    const m=tx.match(/^const BUILD_ID='([^']+)'/m);let newer=false;
     if(m&&!m[1].startsWith('__'))newer=m[1]!==BUILD_ID;
     else if(BUILD_ID.startsWith('__')){const lm=r.headers.get('last-modified');if(lm){const a=new Date(lm).getTime(),b=new Date(document.lastModified).getTime();newer=a>b+2000}}
     if(newer)$('#upd').hidden=false}catch(e){}}
