@@ -174,7 +174,7 @@ body{touch-action:manipulation;overscroll-behavior-x:none}
       </section>
       <section class="panel" id="pPractice" hidden>
         <h2>Тренування <small>повільніше · з будь-якого місця · по колу</small></h2>
-        <div class="field"><div class="t">Швидкість пісні <b id="lbRate"></b></div><input type="range" id="rgRate" min="0.5" max="1" step="0.05" value="0.75"></div>
+        <div class="field"><div class="t">Швидкість пісні <b id="lbRate"></b></div><input type="range" id="rgRate" min="0.5" max="1" step="0.05" value="1"></div>
         <div class="field"><div class="t">Почати з <b id="lbFrom"></b></div><input type="range" id="rgFrom" min="0" max="100" step="0.25" value="0"></div>
         <label class="chk"><input type="checkbox" id="chLoop"><span>Ганяти шматок по колу <small>після кінця шматка — знову з початку</small></span></label>
         <div class="field" id="loopBox" hidden><div class="t">До <b id="lbTo"></b></div><input type="range" id="rgTo" min="0" max="100" step="0.25" value="100"></div>
@@ -307,7 +307,7 @@ body{touch-action:manipulation;overscroll-behavior-x:none}
 <script>
 'use strict';
 // ====================== БАЗА ======================
-const BUILD_ID='20261030182804';
+const BUILD_ID='20261030182927';
 const GAME_VER='1.2';
 const BUILD=(()=>{if(!BUILD_ID.startsWith('__'))return BUILD_ID;const d=new Date(document.lastModified);return isNaN(d)?'0':d.toISOString()})();
 const LANE_COL=['#c24b99','#00e5f2','#2ff06a','#f9393f'];
