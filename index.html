@@ -138,6 +138,7 @@ table.res tr.me td{background:rgba(255,210,63,.07)}
 .ach small{font-size:10px;opacity:.8}.ach.on{color:var(--text);border-color:var(--acc);background:rgba(255,210,63,.08)}
 .achnew{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:6px 0 10px}.achnew .ach{font-size:14px;font-weight:700}
 .rpb{padding:4px 8px}
+.picksel{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px}.picksel select{background:#0b0920;border:1px solid var(--acc);color:var(--text);border-radius:8px;padding:6px 8px;font:13px Onest;max-width:100%}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -191,6 +192,7 @@ table.res tr.me td{background:rgba(255,210,63,.07)}
           <div class="st" id="stChart"></div>
           <button id="btnHave" hidden style="width:100%;margin-top:8px">У тебе вже є цей трек? Вибери його</button>
           <input type="file" id="haveIn" hidden accept="audio/*,video/*,.mkv,.flac,.opus,.aiff,.aif,.mov,.3gp">
+          <div class="st" id="stPicker"></div>
           <div id="plist"></div>
           <div class="row">
             <button id="btnReady">Готовий</button>
@@ -301,7 +303,7 @@ table.res tr.me td{background:rgba(255,210,63,.07)}
 <script>
 'use strict';
 // ====================== БАЗА ======================
-const BUILD_ID='2026-10-30T09:57:31Z';
+const BUILD_ID='2026-10-30T10:05:38Z';
 const GAME_VER='1.1';
 const BUILD=(()=>{if(!BUILD_ID.startsWith('__'))return BUILD_ID;const d=new Date(document.lastModified);return isNaN(d)?'0':d.toISOString()})();
 const LANE_COL=['#c24b99','#00e5f2','#2ff06a','#f9393f'];
@@ -372,7 +374,7 @@ async function setupVideo(blob,name,mime){
 // Гравець (не онлайн-гість) вибрав файл
 async function loadTrackFile(file){
   if(T.busy){toast('Зачекай, ще слухаю попередній трек…');return}
-  if(NET.role==='guest'){toast('У кімнаті трек вибирає хост');return}
+  if(NET.role==='guest'){if(amPicker())return guestUploadTrack(file);toast('Зараз пісню кидає '+(NET.pickerName||'хост'));return}
   if(!file)return;
   if(file.size>MAX_FILE){toast('Файл завеликий — максимум 400 МБ','err');return}
   if(!(file.type.startsWith('audio/')||file.type.startsWith('video/')||AUDIO_EXT.test(file.name)))toast('Незнайомий формат — спробую все одно');
@@ -448,7 +450,7 @@ async function cacheTrack(fp,name,mime,bytes){
 async function cachedTrack(fp){const m=await dbGet('meta',fp);if(!m)return null;const t=await dbGet('tracks',fp);if(!t||!t.bytes)return null;dbPut('meta',Object.assign(m,{t:Date.now()}));return{meta:m,bytes:t.bytes}}
 async function renderRecent(){
   const el=$('#recent');if(!el)return;const all=((await dbAll('meta'))||[]).sort((a,b)=>b.t-a.t);
-  if(!all.length||NET.role==='guest'){el.innerHTML='';return}
+  if(!all.length||(NET.role==='guest'&&!amPicker())){el.innerHTML='';return}
   el.innerHTML='<div class="mut" style="margin:12px 0 6px">Недавні треки (збережені в браузері, грають одразу):</div>'+all.map(m=>{const r=getRecord(m.fp,S.diff);
     return`<div class="rc"><button class="rcp" data-fp="${esc(m.fp)}">▶ ${esc(m.name)}<small>${fmtMB(m.size)}${r?' · 🏆 '+r.score+' '+r.rank:''}</small></button><button class="rcx" data-fp="${esc(m.fp)}" title="Прибрати з кешу">×</button></div>`}).join('');
   el.querySelectorAll('.rcp').forEach(b=>b.onclick=async()=>{const c=await cachedTrack(b.dataset.fp);if(!c){toast('Трек зник з кешу','err');renderRecent();return}
@@ -1591,12 +1593,12 @@ function showRoom(){
   $('#roomLink').value=location.origin+location.pathname+'#join-'+NET.code;
   $('#btnStartAll').hidden=NET.role!=='host';$('#btnReady').hidden=NET.role!=='guest'||NET.spec;$('#btnHave').hidden=true;
   $('#stTrack').textContent='';$('#stChart').textContent='';$('#verWarn').hidden=true;
-  applyLock();renderPlist();
+  applyLock();renderPlist();renderPicker();
 }
 function leaveRoom(){
   try{NET.peer&&NET.peer.destroy()}catch(e){}
   clearInterval(NET.g.iv);clearInterval(NET.boardIv);for(const p of NET.conns.values())clearTimeout(p.chTimer);
-  Object.assign(NET,{role:null,peer:null,code:'',conns:new Map(),host:null,hostRaw:null,myId:'',cfg:null,lobby:[],results:new Map(),best:{},live:{},leader:null,g:{},resList:[]});
+  Object.assign(NET,{picker:'host',pickMode:'fixed',pickerName:'',role:null,peer:null,code:'',conns:new Map(),host:null,hostRaw:null,myId:'',cfg:null,lobby:[],results:new Map(),best:{},live:{},leader:null,g:{},resList:[]});
   $('#onIdle').hidden=false;$('#onRoom').hidden=true;
   if(location.hash)history.replaceState(null,'',location.pathname+location.search);
   applyLock();syncUI();
@@ -1605,7 +1607,7 @@ function leaveRoom(){
 function createRoom(){
   if(!needPeer())return;if(NET.role)leaveRoom();
   const code=String(10000+Math.floor(Math.random()*90000));
-  NET.role='host';NET.code=code;NET.myId='host';showRoom();setConn('Створюю кімнату…');
+  NET.role='host';NET.code=code;NET.myId='host';NET.picker='host';NET.pickMode='fixed';showRoom();setConn('Створюю кімнату…');
   const peer=new Peer('ritmbatl-'+code,PEER_OPTS);NET.peer=peer;
   peer.on('open',()=>{setConn('Кімната відкрита. Скинь друзям код або посилання.');hostCheckReady()});
   peer.on('connection',hostOnConn);
@@ -1614,7 +1616,8 @@ function createRoom(){
 }
 function hostOnConn(c){
   const pid=c.peer;
-  if(c.label==='track'){NET.pendRaw=NET.pendRaw||{};NET.pendRaw[pid]=c;const p=NET.conns.get(pid);if(p)p.raw=c;c.on('error',()=>{});return}
+  if(c.label==='track'){NET.pendRaw=NET.pendRaw||{};NET.pendRaw[pid]=c;const p=NET.conns.get(pid);if(p)p.raw=c;c.on('error',()=>{});
+    c.on('data',d=>{const p=NET.conns.get(pid);if(p)hostRawData(p,d)});return}
   c.on('open',()=>{
     if(NET.conns.size>=7){try{c.send({t:'full'})}catch(e){}setTimeout(()=>c.close(),600);return}
     const p={id:pid,conn:c,raw:(NET.pendRaw||{})[pid]||null,name:'Гравець',track:0,dec:false,has:false,chart:0,chartAck:'',chTry:0,ready:false,rtt:0,sendTok:0,err:'',ver:''};
@@ -1623,6 +1626,7 @@ function hostOnConn(c){
   c.on('data',m=>{const p=NET.conns.get(pid);if(p&&m&&m.t)hostMsg(p,m)});
   c.on('close',()=>{const p=NET.conns.get(pid);if(p&&p.conn===c){clearTimeout(p.chTimer);p.sendTok++;NET.conns.delete(pid);
     // під час гри тримаємо місце 30 с — гравець може перепідключитись і грати далі
+    if(NET.picker===pid)setPicker('host');
     if(G.on&&G.mode==='online'&&NET.live[pid]){NET.live[pid].off=performance.now()+30000;toast(p.name+' відключився — чекаю повернення…','err')}else{delete NET.live[pid];toast(p.name+' вийшов')}
     renderPlist();hostLobby()}});
   c.on('error',e=>console.warn('conn',e));
@@ -1630,7 +1634,7 @@ function hostOnConn(c){
 function hostMsg(p,m){
   switch(m.t){
     case 'hello':{p.name=String(m.name||'Гравець').slice(0,16);p.ver=m.ver;p.build=m.build;p.spec=!!m.spec;const has=m.has||{};
-      p.conn.send({t:'welcome',ver:GAME_VER,build:BUILD,cfg:hostCfg(),you:p.id,hostName:S.name||'Хост'});
+      p.conn.send({t:'welcome',ver:GAME_VER,build:BUILD,cfg:hostCfg(),you:p.id,hostName:S.name||'Хост',picker:NET.picker||'host',pickerName:pickerName(NET.picker||'host'),pickMode:NET.pickMode||'fixed'});
       if(m.ver!==GAME_VER||m.build!==BUILD){p.verErr=(m.build||'')<BUILD?'стара версія гри — хай оновить сторінку':'новіша версія гри — онови свою сторінку (Ctrl+F5)';
         const w=$('#verWarn');w.hidden=false;w.textContent='Увага: у гравця '+p.name+' '+p.verErr+'.'}
       toast(p.name+(m.rejoin?' повернувся ✓':p.spec?' зайшов дивитись':' зайшов у кімнату'),'ok');
@@ -1646,6 +1650,9 @@ function hostMsg(p,m){
     case 'haveTrack':if(m.id===T.id){p.sendTok++;p.has=true;p.track=100;renderPlist()}break;
     case 'chAck':if(m.id===T.chartId){p.chartAck=m.id;p.chart=100;p.err='';clearTimeout(p.chTimer);renderPlist()}break;
     case 'chNack':if(m.id===T.chartId)hostSendChart(p,false);break;
+    case 'upInfo':hostUpStart(p,m);break;
+    case 'upChunk':if(p.up)hostUpData(p,b64dec(m.d),m.off);break;
+    case 'upEnd':hostUpEnd(p);break;
     default:hostCommon(p.id,p.name,m);
   }
 }
@@ -1720,7 +1727,56 @@ function hostStartAll(){
   startGame({mode:'online',chart:T.chart,buf:T.buf,prepPerf:at,smin:S.smin,smax:S.smax,video:true});
 }
 function hostAgain(){netBroadcast({t:'again'});backToLobby()}
-function backToLobby(){if(G.on)exitGame();NET.showingRes=false;clearInterval(NET.boardIv);if(NET.g)NET.g.ready=false;for(const p of NET.conns.values())p.ready=false;renderPlist();renderGuestStatus();hostLobby()}
+function backToLobby(){if(G.on)exitGame();rotatePicker();NET.showingRes=false;clearInterval(NET.boardIv);if(NET.g)NET.g.ready=false;for(const p of NET.conns.values())p.ready=false;renderPlist();renderGuestStatus();hostLobby()}
+
+// ---------- ХТО КИДАЄ НАСТУПНУ ПІСНЮ ----------
+// хост лишається «сервером» кімнати, але вибрати трек може будь-хто: гравець відправляє файл хосту, а хост роздає всім
+function pickerName(id){if(!id||id==='host')return NET.role==='host'?(S.name||'Хост'):(NET.hostName||'Хост');const p=NET.conns.get(id);if(p)return p.name;if(id===NET.myId)return S.name||'Я';return NET.pickerName||'гравець'}
+function amPicker(){return NET.role==='host'?NET.picker==='host'||!NET.picker:NET.role==='guest'&&NET.picker===NET.myId}
+function setPicker(id,mode){if(NET.role!=='host')return;if(id!=='host'&&!NET.conns.has(id))id='host';NET.picker=id;if(mode)NET.pickMode=mode;
+  const name=pickerName(id);netBroadcast({t:'picker',id,name,mode:NET.pickMode});renderPicker();applyLock();renderRecent();
+  if(id!=='host')toast('🎧 Наступну пісню кидає '+name)}
+function pickerOrder(){return['host',...[...NET.conns.values()].filter(p=>!p.spec).map(p=>p.id)]}
+function rotatePicker(){if(NET.role==='host'&&NET.pickMode==='rotate'){const o=pickerOrder();setPicker(o[(o.indexOf(NET.picker||'host')+1)%o.length])}}
+function pickerSelectHTML(id){const cur=NET.pickMode==='rotate'?'rotate':(NET.picker||'host');
+  return`<label class="picksel">🎧 Наступну пісню кидає <select id="${id}">${[['host',(S.name||'Хост')+' (я)'],...[...NET.conns.values()].filter(p=>!p.spec).map(p=>[p.id,p.name]),['rotate','🔄 По черзі — кожен раунд інший']].map(([v,n])=>`<option value="${esc(v)}" ${v===cur?'selected':''}>${esc(n)}</option>`).join('')}</select></label>`}
+function bindPickerSelect(id){const s=$('#'+id);if(!s)return;s.onchange=()=>{if(s.value==='rotate'){NET.pickMode='rotate';setPicker(NET.picker||'host','rotate');toast('По черзі: після кожної пісні кидає наступний')}else setPicker(s.value,'fixed')}}
+function renderPicker(){
+  const el=$('#stPicker');if(!el)return;
+  if(NET.role==='host'){el.innerHTML=pickerSelectHTML('pickSel')+(NET.picker&&NET.picker!=='host'?`<div class="mut">Чекаємо, поки ${esc(pickerName(NET.picker))} вибере трек. Ти теж можеш кинути свій — тоді гратимете його.</div>`:'');bindPickerSelect('pickSel');return}
+  if(NET.role==='guest')el.innerHTML=amPicker()?'<b style="color:var(--acc)">🎧 Наступну пісню кидаєш ТИ</b> — вибери файл, демо, недавній трек або свою пісню зі студії':
+    `🎧 Наступну пісню кидає <b>${esc(NET.pickerName||pickerName(NET.picker))}</b>${NET.pickMode==='rotate'?' · по черзі':''}`}
+async function guestUploadTrack(file){
+  const g=NET.g;if(g.up&&!g.up.done){toast('Трек ще відправляється');return}
+  if(!NET.host||!NET.host.open){toast('Немає зв\'язку з хостом','err');return}
+  if(file.size>MAX_FILE){toast('Файл завеликий — максимум 400 МБ','err');return}
+  const ab=await file.arrayBuffer(),fp=fingerprint(ab),mime=file.type||'';
+  await cacheTrack(fp,file.name,mime,ab); // коли хост роздасть трек, у тебе він уже буде — назад качати не треба
+  g.up={name:file.name,size:ab.byteLength,sent:0,t0:performance.now()};renderGuestStatus();
+  NET.host.send({t:'upInfo',name:file.name,size:ab.byteLength,mime,fp});
+  const r=NET.hostRaw,raw=!!(r&&r.open),CH=raw?65536:49152,conn=raw?r:NET.host;
+  if(raw)r.send(JSON.stringify({t:'upBegin',size:ab.byteLength}));
+  for(let off=0;off<ab.byteLength;off+=CH){
+    if(NET.role!=='guest'||g.up.cancel)return;
+    while((conn.dataChannel&&conn.dataChannel.bufferedAmount>(1<<20))||(conn.bufferSize||0)>3){await sleep(15);if(NET.role!=='guest'||g.up.cancel)return}
+    if(raw)r.send(ab.slice(off,off+CH));else NET.host.send({t:'upChunk',off,d:b64enc(new Uint8Array(ab,off,Math.min(CH,ab.byteLength-off)))});
+    g.up.sent=Math.min(ab.byteLength,off+CH);if(performance.now()-(g.lastR||0)>250){g.lastR=performance.now();renderGuestStatus()}}
+  if(raw)r.send(JSON.stringify({t:'upEnd'}));else NET.host.send({t:'upEnd'});
+  g.up.done=true;renderGuestStatus();toast('Трек відправлено хосту — зараз він роздасть його всім','ok')}
+function hostUpStart(p,m){
+  const err=G.on?'Зачекай, поки закінчиться пісня':T.busy?'Хост ще відкриває інший трек':NET.picker!==p.id?'Зараз пісню кидає '+pickerName(NET.picker):m.size>MAX_FILE?'Файл завеликий':'';
+  if(err){p.conn.send({t:'upErr',m:err});return}
+  p.up={name:String(m.name||'трек').slice(0,120),size:m.size,mime:m.mime||'',buf:new Uint8Array(m.size),got:0,t0:performance.now()};renderPlist();
+  netBroadcast({t:'upP',name:p.name,p:0},p.id)}
+function hostUpData(p,u,off){const up=p.up;if(!up)return;try{up.buf.set(u,off==null?up.got:off)}catch(e){return}up.got=(off==null?up.got:off)+u.length;
+  if(performance.now()-(up.lastR||0)>300){up.lastR=performance.now();renderPlist();netBroadcast({t:'upP',name:p.name,p:up.got/up.size},p.id)}}
+async function hostUpEnd(p){const up=p.up;if(!up)return;p.up=null;renderPlist();
+  if(up.got!==up.size){p.conn.send({t:'upErr',m:'Трек дійшов не повністю — спробуй ще раз'});return}
+  toast('🎧 '+p.name+' кинув трек: '+up.name,'ok');
+  await loadTrackFile(new File([up.buf],up.name,{type:up.mime}));T.from=p.name;renderCard()}
+function hostRawData(p,d){
+  if(typeof d==='string'){let m;try{m=JSON.parse(d)}catch(e){return}if(m.t==='upBegin'&&p.up){p.up.got=0}else if(m.t==='upEnd')hostUpEnd(p);return}
+  const u=d instanceof ArrayBuffer?new Uint8Array(d):ArrayBuffer.isView(d)?new Uint8Array(d.buffer,d.byteOffset,d.byteLength):null;if(u)hostUpData(p,u,null)}
 
 // ---------- ГРАВЕЦЬ ----------
 function joinRoom(code,spec){
@@ -1775,9 +1831,13 @@ function guestRaw(d){
 function guestMsg(m){
   const g=NET.g,now=performance.now();
   switch(m.t){
-    case 'welcome':NET.cfg=m.cfg;NET.hostName=m.hostName;applyLock();if(m.ver!==GAME_VER||m.build!==BUILD)verWarn(m.build);break;
+    case 'welcome':NET.cfg=m.cfg;NET.hostName=m.hostName;NET.picker=m.picker;NET.pickerName=m.pickerName;NET.pickMode=m.pickMode;applyLock();renderPicker();renderRecent();if(m.ver!==GAME_VER||m.build!==BUILD)verWarn(m.build);break;
     case 'full':setConn('Кімната заповнена — там уже 8 гравців',true);break;
     case 'cfg':NET.cfg=m.cfg;applyLock();break;
+    case 'picker':{const was=amPicker();NET.picker=m.id;NET.pickerName=m.name;NET.pickMode=m.mode;applyLock();renderPicker();renderRecent();
+      if(amPicker()&&!was)toast('🎧 Твоя черга — кидай наступну пісню!','ok');break}
+    case 'upErr':if(g.up)g.up.cancel=true;g.up=null;toast(m.m,'err');renderGuestStatus();break;
+    case 'upP':g.upOther={name:m.name,p:m.p,t:now};renderGuestStatus();break;
     case 'lobby':NET.lobby=m.l||[];renderPlist();break;
     case 'opening':g.stage='opening';g.anaP=null;renderGuestStatus();break;
     case 'anaErr':g.err='Хост не зміг відкрити трек: '+m.m;renderGuestStatus();break;
@@ -1843,6 +1903,9 @@ function renderGuestStatus(){
   else if(g.tDone&&!T.buf){t=g.err||'Трек не відкрився';te=true}
   else{const el=g.tT0?(now-g.tT0)/1000:0,sp=el>0.3?g.tGot/el:0,left=sp>0?(g.tInfo.size-g.tGot)/sp:0;
     t='Отримую трек · '+Math.floor(g.tGot/g.tInfo.size*100)+'% · '+fmtMB(g.tGot)+' з '+fmtMB(g.tInfo.size)+(sp?' · '+fmtMB(sp)+'/с · ще '+Math.ceil(left)+' с':'')}
+  // ти кидаєш трек / хтось інший кидає
+  if(g.up&&!g.up.done){const el=(now-g.up.t0)/1000,sp=el>0.3?g.up.sent/el:0;t='🎧 Відправляю трек хосту · '+Math.floor(g.up.sent/g.up.size*100)+'% · '+fmtMB(g.up.sent)+' з '+fmtMB(g.up.size)+(sp?' · ще '+Math.ceil((g.up.size-g.up.sent)/sp)+' с':'')}
+  else if(g.upOther&&now-g.upOther.t<4000&&!(g.tInfo&&g.tInfoT>g.upOther.t))t='🎧 '+g.upOther.name+' кидає трек… '+Math.floor(g.upOther.p*100)+'%';
   if(g.err&&!te){t+='\n';}
   if(g.chartOk)c='Стрілки готові ✓';
   else if(g.chParts){const el=(now-g.chT0)/1000,p=g.chGot/g.chParts.length,left=p>0?el/p*(1-p):0;c='Отримую стрілки… '+Math.floor(p*100)+'% · ще ~'+Math.ceil(left)+' с'}
@@ -1860,9 +1923,10 @@ function renderPlist(){
       const tr=!T.bytes?'—':p.has?'є свій ✓':(p.track>=100?(p.dec?'100% ✓':'100%, відкриває…'):p.track+'%');
       rows.push(`<div class="pl"><b>${esc(p.name)}${p.spec?' 👁':''}</b><span class="rd ${p.ready||p.spec?'okc':'mut'}">${p.spec?'глядач':p.ready?'готовий':'не натиснув «Готовий»'}</span>
         <div class="s">Трек ${tr} · Стрілки ${!T.chartBytes?'—':chOk?'✓':p.chart+'%'+(p.chTry>1?' (спроба '+p.chTry+')':'')} · пінг ${p.rtt?Math.round(p.rtt)+' мс':'…'}
+        ${NET.picker===p.id?`<div style="color:var(--acc)">🎧 ${p.up?'кидає трек… '+Math.floor(p.up.got/p.up.size*100)+'%':'його черга кидати пісню'}</div>`:''}
         ${p.err?`<div class="e">${esc(p.err)}</div>`:''}${p.gErr?`<div class="e">${esc(p.gErr)}</div>`:''}${p.verErr?`<div class="e">${esc(p.verErr)}</div>`:''}</div></div>`)}
     if(!NET.conns.size)rows.push('<div class="hint">Поки нікого. Скинь посилання — хто відкриє, одразу зайде.</div>');
-    el.innerHTML=rows.join('');hostCheckReady();
+    el.innerHTML=rows.join('');hostCheckReady();renderPicker();
   }else{
     el.innerHTML=(NET.lobby||[]).map(p=>`<div class="pl"><b>${esc(p.name)}${p.host?' (хост)':''}${p.spec?' 👁':''}</b><span class="rd ${p.ready||p.spec?'okc':'mut'}">${p.spec?'глядач':p.ready?'готовий':'чекає'}</span></div>`).join('');
   }
@@ -1888,9 +1952,10 @@ function showOnlineResults(){
   </table></div>
   ${playing.length?`<div class="mut" style="margin-top:8px">Ще грають: ${playing.map(esc).join(', ')}</div>`:''}
   <div class="legend" style="margin-top:8px"><span style="background:var(--bad)"></span>промахи<span style="background:#b35cff"></span>смертельні</div>
+  ${NET.role==='host'?`<div class="row" style="margin-top:14px;justify-content:center">${pickerSelectHTML('pickSel2')}</div>`:NET.role==='guest'&&NET.pickMode?`<div class="mut" style="margin-top:12px">🎧 Наступну пісню кидає <b>${esc(amPicker()?'ти':(NET.pickerName||'хост'))}</b></div>`:''}
   <div class="row" style="margin-top:16px">${NET.role==='host'?'<button id="oAgain" class="acc">Ще раз</button>':'<span class="mut">Чекаємо, поки хост натисне «Ще раз»…</span>'}<button id="oMenu">В меню</button></div>`;
   $('#resOv').hidden=false;
-  if(NET.role==='host')$('#oAgain').onclick=hostAgain;
+  if(NET.role==='host'){$('#oAgain').onclick=hostAgain;bindPickerSelect('pickSel2')}
   box.querySelectorAll('.rpb').forEach(b=>b.onclick=()=>{const r=l.find(x=>x.id===b.dataset.id),rp=b.dataset.id===NET.myId?NET.myReplay:r&&r.rp;if(rp)watchReplay(Object.assign({},rp,{name:r?r.name:rp.name}),'online')});
   // перемога в кімнаті — коли всі дограли
   if(myF&&!playing.length&&l.length>=2&&l[0].id===NET.myId&&!NET.winCounted){NET.winCounted=true;PROF.wins++;saveProf();achUnlock('win')}
@@ -2149,6 +2214,9 @@ async function stList(){const all=((await dbAll('songs'))||[]).sort((a,b)=>b.t-a
 async function stSave(quiet){const s=ST.song;s.name=($('#stName').value||'Мій трек').slice(0,30);s.t=Date.now();await dbPut('songs',JSON.parse(JSON.stringify(s)));ST.dirty=false;stList();if(!quiet)toast('Пісню збережено: '+s.name,'ok')}
 async function stGo(){
   const s=ST.song;if(!s.drums.length&&!s.piano.length&&!s.bass.length&&!s.lead.length){toast('Пісня порожня — постав хоч кілька нот або візьми готове','err');return}
+  if(NET.role==='guest'&&amPicker()){stPlay(false);await stSave(true);const b=$('#stGo');b.disabled=true;b.textContent='Записую…';
+    try{const blob=await stRender(s);ST.on=false;$('#stOv').hidden=true;startMenuBg();await guestUploadTrack(new File([blob],(s.name||'Мій трек').replace(/[\/:*?"<>|]/g,'')+'.wav',{type:'audio/wav'}));PROF.songs++;saveProf()}catch(e){toast('Не вдалося записати пісню','err')}
+    b.disabled=false;b.textContent='Готово — грати!';return}
   if(NET.role==='guest'){await stSave(true);toast('Збережено. У кімнаті трек вибирає хост — зіграти свою пісню можна в соло або як хост');return}
   stPlay(false);await stSave(true);const b=$('#stGo');b.disabled=true;b.textContent='Записую…';
   try{const blob=await stRender(s),ab=await blob.arrayBuffer(),fp=fingerprint(ab),feat=songFeat(s);feat.fp=fp;
@@ -2186,13 +2254,13 @@ function stopMenuBg(){MB.on=false;const cv=$('#bgMenu');cv.getContext('2d').clea
 
 function evLabel(v){return(v===0?'вимкнено':v<=30?'трохи':v<=60?'нормально':v<=85?'багато':'хаос')+(v?' · '+v+'%':'')}
 function applyLock(){
-  const lock=NET.role==='guest';const cfg=lock&&NET.cfg?NET.cfg:S;
+  const lock=NET.role==='guest';const cfg=lock&&NET.cfg?NET.cfg:S,fileLock=lock&&!amPicker();
   document.querySelectorAll('#segDiff button').forEach(b=>{b.disabled=lock;b.classList.toggle('on',+b.dataset.v===cfg.diff)});
   for(const id of['#rgEv','#rgSmin','#rgSmax'])$(id).disabled=lock;
   $('#rgEv').value=cfg.events;$('#rgSmin').value=cfg.smin;$('#rgSmax').value=cfg.smax;
   $('#lbEv').textContent=evLabel(+cfg.events)+(lock?' (хост)':'');$('#lbSmin').textContent=(+cfg.smin).toFixed(1)+'×'+(lock?' (хост)':'');$('#lbSmax').textContent=(+cfg.smax).toFixed(1)+'×'+(lock?' (хост)':'');
   $('#lockNote1').hidden=!lock;
-  $('#btnFile').disabled=$('#btnDemo').disabled=lock;$('#dropZone').style.opacity=lock?0.45:1;
+  $('#btnFile').disabled=$('#btnDemo').disabled=fileLock;$('#dropZone').style.opacity=fileLock?0.45:1;
 }
 function syncUI(){
   $('#inName').value=S.name;applyLock();
@@ -2227,12 +2295,12 @@ async function checkUpdate(){
   syncUI();startMenuBg();
   // трек
   const fi=$('#fileIn'),dz=$('#dropZone');
-  $('#btnFile').onclick=()=>fi.click();dz.onclick=()=>{if(NET.role!=='guest')fi.click()};
+  $('#btnFile').onclick=()=>fi.click();dz.onclick=()=>{if(NET.role!=='guest'||amPicker())fi.click()};
   fi.onchange=()=>{if(fi.files[0])loadTrackFile(fi.files[0]);fi.value=''};
   ['dragenter','dragover'].forEach(ev=>document.addEventListener(ev,e=>{e.preventDefault();if(!$('#menu').hidden)dz.classList.add('over')}));
   ['dragleave','drop'].forEach(ev=>document.addEventListener(ev,e=>{e.preventDefault();if(ev==='dragleave'&&e.relatedTarget)return;dz.classList.remove('over')}));
   document.addEventListener('drop',e=>{const f=e.dataTransfer&&e.dataTransfer.files[0];if(f&&!$('#menu').hidden)loadTrackFile(f)});
-  $('#btnDemo').onclick=async()=>{if(T.busy||NET.role==='guest')return;const b=$('#btnDemo');b.disabled=true;
+  $('#btnDemo').onclick=async()=>{if(T.busy||(NET.role==='guest'&&!amPicker()))return;const b=$('#btnDemo');b.disabled=true;
     try{setAna('Синтезую демо-біт 128 BPM…',0);const blob=await makeDemo();await loadTrackFile(new File([blob],'demo-bit-128bpm.wav',{type:'audio/wav'}))}catch(e){console.error(e);toast('Не вдалося зробити демо','err')}b.disabled=false};
   // налаштування
   $('#inName').oninput=e=>{S.name=e.target.value.trim().slice(0,16);saveS();if(NET.role==='host')hostLobby()};
