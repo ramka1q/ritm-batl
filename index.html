@@ -222,8 +222,6 @@ body{touch-action:manipulation;overscroll-behavior-x:none}
         <div class="field"><div class="t">Чутливість стрілок <b id="lbSens"></b></div><input type="range" id="rgSens" min="0" max="100" step="5">
           <div class="hint">Менше — тільки головні удари. Більше — стрілка майже на кожен звук.</div></div>
         <div class="field"><div class="t">Події під музику <b id="lbEv"></b></div><input type="range" id="rgEv" min="0" max="100" step="5"></div>
-        <div class="field"><div class="t">Найповільніше — тихі місця <b id="lbSmin"></b></div><input type="range" id="rgSmin" min="0.5" max="3" step="0.1"></div>
-        <div class="field"><div class="t">Найшвидше — гучні місця <b id="lbSmax"></b></div><input type="range" id="rgSmax" min="1" max="5" step="0.1"></div>
         <div class="field"><div class="t">Тряска екрану <b id="lbShake"></b></div><input type="range" id="rgShake" min="0" max="150" step="5"></div>
         <div class="field"><div class="t">Де стоять стрілки</div>
           <div class="seg" id="segSide"><button data-v="0">Зліва</button><button data-v="1">По центру</button><button data-v="2">Справа</button></div></div>
@@ -309,10 +307,12 @@ body{touch-action:manipulation;overscroll-behavior-x:none}
 <script>
 'use strict';
 // ====================== БАЗА ======================
-const BUILD_ID='2026-10-30T13:10:08Z';
+const BUILD_ID='20261030182804';
 const GAME_VER='1.2';
 const BUILD=(()=>{if(!BUILD_ID.startsWith('__'))return BUILD_ID;const d=new Date(document.lastModified);return isNaN(d)?'0':d.toISOString()})();
 const LANE_COL=['#c24b99','#00e5f2','#2ff06a','#f9393f'];
+// ті самі кольори без насиченості (яскравість збережена, щоб смуги розрізнялись)
+const GREY_COL=LANE_COL.map(h=>{const n=parseInt(h.slice(1),16),y=0.3*(n>>16)+0.59*(n>>8&255)+0.11*(n&255),v=Math.round(y+(200-y)*0.35).toString(16).padStart(2,'0');return'#'+v+v+v});
 const LANE_ARR=['←','↓','↑','→'];
 const EV_NAMES={shuffle:'Перемішка',flip:'Переворот',waves:'Хвилі',invis:'Невидимки',rot:'Обертання',spin:'Крутилки',spread:'Розліт',pulse:'Пульс',drop:'Дроп'};
 const DIFF_NAMES=['Легко','Норм','Важко','Жесть'];
@@ -332,6 +332,7 @@ function b64enc(u8){let s='';for(let i=0;i<u8.length;i+=0x8000)s+=String.fromCha
 function b64dec(str){const s=atob(str);const u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u}
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function toast(msg,type){const d=document.createElement('div');d.className='toast '+(type||'');d.textContent=msg;$('#toasts').appendChild(d);setTimeout(()=>d.classList.add('out'),3400);setTimeout(()=>d.remove(),3900)}
+function hexBlend(a,b,t){const p=parseInt(a.slice(1),16),q=parseInt(b.slice(1),16),f=s=>Math.round(lerp(p>>s&255,q>>s&255,t));return`rgb(${f(16)},${f(8)},${f(0)})`}
 function hexMix(hex,to,t){const n=parseInt(hex.slice(1),16);let r=n>>16,g=n>>8&255,b=n&255;const m=to==='w'?255:0;r=Math.round(lerp(r,m,t));g=Math.round(lerp(g,m,t));b=Math.round(lerp(b,m,t));return`rgb(${r},${g},${b})`}
 function hexA(hex,a){const n=parseInt(hex.slice(1),16);return`rgba(${n>>16},${n>>8&255},${n&255},${a})`}
 
@@ -1009,8 +1010,8 @@ function shapePath(c){const k=S.skin|0;c.beginPath();
 function glyph(c,col){if(S.skin!==1&&S.skin!==2)return;c.save();c.scale(0.5,0.5);arrowPath(c);c.fillStyle=col;c.fill();c.restore()}
 function makeSprite(A,lane,kind){
   const sz=Math.ceil(A*1.7),cv=document.createElement('canvas');cv.width=cv.height=sz;const c=cv.getContext('2d');
-  c.translate(sz/2,sz/2);c.rotate(ROT[lane]);c.scale(A/100,A/100);c.lineJoin='round';const col=LANE_COL[lane];
-  if(kind==='note'){const g=c.createLinearGradient(0,-43,0,40);g.addColorStop(0,hexMix(col,'w',0.5));g.addColorStop(0.45,col);g.addColorStop(1,hexMix(col,'b',0.4));
+  c.translate(sz/2,sz/2);c.rotate(ROT[lane]);c.scale(A/100,A/100);c.lineJoin='round';const col=kind==='noteG'?GREY_COL[lane]:LANE_COL[lane];
+  if(kind==='note'||kind==='noteG'){const g=c.createLinearGradient(0,-43,0,40);g.addColorStop(0,hexMix(col,'w',0.5));g.addColorStop(0.45,col);g.addColorStop(1,hexMix(col,'b',0.4));
     shapePath(c);c.lineWidth=11;c.strokeStyle='#120c24';c.stroke();c.fillStyle=g;c.fill();
     if(S.skin===1||S.skin===2)glyph(c,'rgba(255,255,255,.88)');else{c.save();c.scale(0.74,0.74);shapePath(c);c.restore();c.lineWidth=2.5;c.strokeStyle='rgba(255,255,255,.5)';c.stroke()}}
   else if(kind==='rec'){shapePath(c);c.fillStyle='rgba(150,140,210,.16)';c.fill();c.lineWidth=6;c.strokeStyle='#8a82c2';c.stroke();glyph(c,'rgba(170,160,220,.5)')}
@@ -1022,7 +1023,7 @@ function makeSprite(A,lane,kind){
     c.rotate(-ROT[lane]);c.lineCap='round';c.lineWidth=10;c.strokeStyle='#ff2a3a';c.beginPath();c.moveTo(-15,-15);c.lineTo(15,15);c.moveTo(15,-15);c.lineTo(-15,15);c.stroke()}
   return cv}
 function ensureSprites(A){const px=Math.round(A*G.dpr),key=px+'|'+S.skin;if(G.sprKey===key)return;G.sprKey=key;G.spr={};
-  for(const k of['note','rec','recP','glow','death'])G.spr[k]=[0,1,2,3].map(l=>makeSprite(px,l,k))}
+  for(const k of['note','noteG','rec','recP','glow','death'])G.spr[k]=[0,1,2,3].map(l=>makeSprite(px,l,k))}
 function drawSpr(c,spr,x,y,s,rot,alpha){const w=spr.width/G.dpr*s;c.globalAlpha=alpha;
   if(rot){c.save();c.translate(x,y);c.rotate(rot);c.drawImage(spr,-w/2,-w/2,w,w);c.restore()}else c.drawImage(spr,x-w/2,y-w/2,w,w)}
 
@@ -1033,7 +1034,7 @@ function startGame(o){
   $('#menu').hidden=true;$('#game').hidden=false;$('#resOv').hidden=true;document.body.style.overflow='hidden';$('#pauseOv').hidden=true;
   $('#btnPause').hidden=o.mode==='online'||o.mode==='spectate';
   const ch=o.chart,rate=o.rate||1,s0=o.startAt||0;
-  G={on:true,mode:o.mode,opts:o,ch,P:60/ch.bpm,smin:o.smin,smax:o.smax,rate,s0,loopEnd:o.loopEnd||0,specGlow:{},pPose:null,oPose:null,pMiss:0,
+  G={on:true,mode:o.mode,opts:o,ch,P:60/ch.bpm,fixSpd:o.fixSpd||0,rate,s0,loopEnd:o.loopEnd||0,specGlow:{},pPose:null,oPose:null,pMiss:0,
     notes:ch.notes.map(n=>({t:n.t,lane:n.lane,len:n.len,type:n.type,j:false,hit:false})),
     ev:ch.ev.map(e=>Object.assign({},e)),
     st:{score:0,combo:0,maxCombo:0,cnt:[0,0,0,0],miss:0,death:0,holdDrop:0,accSum:0,accN:0,offs:[],missT:[],deathT:[],voice:0,failed:false},
@@ -1051,9 +1052,9 @@ function startGame(o){
   resizeGame();
   // інтеграл швидкості: позиції нот плавно прискорюються/сповільнюються
   const drops=G.ev.filter(e=>e.type==='drop');
-  const spd=t=>{let s=G.smin+(G.smax-G.smin)*sampleArr(ch.loud,20,t);for(const e of drops)if(t>=e.t0-0.5&&t<e.t1+0.5)s*=1+0.15*Math.min(1,(t-e.t0+0.5)/0.5,(e.t1+0.5-t)/0.5);return s};
-  const dt=0.01,n=Math.ceil((ch.dur+4)/dt)+2,Dd=new Float32Array(n);let acc=0;for(let i=0;i<n;i++){Dd[i]=acc;acc+=spd(i*dt)*dt}
-  G.D=Dd;G.v0=spd(0);G.vEnd=spd(ch.dur);
+  const dt=0.01,n=Math.ceil((ch.dur+4)/dt)+2,V=autoSpeed(ch,drops,dt,n,o.fixSpd);
+  const Dd=new Float32Array(n);let acc=0;for(let i=0;i<n;i++){Dd[i]=acc;acc+=V[i]*dt}
+  G.D=Dd;G.V=V;G.v0=V[0];G.vEnd=V[n-1];
   // відлік у такт пісні
   const P=G.P;let bi=ch.beats.findIndex(b=>b>=s0-0.001);if(bi<0)bi=0;const b0=ch.beats[bi]!=null?ch.beats[bi]:s0,nbeats=4*Math.ceil(2.4/(4*P)),q=nbeats/4*P;
   G.cd=[0,1,2,3,4].map(j=>b0-(4-j)*q);
@@ -1080,6 +1081,27 @@ function syncClock(){const r=G.rate||1,ts=outTs(),pn=performance.now(),raw=(ts.c
   if(!G.clockInit||G.paused||Math.abs(err)>0.04){G.cb=raw;G.cp=pn;G.clockInit=true}else{G.cb=pred+err*0.06;G.cp=pn}}
 function songAt(perf){return G.cb+(perf-G.cp)/1000*(G.rate||1)}
 function inTime(e){return songAt(evPerf(e))-S.offset/1000}
+// швидкість сама від пісні: гучність + темп + густота нот, дуже плавно (ніяких ривків)
+function autoSpeed(ch,drops,dt,n,fix){const V=new Float32Array(n);if(fix){V.fill(fix);return V}
+  const bt=ch.beats||[],nt=ch.notes.filter(x=>x.type!==1).map(x=>x.t);let bi=0,a=0,b=0;
+  for(let i=0;i<n;i++){const t=Math.min(i*dt,ch.dur);
+    while(bi<bt.length-2&&bt[bi+1]<t)bi++;
+    const per=bt.length>1?(bt[bi+1]-bt[bi])||60/ch.bpm:60/ch.bpm,bpm=60/per;
+    while(b<nt.length&&nt[b]<t+1.5)b++;while(a<b&&nt[a]<t-1.5)a++;
+    const loud=sampleArr(ch.loud,20,t),tf=clamp((bpm-85)/85,0,1),df=clamp(((b-a)/3-0.8)/4.5,0,1);
+    let v=0.85+1.85*(0.55*loud+0.2*tf+0.25*df);
+    for(const e of drops)if(t>=e.t0&&t<e.t1)v*=1.12;
+    V[i]=v}
+  // згладжування ~1.5 с (три проходи ковзного середнього ≈ гаусс)
+  const w=Math.round(0.9/dt),tmp=new Float32Array(n),pre=new Float64Array(n+1);
+  for(let k=0;k<3;k++){for(let i=0;i<n;i++)pre[i+1]=pre[i]+V[i];
+    for(let i=0;i<n;i++){const l=Math.max(0,i-w),r=Math.min(n,i+w+1);tmp[i]=(pre[r]-pre[l])/(r-l)}V.set(tmp)}
+  // обмеження прискорення: не більше 0.5× за секунду в обидва боки
+  const m=0.5*dt;for(let i=1;i<n;i++)V[i]=clamp(V[i],V[i-1]-m,V[i-1]+m);for(let i=n-2;i>=0;i--)V[i]=clamp(V[i],V[i+1]-m,V[i+1]+m);
+  return V}
+function spdAt(t){const V=G.V;if(!V)return 1.6;return V[clamp(Math.round(t/0.01),0,V.length-1)]}
+// наскільки кольорова стрілка: повільно — чорно-біла, швидко — яскрава
+function satAt(t){return G.fixSpd?1:clamp((spdAt(t)-1.05)/1.2,0,1)}
 function distAt(t){const i=t/0.01;if(i<=0)return t*G.v0;const k=Math.floor(i),D=G.D;if(k>=D.length-1)return D[D.length-1]+(t-(D.length-1)*0.01)*G.vEnd;return D[k]+(D[k+1]-D[k])*(i-k)}
 
 function gameLoop(){
@@ -1279,7 +1301,7 @@ function drawGroup(c,L,g,tv){
     // хвіст довгої ноти
     if(n.len>0&&n.type===0){const dE=(distAt(n.t+n.len)-dNow)*bp;
       if(dE>tailFrom){const x=laneX(n.lane,Math.max(0,tailFrom)),y1=g.recY+g.dir*tailFrom,y2=g.recY+g.dir*dE,tw=A*0.3;
-        const grey=n.dropped||n.missed;c.globalAlpha=grey?0.3:(g.player?0.85:0.6);c.fillStyle=grey?'#6e6890':LANE_COL[n.lane];
+        const grey=n.dropped||n.missed;c.globalAlpha=grey?0.3:(g.player?0.85:0.6);c.fillStyle=grey?'#6e6890':hexBlend(GREY_COL[n.lane],LANE_COL[n.lane],satAt(n.t));
         const top=Math.min(y1,y2),h=Math.abs(y2-y1);c.fillRect(x-tw/2,top,tw,h);
         c.beginPath();c.arc(x,y2,tw/2,0,Math.PI*2);c.fill();
         if(!grey){c.globalAlpha=0.5;c.fillStyle='#fff';c.fillRect(x-tw*0.12,top,tw*0.24,h)}}}
@@ -1288,7 +1310,10 @@ function drawGroup(c,L,g,tv){
     if(fx.invis>0){const k=clamp((Math.abs(dh)-H*0.14)/(H*0.14),0,1);alpha*=1-fx.invis*(1-k)}
     if(alpha<0.02)continue;
     const rot=fx.spin?fx.spin*(dh/(H*0.5))*Math.PI*2:0;
-    drawSpr(c,G.spr[n.type===1?'death':'note'][n.lane],laneX(n.lane,dh),g.recY+g.dir*dh,pulse,rot,alpha);
+    if(n.type===1)drawSpr(c,G.spr.death[n.lane],laneX(n.lane,dh),g.recY+g.dir*dh,pulse,rot,alpha);
+    else{const sat=satAt(n.t),x=laneX(n.lane,dh),y=g.recY+g.dir*dh;
+      if(sat<0.99)drawSpr(c,G.spr.noteG[n.lane],x,y,pulse,rot,alpha);
+      if(sat>0.01)drawSpr(c,G.spr.note[n.lane],x,y,pulse,rot,sat<0.99?alpha*sat:alpha)}
   }
   c.globalAlpha=1;
 }
@@ -1553,7 +1578,7 @@ function startTest(){
   beats.forEach((t,i)=>{const s0=Math.round(t*sr),f=i%4===0?1600:1000;for(let k=0;k<sr*0.04;k++){d[s0+k]+=Math.sin(2*Math.PI*f*k/sr)*Math.exp(-k/(sr*0.008))*0.7}});
   const notes=beats.filter(t=>t>=2).map((t,i)=>({t,lane:[0,1,2,3,2,1][i%6],len:0,type:0}));
   const chart={v:1,diff:1,events:0,bpm,dur,beats,down0:0,notes,ev:[],mel:[],loud:new Float32Array(Math.ceil(dur*20)+2).fill(0.5),kick:new Float32Array(Math.ceil(dur*50)+2)};
-  startGame({mode:'test',chart,buf,smin:1.6,smax:1.6});
+  startGame({mode:'test',chart,buf,fixSpd:1.6});
 }
 
 // ====================== ПІДБІР ЗАТРИМКИ ======================
@@ -2343,10 +2368,10 @@ function evLabel(v){return(v===0?'вимкнено':v<=30?'трохи':v<=60?'н
 function applyLock(){
   const lock=NET.role==='guest';const cfg=lock&&NET.cfg?NET.cfg:S,fileLock=lock&&!amPicker();
   document.querySelectorAll('#segDiff button').forEach(b=>{b.disabled=lock;b.classList.toggle('on',+b.dataset.v===cfg.diff)});
-  for(const id of['#rgEv','#rgSmin','#rgSmax','#rgSens'])$(id).disabled=lock;
+  for(const id of['#rgEv','#rgSens'])$(id).disabled=lock;
   {const v=cfg.sens!=null?+cfg.sens:50;$('#rgSens').value=v;$('#lbSens').textContent=(v<25?'тільки головне':v<45?'менше нот':v<=60?'звичайно':v<80?'більше нот':'кожен звук')+' · '+v+(lock?' (хост)':'')}
-  $('#rgEv').value=cfg.events;$('#rgSmin').value=cfg.smin;$('#rgSmax').value=cfg.smax;
-  $('#lbEv').textContent=evLabel(+cfg.events)+(lock?' (хост)':'');$('#lbSmin').textContent=(+cfg.smin).toFixed(1)+'×'+(lock?' (хост)':'');$('#lbSmax').textContent=(+cfg.smax).toFixed(1)+'×'+(lock?' (хост)':'');
+  $('#rgEv').value=cfg.events;
+  $('#lbEv').textContent=evLabel(+cfg.events)+(lock?' (хост)':'');
   $('#lockNote1').hidden=!lock;
   $('#btnFile').disabled=$('#btnDemo').disabled=fileLock;$('#dropZone').style.opacity=fileLock?0.45:1;
 }
@@ -2395,8 +2420,6 @@ async function checkUpdate(){
   document.querySelectorAll('#segDiff button').forEach(b=>b.onclick=()=>{S.diff=+b.dataset.v;onSetChange(true)});
   $('#rgEv').oninput=e=>{S.events=+e.target.value;onSetChange(true)};
   $('#rgSens').oninput=e=>{S.sens=+e.target.value;onSetChange(true)};
-  $('#rgSmin').oninput=e=>{S.smin=+e.target.value;if(S.smax<S.smin)S.smax=S.smin;onSetChange(false)};
-  $('#rgSmax').oninput=e=>{S.smax=+e.target.value;if(S.smin>S.smax)S.smin=S.smax;onSetChange(false)};
   $('#rgShake').oninput=e=>{S.shake=+e.target.value;saveS();syncUI()};
   $('#rgOff').oninput=e=>{S.offset=+e.target.value;saveS();$('#lbOff').textContent=(S.offset>0?'+':'')+S.offset+' мс'};
   document.querySelectorAll('#segSide button').forEach(b=>b.onclick=()=>{S.side=+b.dataset.v;saveS();syncUI()});
