@@ -131,6 +131,13 @@ table.res tr.me td{background:rgba(255,210,63,.07)}
 #stScroll{width:100%;margin:0;accent-color:var(--acc)}
 .sthelp{font-size:12px;color:var(--mut);padding:6px 10px;border-top:1px solid var(--line);background:var(--panel)}
 #stInfo{font:700 12px 'JetBrains Mono',monospace;color:var(--acc)}
+.prof{display:flex;gap:12px;align-items:flex-start}.prof .stats{grid-template-columns:repeat(2,1fr)}.prof .stat b{font-size:15px}
+.sws{display:flex;gap:8px;flex-wrap:wrap}.sw{width:30px;height:30px;border-radius:50%;padding:0;border:3px solid #0b0920}.sw.on{border-color:#fff;box-shadow:0 0 0 2px var(--acc)}
+.achs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;max-height:220px;overflow:auto}
+.ach{font-size:12px;padding:5px 9px;border-radius:10px;background:#0b0920;border:1px solid var(--line);color:var(--mut);display:flex;flex-direction:column;max-width:100%}
+.ach small{font-size:10px;opacity:.8}.ach.on{color:var(--text);border-color:var(--acc);background:rgba(255,210,63,.08)}
+.achnew{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:6px 0 10px}.achnew .ach{font-size:14px;font-weight:700}
+.rpb{padding:4px 8px}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -194,6 +201,13 @@ table.res tr.me td{background:rgba(255,210,63,.07)}
       </section>
     </div>
     <div class="col">
+      <section class="panel" id="pProf">
+        <h2>Профіль</h2>
+        <div class="prof"><canvas id="profChar" style="width:110px;height:150px"></canvas><div class="stats" id="profStats" style="flex:1;margin-top:0"></div></div>
+        <div class="field"><div class="t">Колір худі твого персонажа</div><div class="sws" id="profCols"></div></div>
+        <div class="t mut" style="display:flex;justify-content:space-between;font-size:13px;margin-top:6px">Досягнення <b id="achCount" style="color:var(--acc)"></b></div>
+        <div class="achs" id="achList"></div>
+      </section>
       <section class="panel" id="pSet">
         <h2>Налаштування</h2>
         <div class="field"><div class="t">Ім'я гравця</div><input type="text" id="inName" maxlength="16" placeholder="Як тебе звати?"></div>
@@ -287,7 +301,7 @@ table.res tr.me td{background:rgba(255,210,63,.07)}
 <script>
 'use strict';
 // ====================== БАЗА ======================
-const BUILD_ID='2026-10-30T09:30:35Z';
+const BUILD_ID='2026-10-30T09:57:31Z';
 const GAME_VER='1.1';
 const BUILD=(()=>{if(!BUILD_ID.startsWith('__'))return BUILD_ID;const d=new Date(document.lastModified);return isNaN(d)?'0':d.toISOString()})();
 const LANE_COL=['#c24b99','#00e5f2','#2ff06a','#f9393f'];
@@ -315,7 +329,7 @@ function hexA(hex,a){const n=parseInt(hex.slice(1),16);return`rgba(${n>>16},${n>
 
 // ====================== НАЛАШТУВАННЯ ======================
 const DEF_KEYS=[['ArrowLeft','KeyD'],['ArrowDown','KeyF'],['ArrowUp','KeyJ'],['ArrowRight','KeyK']];
-const S={name:'',diff:1,events:50,smin:0.9,smax:2.7,shake:100,side:1,scroll:0,keys:DEF_KEYS.map(k=>k.slice()),offset:0,nofail:false,sing:false,calibrated:false,hitsound:false,hitvol:60,vibro:true,skin:0,chars:true};
+const S={name:'',diff:1,events:50,smin:0.9,smax:2.7,shake:100,side:1,scroll:0,keys:DEF_KEYS.map(k=>k.slice()),offset:0,nofail:false,sing:false,calibrated:false,color:'#00b8c4',hitsound:false,hitvol:60,vibro:true,skin:0,chars:true};
 try{const o=JSON.parse(localStorage.getItem('ritmbatl')||'{}');for(const k in S)if(o[k]!==undefined&&typeof o[k]===typeof S[k])S[k]=o[k];
   if(!Array.isArray(S.keys)||S.keys.length!==4||S.keys.some(k=>!Array.isArray(k)||k.length!==2))S.keys=DEF_KEYS.map(k=>k.slice());}catch(e){}
 function saveS(){try{localStorage.setItem('ritmbatl',JSON.stringify(S))}catch(e){}}
@@ -367,7 +381,7 @@ async function loadTrackFile(file){
     if(NET.role==='host')netBroadcast({t:'opening'});
     setAna('Відкриваю файл…',0);
     const ab=await file.arrayBuffer();
-    T.id=Math.random().toString(36).slice(2,10);T.name=file.name;T.size=file.size;T.mime=file.type||'';T.bytes=ab;T.fp=fingerprint(ab);
+    T.studio=false;T.id=Math.random().toString(36).slice(2,10);T.name=file.name;T.size=file.size;T.mime=file.type||'';T.bytes=ab;T.fp=fingerprint(ab);
     T.chart=null;T.chartBytes=null;T.feat=null;T.buf=null;
     await setupVideo(file,file.name,file.type);
     if(NET.role==='host')hostNewTrack();
@@ -954,7 +968,10 @@ function startGame(o){
     glow:[0,0,0,0],oppGlow:[0,0,0,0],oppHold:[-9,-9,-9,-9],pos:[0,1,2,3],flip:0,fx:{waves:0,invis:0,rot:0,spin:0,spread:0,pulse:0},build:0,drop:0,
     pop:null,banners:[],parts:[],streaks:[],flash:0,redFlash:0,hitShake:0,bump:0,beatFrac:0,bIdx:-1,lastB:-2,last16:[],
     mi:0,di:0,oi:0,lastSend:0,board:[],scream:0,clockInit:false,paused:false,ended:false,video:false,c:$('#cv').getContext('2d'),fdata:new Uint8Array(128)};
-  G.sing=S.sing&&o.mode!=='test'&&o.mode!=='spectate';
+  G.sing=S.sing&&o.mode!=='test'&&o.mode!=='spectate'&&o.mode!=='replay';
+  // запис натискань для повтору; у режимі повтору — чужі натискання
+  G.rec=(o.mode==='solo'||o.mode==='online')?[]:null;G.recAtk=G.rec?[]:null;G.minH=1;
+  if(o.mode==='replay'){G.rp=o.replay;G.rpI=0;G.rpA=0}
   // тренування з середини пісні: усе, що раніше, пропускаємо
   if(s0>0){for(const n of G.notes)if(n.t<s0-0.02){n.j=true;n.hit=true;n.skip=true}
     for(const e of G.ev){if(e.t0<s0)e.w=e.w1=e.w2=e.w3=1}}
@@ -1007,7 +1024,11 @@ function update(tv,dt){
   if(G.mode==='spectate'){while(G.di<ns.length&&ns[G.di].t<tv-8)G.di++;
     for(const id in G.specGlow){const a=G.specGlow[id];for(let l=0;l<4;l++)a[l]*=Math.exp(-dt*7)}
     updateEffects(tv,dt);if(tv>G.ch.dur+0.6)finishGame();return}
-  if(G.loopEnd&&tv>=G.loopEnd){const o=G.opts;o.loops=(o.loops||0)+1;exitGame();startGame(Object.assign({},o,{prepPerf:null}));return}
+  if(G.loopEnd&&tv>=G.loopEnd){const o=G.opts;o.loops=(o.loops||0)+1;if(o.loops>=5)achUnlock('practice');exitGame();startGame(Object.assign({},o,{prepPerf:null}));return}
+  // повтор: «натискаємо» записані клавіші рівно в ті ж моменти
+  if(G.mode==='replay'){const R=G.rp;while(G.rpI<R.ev.length&&R.ev[G.rpI]/1000<=tv){const t=R.ev[G.rpI]/1000,c=R.ev[G.rpI+1];G.rpI+=2;const l=c>>1;
+      if(c&1){G.keyset[l].add('R');press(l,t)}else{G.keyset[l].delete('R');release(l,t)}}
+    while(R.atk&&G.rpA<R.atk.length&&R.atk[G.rpA].tv<=tv)applyAttack(R.atk[G.rpA++])}
   for(let i=G.mi;i<ns.length;i++){const n=ns[i];if(n.t>tv-WIN[3]*G.rate)break;if(n.j)continue;n.j=true;if(n.type===1){n.passed=true;continue}missNote(n)}
   while(G.mi<ns.length&&ns[G.mi].j)G.mi++;
   while(G.di<ns.length&&ns[G.di].t<tv-8)G.di++;
@@ -1018,12 +1039,14 @@ function update(tv,dt){
   updateEffects(tv,dt);
   if(G.sing)singUpdate(tv,dt);
   if(G.health<=0){G.health=0;if(G.mode==='solo'&&!S.nofail){failGame();return}}
+  if(tv>0)G.minH=Math.min(G.minH,G.health);
   if(G.mode==='online'&&performance.now()-G.lastSend>300){G.lastSend=performance.now();netSendScore()}
   if(tv>G.ch.dur+0.6)finishGame();
 }
 function keyHeld(l){return G.keyset[l].size>0||[...G.touch.values()].includes(l)}
 function press(l,tj){
   if(!G.on||G.paused||G.ended||G.mode==='spectate')return;
+  if(G.rec)G.rec.push(Math.round(tj*1000),l*2+1);
   let best=null,ba=1e9,dn=null,da=1e9;const r=G.rate;
   for(let i=G.mi;i<G.notes.length;i++){const n=G.notes[i];if(n.t>tj+0.2*r)break;if(n.j||n.lane!==l)continue;const a=Math.abs(n.t-tj);
     if(n.type===1){if(a<da){da=a;dn=n}}else if(a<=WIN[3]*r&&a<ba){ba=a;best=n}}
@@ -1031,6 +1054,7 @@ function press(l,tj){
   if(best)hitNote(best,tj-best.t);
 }
 function release(l,tj){
+  if(G.rec&&G.on&&!G.ended&&!G.paused)G.rec.push(Math.round(tj*1000),l*2);
   const n=G.hold[l];if(!n||G.ended)return;G.hold[l]=null;
   if(tj<n.t+n.len-0.12){n.holding=false;n.dropped=true;G.st.holdDrop++;G.st.combo=0;G.health-=0.05;showPop('ВІДПУСТИВ','#ff8a3d',null)}
   else finishHold(n)}
@@ -1219,8 +1243,9 @@ function drawStage(c,W,H){
   const free=(x,taken)=>spans.every(([cx,hw])=>Math.abs(x-cx)>hw+h*0.28)&&taken.every(t=>Math.abs(x-t)>h*0.6);
   const pick=(prefs,taken)=>{for(const f of prefs){const x=W*f;if(free(x,taken))return x}return null};
   const ox=pick([0.085,0.2,0.25,0.3,0.915,0.8],[]),px=pick([0.915,0.8,0.75,0.7,0.085,0.2],ox!=null?[ox]:[]);
-  if(ox!=null)drawChar(c,ox,y,h,G.mode==='online'?'rival':'bot',pose(G.oPose,0),bob,ox<W/2);
-  if(px!=null)drawChar(c,px,y,h,'me',pose(G.pPose,G.pMiss),bob,px<W/2);
+  const b=G.board||[],riv=b[0]&&b[0].id===NET.myId?b[1]:b[0],rc=G.mode==='online'&&riv&&riv.col&&riv.col!==S.color?riv.col:null;
+  if(ox!=null)drawChar(c,ox,y,h,G.mode==='online'?'rival':'bot',pose(G.oPose,0),bob,ox<W/2,rc);
+  if(px!=null)drawChar(c,px,y,h,'me',pose(G.pPose,G.pMiss),bob,px<W/2,G.mode==='replay'&&G.rp.col?G.rp.col:S.color);
 }
 function drawFace(c,kind,miss,sing,k){
   const ol='#120c24';c.lineWidth=3;
@@ -1242,8 +1267,8 @@ function drawHead(c,kind,k,miss,sing){
   else{c.fillStyle=k.acc;c.beginPath();c.moveTo(-19,-98);for(let i=0;i<=5;i++){const x=-19+i*7.6;c.lineTo(x-3.8,-122+(i%2)*6);c.lineTo(x,-104)}c.lineTo(19,-98);c.closePath();c.fill();c.stroke()}
   drawFace(c,kind,miss,sing,k);
 }
-function drawChar(c,x,y,h,kind,pose,bob,flip){
-  const k=CHAR[kind],s=h/130,miss=pose==='miss',ol='#120c24';
+function drawChar(c,x,y,h,kind,pose,bob,flip,col){
+  const k=col?Object.assign({},CHAR[kind],{body:col,dark:hexMix(col,'b',0.45)}):CHAR[kind],s=h/130,miss=pose==='miss',ol='#120c24';
   let p=pose;if(flip&&(p===0||p===3))p=3-p; // дзеркальний персонаж: ліво/право міняються
   const arms={idle:[[-22,-40],[24,-40]],0:[[-52,-70],[20,-44]],3:[[-20,-44],[54,-70]],2:[[-22,-44],[20,-112]],1:[[-28,-30],[36,-26]],miss:[[-14,-34],[14,-34]]};
   const[a1,a2]=arms[p]!=null?arms[p]:arms.idle,body=miss?'#5c5878':k.body,dark=miss?'#3a3750':k.dark;
@@ -1297,6 +1322,7 @@ function drawHUD(c,L,tv){
     c.globalAlpha=a;drawText(c,b.txt,W/2,H*0.3+i*44*u,Math.round((b.big?64:28)*u*s),b.col);c.globalAlpha=1});
   if(G.sing)drawKaraoke(c,tv,u);
   if(G.redFlash>0.01){c.fillStyle=`rgba(255,20,50,${G.redFlash*0.4})`;c.fillRect(0,0,W,H)}
+  if(G.mode==='replay')drawText(c,'📼 ПОВТОР · '+G.rp.name+'  ·  Esc — вийти',W/2,22*u,Math.round(14*u),'#00e5f2',{f:'Onest, sans-serif',w:800});
   if(G.mode==='test'){drawText(c,'ТЕСТ ЗАТРИМКИ · тисни стрілки під клацання',W/2,H-60*u,Math.round(14*u),'#ffd23f',{f:'Onest, sans-serif',w:800})}
 }
 
@@ -1311,10 +1337,14 @@ function finishGame(){if(G.ended)return;G.ended=true;for(let l=0;l<4;l++)G.hold[
   for(const n of G.notes)if(!n.j&&n.type===0){n.j=true;n.missed=true;G.st.miss++;G.st.combo=0;G.st.accN++;G.st.missT.push(n.t)}
   const fs=finalStats();
   if(G.mode==='test'){showTestResult();return}
+  if(G.mode==='replay'){showReplayEnd(fs);return}
   if(G.mode==='spectate'){G.final=null;showOnlineResults();return}
-  if(G.mode==='online'){netSendFinal(fs);saveRecord(fs);showOnlineResults();return}
+  if(G.rec)G.replay={name:S.name||'Гравець',col:S.color,ev:G.rec,atk:G.recAtk};
+  G.newAch=profileAfterGame(fs);
+  if(G.mode==='online'){NET.myFinal=fs;NET.myReplay=G.replay;NET.lastBoard=G.board;netSendFinal(fs);saveRecord(fs);showOnlineResults();return}
   showSoloResults(fs)}
-function failGame(){if(G.ended)return;G.st.failed=true;G.ended=true;stopAudio();micStop();banner('ТИ ВИБУВ','#ff4d6a',3,true);setTimeout(()=>showSoloResults(finalStats()),900)}
+function failGame(){if(G.ended)return;G.st.failed=true;G.ended=true;stopAudio();micStop();banner('ТИ ВИБУВ','#ff4d6a',3,true);
+  const fs=finalStats();if(G.rec)G.replay={name:S.name||'Гравець',col:S.color,ev:G.rec,atk:G.recAtk};G.newAch=profileAfterGame(fs);setTimeout(()=>showSoloResults(fs),900)}
 function exitGame(){G.on=false;G.ended=true;cancelAnimationFrame(G.raf);try{G.src&&G.src.stop()}catch(e){}micStop();if(AC&&AC.state==='suspended')AC.resume();
   $('#vid').pause();$('#game').hidden=true;$('#pauseOv').hidden=true;$('#resOv').hidden=true;$('#menu').hidden=false;startMenuBg()}
 function timelineHTML(missT,deathT,cls){return`<div class="tl ${cls||''}">${(missT||[]).map(p=>`<i class="m" style="left:${(p*100).toFixed(2)}%"></i>`).join('')}${(deathT||[]).map(p=>`<i class="d" style="left:${(p*100).toFixed(2)}%"></i>`).join('')}</div>`}
@@ -1326,9 +1356,80 @@ function getRecord(fp,diff){return loadRecs()[(fp||T.fp||T.name)+'|'+diff]||null
 function saveRecord(fs){if(G.mode!=='solo'&&G.mode!=='online')return null;const all=loadRecs(),k=recKey(),old=all[k]||null;
   const better=fs.score>0&&(!old||fs.score>old.score);if(better&&fs.rank!=='F'){all[k]={score:fs.score,acc:+fs.acc.toFixed(2),rank:fs.rank,fc:fs.fc,name:T.name,t:Date.now()};try{localStorage.setItem('ritmbatl_rec',JSON.stringify(all))}catch(e){}}
   return{old,isNew:better&&fs.rank!=='F'}}
+// ---------- профіль і досягнення ----------
+const PROF_DEF={games:0,time:0,accSum:0,accN:0,fc:0,sRank:0,bestCombo:0,perf:0,notes:0,online:0,wins:0,songs:0,diff:[0,0,0,0],ach:{}};
+function loadProf(){const d=JSON.parse(JSON.stringify(PROF_DEF));try{return Object.assign(d,JSON.parse(localStorage.getItem('ritmbatl_prof')||'{}'))}catch(e){return d}}
+let PROF=loadProf();
+function saveProf(){try{localStorage.setItem('ritmbatl_prof',JSON.stringify(PROF))}catch(e){}}
+const ACH=[
+  {id:'first',i:'🎵',n:'Перший крок',d:'Зіграти першу пісню до кінця'},
+  {id:'fc',i:'💎',n:'Без жодного промаху',d:'Пройти пісню з FC'},
+  {id:'s',i:'⭐',n:'Ранг S',d:'Точність 97% і вище'},
+  {id:'c100',i:'🔥',n:'Сотня',d:'Комбо 100'},
+  {id:'c300',i:'⚡',n:'Машина ритму',d:'Комбо 300'},
+  {id:'hard',i:'💪',n:'Важко? Легко!',d:'Пройти пісню на «Важко»'},
+  {id:'ext',i:'💀',n:'Жесть пройдена',d:'Пройти пісню на «Жесть»'},
+  {id:'god',i:'👑',n:'Бог ритму',d:'Ранг S на «Жесть»'},
+  {id:'p1000',i:'🎯',n:'Тисяча ідеальних',d:'1000 «ІДЕАЛЬНО» за весь час'},
+  {id:'careful',i:'🛡️',n:'Обережний',d:'5+ смертельних нот у пісні — і жодної не зачепив'},
+  {id:'hold',i:'🤝',n:'Не відпускай',d:'10+ довгих нот у пісні — і жодної не відпустив'},
+  {id:'edge',i:'😅',n:'На волосинку',d:'Дотягнути до кінця, коли здоров\'я падало нижче 5%'},
+  {id:'chaos',i:'🌀',n:'Хаос приборкано',d:'Пройти пісню з подіями на 100%'},
+  {id:'win',i:'🏆',n:'Чемпіон кімнати',d:'Перше місце в онлайні (від 2 гравців)'},
+  {id:'reg',i:'🫂',n:'Завсідник',d:'Зіграти 10 онлайн-ігор'},
+  {id:'composer',i:'🎹',n:'Композитор',d:'Зробити свою пісню в студії і зіграти її'},
+  {id:'practice',i:'🔁',n:'Тренування — сила',d:'Прогнати шматок по колу 5 разів'},
+  {id:'singer',i:'🎤',n:'Співак',d:'Зарядити атаку голосом'},
+  {id:'marathon',i:'⏱️',n:'Марафон',d:'Награти 30 хвилин'},
+  {id:'replay',i:'📼',n:'Розбір польотів',d:'Переглянути повтор'}];
+function achUnlock(id,quiet){if(PROF.ach[id])return false;const a=ACH.find(x=>x.id===id);if(!a)return false;PROF.ach[id]=Date.now();saveProf();
+  if(!quiet){toast('🏆 Досягнення: '+a.i+' '+a.n,'ok');if(G.on&&!G.ended)banner('🏆 '+a.n,'#ffd23f',2)}renderProfile();return true}
+function profileAfterGame(fs){ // рахує статистику, повертає нові досягнення
+  if(G.mode!=='solo'&&G.mode!=='online')return[];
+  const ch=G.ch,got=[],un=id=>{if(achUnlock(id,true))got.push(id)};
+  PROF.time+=clamp(G.tv||0,0,ch.dur);if(PROF.time>=1800)un('marathon');
+  // вийшов посеред пісні або вибув — тільки час гри, без досягнень
+  if(fs.rank==='F'||(G.tv||0)<ch.dur-1){saveProf();renderProfile();return got}
+  PROF.games++;PROF.accSum+=fs.acc;PROF.accN++;PROF.diff[ch.diff]=(PROF.diff[ch.diff]||0)+1;PROF.perf+=fs.cnt[0];PROF.notes+=fs.cnt.reduce((a,b)=>a+b,0);
+  PROF.bestCombo=Math.max(PROF.bestCombo,fs.maxCombo);if(fs.fc)PROF.fc++;if(fs.rank==='S')PROF.sRank++;if(G.mode==='online')PROF.online++;
+  un('first');if(fs.fc)un('fc');if(fs.rank==='S')un('s');if(fs.maxCombo>=100)un('c100');if(fs.maxCombo>=300)un('c300');
+  if(ch.diff>=2)un('hard');if(ch.diff>=3)un('ext');if(ch.diff>=3&&fs.rank==='S')un('god');if(PROF.perf>=1000)un('p1000');
+  const deaths=ch.notes.filter(n=>n.type===1).length,holds=ch.notes.filter(n=>n.type===0&&n.len>0).length;
+  if(deaths>=5&&fs.death===0)un('careful');if(holds>=10&&fs.holdDrop===0)un('hold');if(G.minH<0.05)un('edge');
+  if(ch.events>=0.99)un('chaos');if(PROF.online>=10)un('reg');if(T.studio)un('composer');
+  saveProf();renderProfile();return got}
+function achHTML(ids){if(!ids||!ids.length)return'';return`<div class="achnew">${ids.map(id=>{const a=ACH.find(x=>x.id===id);return`<span class="ach on">${a.i} ${esc(a.n)}</span>`}).join('')}</div>`}
+const HOOD=['#00b8c4','#c24b99','#2ff06a','#f9393f','#ffd23f','#7b61ff','#ff8a3d','#e8e6f5'];
+function renderProfile(){
+  const el=$('#profStats');if(!el)return;const P=PROF,fav=P.diff.indexOf(Math.max(...P.diff)),un=ACH.filter(a=>P.ach[a.id]).length;
+  const tm=P.time>=3600?Math.floor(P.time/3600)+' год '+Math.floor(P.time%3600/60)+' хв':Math.floor(P.time/60)+' хв';
+  el.innerHTML=[['Ігор',P.games],['У грі',tm],['Сер. точність',P.accN?(P.accSum/P.accN).toFixed(1)+'%':'—'],['FC',P.fc],['Макс. комбо',P.bestCombo],['ІДЕАЛЬНО',P.perf],
+    ['Онлайн-ігор',P.online],['Перемог',P.wins],['Своїх пісень',P.songs],['Улюблена',P.games?DIFF_NAMES[fav]:'—']].map(([k,v])=>`<div class="stat"><small>${k}</small><b>${v}</b></div>`).join('');
+  $('#profCols').innerHTML=HOOD.map(c=>`<button class="sw ${S.color===c?'on':''}" data-c="${c}" style="background:${c}" title="Колір худі"></button>`).join('');
+  document.querySelectorAll('#profCols .sw').forEach(b=>b.onclick=()=>{S.color=b.dataset.c;saveS();renderProfile()});
+  $('#achCount').textContent=un+' з '+ACH.length;
+  $('#achList').innerHTML=ACH.map(a=>`<span class="ach ${P.ach[a.id]?'on':''}" title="${esc(a.d)}">${P.ach[a.id]?a.i:'🔒'} ${esc(a.n)}<small>${esc(a.d)}</small></span>`).join('');
+  const cv=$('#profChar'),c=cv.getContext('2d'),dpr=Math.min(2,devicePixelRatio||1);cv.width=110*dpr;cv.height=150*dpr;c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,110,150);
+  drawChar(c,55,146,130,'me','idle',0,false,S.color);
+}
+// ---------- повтори ----------
+function watchReplay(rp,back){
+  const base=G.opts||{};const ch=G.ch||T.chart;if(!ch||!T.buf){toast('Немає треку для повтору','err');return}
+  NET.backTo=back||null;exitGame();achUnlock('replay');
+  startGame({mode:'replay',chart:ch,buf:T.buf,smin:base.smin!=null?base.smin:S.smin,smax:base.smax!=null?base.smax:S.smax,video:true,replay:rp});
+  banner('📼 ПОВТОР · '+rp.name,'#00e5f2',2.5)}
+function showReplayEnd(fs){
+  const box=$('#resBox'),rp=G.rp;
+  box.innerHTML=`<h3>📼 Повтор: ${esc(rp.name)}</h3><div class="rank" style="color:${RANK_COL[fs.rank]}">${fs.rank}${fs.fc?'<span class="fc">FC</span>':''}</div>
+  <div class="mut">Очки ${fs.score} · точність ${fs.acc.toFixed(2)}% · макс. комбо ${fs.maxCombo} · промахи ${fs.miss}</div>
+  ${timelineHTML(fs.missT,fs.deathT,'big-tl')}
+  <div class="row" style="margin-top:16px"><button id="rpAgain" class="acc">Переглянути ще раз</button><button id="rpBack">Назад</button></div>`;
+  $('#resOv').hidden=false;
+  $('#rpAgain').onclick=()=>watchReplay(rp,NET.backTo);
+  $('#rpBack').onclick=()=>{const b=NET.backTo;exitGame();if(b==='online')showOnlineResults();else renderCard()}}
 function showSoloResults(fs){
   const box=$('#resBox'),prac=G.mode==='practice',rec=prac?null:saveRecord(fs);
-  box.innerHTML=`<h3>${prac?'Тренування':fs.rank==='F'?'Ти вибув':'Кінець треку'}</h3>
+  box.innerHTML=`<h3>${prac?'Тренування':fs.rank==='F'?'Ти вибув':'Кінець треку'}</h3>${achHTML(G.newAch)}
   ${rec&&rec.isNew?`<div class="tag" style="font-size:18px">🏆 Новий рекорд!${rec.old?` (було ${rec.old.score})`:''}</div>`:rec&&rec.old?`<div class="mut">Рекорд: ${rec.old.score} · ${rec.old.rank} · ${rec.old.acc}%</div>`:''}
   ${prac?`<div class="mut">Швидкість ${Math.round(G.rate*100)}% — у тренуванні рекорди не рахуються</div>`:''}
   <div class="rank" style="color:${RANK_COL[fs.rank]}">${fs.rank}${fs.fc&&fs.rank!=='F'?'<span class="fc">FC</span>':''}</div>
@@ -1341,8 +1442,9 @@ function showSoloResults(fs){
   </div>
   <div class="st" style="margin-top:12px">В середньому ${avgTxt(fs.avg)}${Math.abs(fs.avg)>12?` — <span class="mut">можна підкрутити затримку</span>`:''}</div>
   ${timelineHTML(fs.missT,fs.deathT,'big-tl')}<div class="legend"><span style="background:var(--bad)"></span>промахи<span style="background:#b35cff"></span>смертельні</div>
-  <div class="row" style="margin-top:16px"><button id="rAgain" class="acc">Ще раз</button><button id="rMenu">В меню</button></div>`;
+  <div class="row" style="margin-top:16px"><button id="rAgain" class="acc">Ще раз</button>${G.replay?'<button id="rReplay">📼 Повтор</button>':''}<button id="rMenu">В меню</button></div>`;
   $('#resOv').hidden=false;
+  if(G.replay)$('#rReplay').onclick=()=>watchReplay(G.replay,null);
   $('#rAgain').onclick=()=>{const o=G.opts;exitGame();startGame(Object.assign({},o,{prepPerf:null,loops:0}))};
   $('#rMenu').onclick=()=>{exitGame();renderCard()};
 }
@@ -1440,21 +1542,24 @@ function singUpdate(tv,dt){
 }
 function attackTarget(){const b=G.board||[];let t=b[0];if(t&&t.id===NET.myId)t=b[1];return t||null}
 function voiceAttack(kind){
-  if(G.mode!=='online'){if(!kind){G.st.score+=3000;banner('ГОЛОСОВИЙ БОНУС +3000','#ffd23f',1.6)}else G.st.score+=500;return}
+  if(G.mode!=='online'){if(!kind){G.st.score+=3000;banner('ГОЛОСОВИЙ БОНУС +3000','#ffd23f',1.6);achUnlock('singer')}else G.st.score+=500;return}
   const tgt=attackTarget();if(!tgt){if(!kind){G.st.score+=3000;banner('ГОЛОСОВИЙ БОНУС +3000','#ffd23f',1.6)}return}
   const k=kind||['shuffle','waves','invis','flip','death'][Math.floor(Math.random()*5)];
-  netSend({t:'atk',k,to:tgt.id});banner('АТАКА ПОЛЕТІЛА → '+tgt.name,'#ffd23f',1.6)}
+  netSend({t:'atk',k,to:tgt.id});banner('АТАКА ПОЛЕТІЛА → '+tgt.name,'#ffd23f',1.6);if(!kind)achUnlock('singer')}
 function receiveAttack(k,from){
-  if(!G.on||G.ended)return;vibrate([120,60,120]);const tv=G.tv;
-  if(k==='scream'){G.scream=tv+3;banner('КРИК від '+from+'!','#f9393f',1.5);return}
-  banner('АТАКА: '+(k==='death'?'смертельний залп':EV_NAMES[k])+' від '+from,'#f9393f',1.8);
-  if(k==='death'){const P=G.P,b=G.ch.beats;let made=0;
-    for(let i=0;i<b.length&&made<6;i++){for(const fr of[0,0.5]){const t=b[i]+fr*P;if(t<tv+1.6||t>tv+6||made>=6)continue;
-      const lanes=[0,1,2,3].filter(l=>!G.notes.some(n=>n.lane===l&&(Math.abs(n.t-t)<0.26||(n.len>0&&n.t<=t+0.1&&n.t+n.len>=t-0.1))));
-      if(lanes.length){G.notes.push({t,lane:lanes[Math.floor(Math.random()*lanes.length)],len:0,type:1,j:false});made++}}}
-    G.notes.sort((a,b)=>a.t-b.t);G.mi=0;G.di=0;return}
-  const e={type:k,t0:tv+1.2,t1:tv+7.2,w:1};if(k==='shuffle'){let p;do{p=[0,1,2,3].sort(()=>Math.random()-0.5)}while(p.every((v,i)=>v===i));e.perm=p}
-  G.ev.push(e)}
+  if(!G.on||G.ended||G.mode==='replay')return;vibrate([120,60,120]);const tv=G.tv,a={tv,k,from};
+  if(k==='death'){const P=G.P,b=G.ch.beats;a.notes=[];
+    for(let i=0;i<b.length&&a.notes.length<6;i++){for(const fr of[0,0.5]){const t=b[i]+fr*P;if(t<tv+1.6||t>tv+6||a.notes.length>=6)continue;
+      const lanes=[0,1,2,3].filter(l=>!G.notes.some(n=>n.lane===l&&(Math.abs(n.t-t)<0.26||(n.len>0&&n.t<=t+0.1&&n.t+n.len>=t-0.1)))&&!a.notes.some(x=>x[0]===t));
+      if(lanes.length)a.notes.push([t,lanes[Math.floor(Math.random()*lanes.length)]])}}}
+  else if(k!=='scream'){a.e={type:k,t0:tv+1.2,t1:tv+7.2,w:1};if(k==='shuffle'){let p;do{p=[0,1,2,3].sort(()=>Math.random()-0.5)}while(p.every((v,i)=>v===i));a.e.perm=p}}
+  if(G.recAtk)G.recAtk.push(a); // для повтору
+  applyAttack(a)}
+function applyAttack(a){
+  if(a.k==='scream'){G.scream=a.tv+3;banner('КРИК від '+a.from+'!','#f9393f',1.5);return}
+  banner('АТАКА: '+(a.k==='death'?'смертельний залп':EV_NAMES[a.k])+' від '+a.from,'#f9393f',1.8);
+  if(a.k==='death'){for(const[t,lane]of a.notes||[])G.notes.push({t,lane,len:0,type:1,j:false});G.notes.sort((x,y)=>x.t-y.t);G.mi=0;G.di=0;return}
+  if(a.e)G.ev.push(Object.assign({},a.e))}
 function drawKaraoke(c,tv,u){
   const W=G.W,w=Math.min(W*0.7,760),x0=(W-w)/2,y0=10,h=60,rh=h/12,t0=tv-1.2,t1=tv+3,X=t=>x0+(t-t0)/(t1-t0)*w;
   c.fillStyle='rgba(8,5,22,.78)';c.fillRect(x0,y0,w,h);c.strokeStyle='#2f2864';c.lineWidth=1;c.strokeRect(x0,y0,w,h);
@@ -1547,18 +1652,18 @@ function hostMsg(p,m){
 function hostCommon(id,name,m){
   if(NET.role!=='host')return;
   switch(m.t){
-    case 'sc':NET.live[id]={id,name,s:m.s,a:m.a,c:m.c};break;
+    case 'sc':NET.live[id]={id,name,s:m.s,a:m.a,c:m.c,col:m.col};break;
     case 'pr':if(id===NET.leader){netBroadcast({t:'lp',l:m.l},id);if(id!=='host'&&G.on){G.oppGlow[m.l]=1;G.oPose={l:m.l,t:performance.now()}}}
       for(const p of NET.conns.values())if(p.spec&&p.conn.open)p.conn.send({t:'pp',id,l:m.l});break;
     case 'atk':{const pl={t:'atk',k:m.k,from:name};if(m.to==='host')receiveAttack(m.k,name);else{const p=NET.conns.get(m.to);if(p&&p.conn.open)p.conn.send(pl)}break}
-    case 'fin':{NET.results.set(id,{id,name,st:m.st});if(!NET.best[name]||NET.best[name]<m.st.score)NET.best[name]=m.st.score;
+    case 'fin':{NET.results.set(id,{id,name,st:m.st,rp:m.rp||null});if(!NET.best[name]||NET.best[name]<m.st.score)NET.best[name]=m.st.score;
       const l=[...NET.results.values()];netBroadcast({t:'res',l,best:NET.best});NET.resList=l;if(NET.showingRes)showOnlineResults();break}
   }
 }
 function hostBoard(){
   if(!G.on||(G.mode!=='online'&&G.mode!=='spectate'))return;const now=performance.now();
   const l=Object.values(NET.live).filter(x=>x.id==='host'||NET.conns.has(x.id)||x.off>now).sort((a,b)=>b.s-a.s);
-  if(!l.length)return;NET.leader=l[0].id;const out=l.map(x=>({id:x.id,name:x.name,s:x.s,a:x.a}));
+  if(!l.length)return;NET.leader=l[0].id;const out=l.map(x=>({id:x.id,name:x.name,s:x.s,a:x.a,col:x.col}));
   netBroadcast({t:'board',l:out,lead:NET.leader});G.board=out}
 function hostLobby(){if(NET.role!=='host')return;netBroadcast({t:'lobby',l:[{name:S.name||'Хост',host:1,ready:1},...[...NET.conns.values()].map(p=>({name:p.name,ready:p.ready,spec:p.spec}))]})}
 function hostNewTrack(){for(const p of NET.conns.values()){p.track=0;p.dec=false;p.has=false;p.chart=0;p.chartAck='';p.chTry=0;p.err='';clearTimeout(p.chTimer);hostSendTrack(p)}renderPlist()}
@@ -1608,7 +1713,7 @@ function hostStartAll(){
   getAC().resume();
   const maxRtt=Math.max(0,...[...NET.conns.values()].map(p=>p.rtt||0));
   const at=performance.now()+1500+maxRtt;
-  NET.results=new Map();NET.live={};NET.resList=[];NET.showingRes=false;
+  NET.results=new Map();NET.live={};NET.resList=[];NET.showingRes=false;NET.myFinal=null;NET.myReplay=null;NET.lastBoard=null;NET.winCounted=false;
   for(const p of NET.conns.values())p.ready=false;
   netBroadcast({t:'start',at,cfg:hostCfg(),chartId:T.chartId});
   clearInterval(NET.boardIv);NET.boardIv=setInterval(hostBoard,300);
@@ -1724,7 +1829,7 @@ function guestChunk(m){
 function guestStart(m){
   if(!T.chart||!T.buf){toast('Гра почалась, але в тебе ще не готовий трек або стрілки','err');return}
   if(CAL.on)calClose(false);
-  NET.cfg=m.cfg;NET.results=new Map();NET.resList=[];NET.showingRes=false;NET.g.ready=false;
+  NET.cfg=m.cfg;NET.results=new Map();NET.resList=[];NET.showingRes=false;NET.g.ready=false;NET.myFinal=null;NET.myReplay=null;NET.lastBoard=null;NET.winCounted=false;
   startGame({mode:NET.spec?'spectate':'online',chart:T.chart,buf:T.buf,prepPerf:m.at-NET.g.off,smin:m.cfg.smin,smax:m.cfg.smax,video:true});
 }
 function guestSetReady(v){const g=NET.g;if(v&&!(T.buf&&g.chartOk)){toast('Зачекай, поки отримаєш трек і стрілки');return}g.ready=v;getAC().resume();if(NET.host&&NET.host.open)NET.host.send({t:'ready',v});renderGuestStatus()}
@@ -1762,8 +1867,8 @@ function renderPlist(){
     el.innerHTML=(NET.lobby||[]).map(p=>`<div class="pl"><b>${esc(p.name)}${p.host?' (хост)':''}${p.spec?' 👁':''}</b><span class="rd ${p.ready||p.spec?'okc':'mut'}">${p.spec?'глядач':p.ready?'готовий':'чекає'}</span></div>`).join('');
   }
 }
-function netSendScore(){const st=G.st,a=st.accN?st.accSum/st.accN*100:100;netSend({t:'sc',s:Math.floor(st.score),a:+a.toFixed(2),c:st.combo})}
-function netSendFinal(fs){G.final=fs;netSend({t:'fin',st:fs})}
+function netSendScore(){const st=G.st,a=st.accN?st.accSum/st.accN*100:100;netSend({t:'sc',s:Math.floor(st.score),a:+a.toFixed(2),c:st.combo,col:S.color})}
+function netSendFinal(fs){G.final=fs;netSend({t:'fin',st:fs,rp:G.replay||null})}
 function drawBoard(c,x,y,u){
   const l=G.board.slice(0,8),lh=Math.round(19*u),w=Math.round(230*u);
   c.fillStyle='rgba(8,5,22,.7)';c.fillRect(x-6,y-6,w,l.length*lh+10);
@@ -1771,21 +1876,24 @@ function drawBoard(c,x,y,u){
     c.fillText(`${i+1}. ${String(p.name).slice(0,10)}`,x,yy);c.textAlign='right';c.fillText(`${p.s} · ${Number(p.a).toFixed(1)}%`,x+w-14,yy)})}
 function showOnlineResults(){
   NET.showingRes=true;const box=$('#resBox');
-  let l=(NET.resList||[]).slice();if(G.final&&!l.some(r=>r.id===NET.myId))l.push({id:NET.myId,name:S.name||'Я',st:G.final});
+  const myF=G.final||NET.myFinal;let l=(NET.resList||[]).slice();if(myF&&!l.some(r=>r.id===NET.myId))l.push({id:NET.myId,name:S.name||'Я',st:myF});
   l.sort((a,b)=>b.st.score-a.st.score);
   const names=new Set(l.map(r=>r.name));
-  const playing=(G.board||[]).filter(p=>!l.some(r=>r.id===p.id)).map(p=>p.name);
-  box.innerHTML=`<h3>Таблиця місць</h3>
-  <div style="overflow:auto"><table class="res"><tr><th>#</th><th>Гравець</th><th>Ранг</th><th>Очки</th><th>Точн.</th><th>Комбо</th><th>Промахи</th><th>Смерт.</th><th>Відпуст.</th><th>Відхилення</th><th>Пісня</th><th>Рекорд кімнати</th></tr>
+  const playing=(NET.lastBoard||G.board||[]).filter(p=>!l.some(r=>r.id===p.id)).map(p=>p.name);
+  box.innerHTML=`<h3>Таблиця місць</h3>${achHTML(G.mode==='online'?G.newAch:null)}
+  <div style="overflow:auto"><table class="res"><tr><th>#</th><th>Гравець</th><th>Ранг</th><th>Очки</th><th>Точн.</th><th>Комбо</th><th>Промахи</th><th>Смерт.</th><th>Відпуст.</th><th>Відхилення</th><th>Пісня</th><th>Рекорд кімнати</th><th></th></tr>
   ${l.map((r,i)=>{const s=r.st;return`<tr class="${r.id===NET.myId?'me':''}"><td class="n">${i+1}</td><td><b>${esc(r.name)}</b></td>
    <td><b style="color:${RANK_COL[s.rank]}">${s.rank}</b>${s.fc?' <span class="fc" style="font-size:10px;padding:2px 5px">FC</span>':''}</td><td class="n">${s.score}</td><td class="n">${s.acc.toFixed(2)}%</td>
-   <td class="n">${s.maxCombo}</td><td class="n">${s.miss}</td><td class="n">${s.death}</td><td class="n">${s.holdDrop}</td><td>${avgTxt(s.avg)}</td><td>${timelineHTML(s.missT,s.deathT)}</td><td class="n">${NET.best[r.name]||s.score}</td></tr>`}).join('')}
+   <td class="n">${s.maxCombo}</td><td class="n">${s.miss}</td><td class="n">${s.death}</td><td class="n">${s.holdDrop}</td><td>${avgTxt(s.avg)}</td><td>${timelineHTML(s.missT,s.deathT)}</td><td class="n">${NET.best[r.name]||s.score}</td><td>${(r.id===NET.myId?NET.myReplay:r.rp)?`<button class="rpb" data-id="${esc(r.id)}" title="Переглянути повтор">📼</button>`:''}</td></tr>`}).join('')}
   </table></div>
   ${playing.length?`<div class="mut" style="margin-top:8px">Ще грають: ${playing.map(esc).join(', ')}</div>`:''}
   <div class="legend" style="margin-top:8px"><span style="background:var(--bad)"></span>промахи<span style="background:#b35cff"></span>смертельні</div>
   <div class="row" style="margin-top:16px">${NET.role==='host'?'<button id="oAgain" class="acc">Ще раз</button>':'<span class="mut">Чекаємо, поки хост натисне «Ще раз»…</span>'}<button id="oMenu">В меню</button></div>`;
   $('#resOv').hidden=false;
   if(NET.role==='host')$('#oAgain').onclick=hostAgain;
+  box.querySelectorAll('.rpb').forEach(b=>b.onclick=()=>{const r=l.find(x=>x.id===b.dataset.id),rp=b.dataset.id===NET.myId?NET.myReplay:r&&r.rp;if(rp)watchReplay(Object.assign({},rp,{name:r?r.name:rp.name}),'online')});
+  // перемога в кімнаті — коли всі дограли
+  if(myF&&!playing.length&&l.length>=2&&l[0].id===NET.myId&&!NET.winCounted){NET.winCounted=true;PROF.wins++;saveProf();achUnlock('win')}
   $('#oMenu').onclick=()=>{NET.showingRes=false;exitGame();renderPlist();renderGuestStatus()};
 }
 
@@ -2047,6 +2155,7 @@ async function stGo(){
     await dbPut('feat',{k:fp,v:ANA_VER,feat}); // стрілки вже готові — аналіз не потрібен
     ST.on=false;$('#stOv').hidden=true;startMenuBg();
     await loadTrackFile(new File([ab],(s.name||'Мій трек').replace(/[\\/:*?"<>|]/g,'')+'.wav',{type:'audio/wav'}));
+    T.studio=true;PROF.songs++;saveProf();renderProfile();
     toast(NET.role==='host'?'Твоя пісня в кімнаті — трек і стрілки йдуть усім гравцям':'Твоя пісня готова — тисни «Грати соло»!','ok')}
   catch(e){console.error(e);toast('Не вдалося записати пісню','err')}
   b.disabled=false;b.textContent='Готово — грати!'}
@@ -2173,14 +2282,14 @@ async function checkUpdate(){
     if(!G.on)return;
     if(e.code==='Escape'||e.code==='KeyP'){e.preventDefault();if(G.ended)return;if($('#pauseOv').hidden)pauseGame();else if(G.mode==='online')$('#pauseOv').hidden=true;else resumeGame();return}
     if((G.mode==='solo'||G.mode==='practice')&&['Minus','NumpadSubtract','Equal','NumpadAdd'].includes(e.code)&&keyLane(e.code)<0){e.preventDefault();S.offset=clamp(S.offset+(e.code==='Minus'||e.code==='NumpadSubtract'?-5:5),-250,400);saveS();syncUI();G.offMsg=performance.now();return}
-    const l=keyLane(e.code);if(l<0)return;e.preventDefault();if(e.repeat||G.keyset[l].has(e.code))return;
+    const l=keyLane(e.code);if(l<0)return;e.preventDefault();if(G.mode==='replay')return;if(e.repeat||G.keyset[l].has(e.code))return;
     const first=!keyHeld(l);G.keyset[l].add(e.code);if(first)press(l,inTime(e));
   });
   document.addEventListener('keyup',e=>{if(!G.on)return;const l=keyLane(e.code);if(l<0)return;G.keyset[l].delete(e.code);if(!keyHeld(l))release(l,inTime(e))});
   // дотики: 4 колонки екрана (з урахуванням перемішки)
   const cv=$('#cv');
   const laneAtCol=col=>[0,1,2,3].sort((a,b)=>G.pos[a]-G.pos[b])[col];
-  cv.addEventListener('touchstart',e=>{e.preventDefault();if(!G.on)return;const t0=inTime(e);for(const t of e.changedTouches){const l=laneAtCol(clamp(Math.floor(t.clientX/innerWidth*4),0,3));const first=!keyHeld(l);G.touch.set(t.identifier,l);if(first)press(l,t0)}},{passive:false});
+  cv.addEventListener('touchstart',e=>{e.preventDefault();if(!G.on||G.mode==='replay')return;const t0=inTime(e);for(const t of e.changedTouches){const l=laneAtCol(clamp(Math.floor(t.clientX/innerWidth*4),0,3));const first=!keyHeld(l);G.touch.set(t.identifier,l);if(first)press(l,t0)}},{passive:false});
   const tend=e=>{e.preventDefault();if(!G.on)return;const t0=inTime(e);for(const t of e.changedTouches){const l=G.touch.get(t.identifier);G.touch.delete(t.identifier);if(l!=null&&!keyHeld(l))release(l,t0)}};
   cv.addEventListener('touchend',tend,{passive:false});cv.addEventListener('touchcancel',tend,{passive:false});
   window.addEventListener('resize',()=>{if(G.on)resizeGame()});
@@ -2221,7 +2330,7 @@ async function checkUpdate(){
     $('#stName').oninput=e=>{ST.song.name=e.target.value;ST.dirty=true};
     $('#stBpm').onchange=e=>{stHist();ST.song.bpm=clamp(Math.round(+e.target.value||120),60,200);e.target.value=ST.song.bpm;if(ST.playing){stPlay(false);stPlay(true)}stChanged()};
     $('#stBars').onchange=e=>{stHist();const nb=clamp(Math.round(+e.target.value||16),2,64),s=ST.song;s.bars=nb;e.target.value=nb;const tot=nb*16;s.drums=s.drums.filter(n=>n[1]<tot);for(const k of['piano','bass','lead'])s[k]=s[k].filter(n=>n[1]<tot).map(n=>[n[0],n[1],Math.min(n[2],tot-n[1])]);if(ST.playing){stPlay(false);stPlay(true)}stChanged()}}
-  renderRecent();
+  renderRecent();renderProfile();
 })();
 </script>
 </body>
