@@ -307,7 +307,7 @@ body{touch-action:manipulation;overscroll-behavior-x:none}
 <script>
 'use strict';
 // ====================== БАЗА ======================
-const BUILD_ID='20261030185218';
+const BUILD_ID='20261030185712';
 const GAME_VER='1.2';
 const BUILD=(()=>{if(!BUILD_ID.startsWith('__'))return BUILD_ID;const d=new Date(document.lastModified);return isNaN(d)?'0':d.toISOString()})();
 const LANE_COL=['#c24b99','#00e5f2','#2ff06a','#f9393f'];
@@ -1023,7 +1023,7 @@ function startGame(o){
   $('#menu').hidden=true;$('#game').hidden=false;$('#resOv').hidden=true;document.body.style.overflow='hidden';$('#pauseOv').hidden=true;
   $('#btnPause').hidden=o.mode==='online'||o.mode==='spectate';
   const ch=o.chart,rate=o.rate||1,s0=o.startAt||0;
-  G={on:true,mode:o.mode,opts:o,ch,P:60/ch.bpm,fixSpd:o.fixSpd||0,rate,s0,loopEnd:o.loopEnd||0,specGlow:{},pPose:null,oPose:null,poses:{},pMiss:0,
+  G={on:true,mode:o.mode,opts:o,ch,P:60/ch.bpm,fixSpd:o.fixSpd||0,rate,s0,loopEnd:o.loopEnd||0,specGlow:{},pPose:null,oPose:null,poses:{},camZ:1,floorZ:0,s01:0,pMiss:0,
     notes:ch.notes.map(n=>({t:n.t,lane:n.lane,len:n.len,type:n.type,j:false,hit:false})),
     ev:ch.ev.filter(e=>e.type!=="drop").map(e=>Object.assign({},e)),
     st:{score:0,combo:0,maxCombo:0,cnt:[0,0,0,0],miss:0,death:0,holdDrop:0,accSum:0,accN:0,offs:[],missT:[],deathT:[],voice:0,failed:false},
@@ -1197,7 +1197,12 @@ function updateEffects(tv,dt){
   G.fx=a;G.build=build;G.drop=drop;
   for(let l=0;l<4;l++){const tg=perm?perm[l]:l;G.pos[l]+=(tg-G.pos[l])*Math.min(1,dt*7)}
   G.flip+=(flip-G.flip)*Math.min(1,dt*5);
-  if(drop>0&&Math.random()<dt*40*drop)G.streaks.push({x:G.W+50,y:Math.random()*G.H,len:80+Math.random()*260,sp:1600+Math.random()*1800,col:LANE_COL[Math.floor(Math.random()*4)]});
+  // відчуття швидкості: 0 — найповільніше, 1 — найшвидше
+  const v=spdAt(Math.max(0,tv)),s01=G.fixSpd?0:clamp((v-1.0)/1.8,0,1);G.s01=s01;
+  G.floorZ=(G.floorZ||0)+dt*(0.35+1.15*v); // підлога їде назустріч зі швидкістю стрілок
+  G.camZ+=((1.03-0.08*s01)-G.camZ)*Math.min(1,dt*1.5); // повільно — трохи ближче, швидко — трохи далі
+  // «вітер»: чим швидше, тим більше й довші смуги
+  if(s01>0.3&&tv>0&&Math.random()<dt*70*Math.pow((s01-0.3)/0.7,1.5))G.streaks.push({x:G.W+50,y:Math.random()*G.H,len:(60+Math.random()*200)*(0.6+s01),sp:(1000+Math.random()*1400)*(0.6+s01),a:0.25+0.35*s01,col:LANE_COL[Math.floor(Math.random()*4)]});
 }
 function dropBoom(){} // на дропі без напису, спалаху й струсу — лишаються тільки більше нот і швидші стрілки
 function sparks(l){const L=G.lay;if(!L)return;const x=G.lastLaneX?G.lastLaneX[l]:G.W/2,y=G.lastRecY||100;
@@ -1230,7 +1235,7 @@ function render(tv,dt){
   let amp=(loud*1.6+kick*kick*5+G.hitShake*12+G.drop*3+G.build*4+(screamOn?14:0))*(S.shake/100)*(L.A/80);
   if(tv<0||G.paused)amp=0;
   const sx=(Math.random()*2-1)*amp,sy=(Math.random()*2-1)*amp;
-  const zoom=1+0.028*G.bump*(S.shake>0?1:0.4)+0.07*G.build*G.build;
+  const zoom=G.camZ+0.028*G.bump*(S.shake>0?1:0.4)+0.07*G.build*G.build;
   const rot=G.fx.rot*0.11*Math.sin(tv*1.7)+G.build*0.03*Math.sin(tv*12)+(screamOn?0.02*Math.sin(tv*40):0);
   c.save();c.translate(W/2+sx,H/2+sy);c.rotate(rot);c.scale(zoom,zoom);c.translate(-W/2,-H/2);
   const f=G.flip,fs=f*f*(3-2*f);
@@ -1260,15 +1265,15 @@ function drawBg(c,W,H,tv,kick,dt){
     c.save();c.beginPath();c.rect(0,hz,W,H-hz);c.clip();c.lineWidth=1.5;
     c.strokeStyle=hexA('#00e5f2',0.18+0.4*kick);
     for(let i=-16;i<=16;i++){c.beginPath();c.moveTo(W/2+i*W*0.02,hz);c.lineTo(W/2+i*W*0.17,H);c.stroke()}
-    for(let k=0;k<12;k++){const z=(k+G.beatFrac)/12,y=hz+(H-hz)*z*z;c.globalAlpha=z;c.strokeStyle=hexA('#ff5ad1',0.45+0.55*kick);c.beginPath();c.moveTo(0,y);c.lineTo(W,y);c.stroke()}
+    const fz=(G.floorZ||0)%1;for(let k=0;k<12;k++){const z=(k+fz)/12,y=hz+(H-hz)*z*z;c.globalAlpha=z;c.strokeStyle=hexA('#ff5ad1',0.45+0.55*kick);c.beginPath();c.moveTo(0,y);c.lineTo(W,y);c.stroke()}
     c.restore();c.globalAlpha=1;
     c.fillStyle=hexA('#ff5ad1',0.5+0.5*kick);c.fillRect(0,hz-1,W,2);
   }
   // спектр
   if(G.an){G.an.getByteFrequencyData(G.fdata);const nb=48,bw=W/nb;
     for(let i=0;i<nb;i++){const v=G.fdata[Math.floor(i*1.6)+1]/255,h=v*v*H*0.22;c.fillStyle=hexA(LANE_COL[i%4],G.video?0.3:0.38);c.fillRect(i*bw+1,H-h,bw-2,h)}}
-  // смуги швидкості на дропі
-  for(const s of G.streaks){s.x-=s.sp*dt;c.globalAlpha=0.55;c.fillStyle=s.col;c.fillRect(s.x,s.y,s.len,3)}
+  // смуги швидкості («вітер»)
+  for(const s of G.streaks){s.x-=s.sp*dt;c.globalAlpha=s.a||0.55;c.fillStyle=s.col;c.fillRect(s.x,s.y,s.len,3)}
   c.globalAlpha=1;G.streaks=G.streaks.filter(s=>s.x+s.len>-20);
 }
 function drawGroup(c,L,g,tv){
