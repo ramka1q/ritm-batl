@@ -311,7 +311,7 @@ body{touch-action:manipulation;overscroll-behavior-x:none}
 <script>
 'use strict';
 // ====================== БАЗА ======================
-const BUILD_ID='2026-11-01T16:13:49Z';
+const BUILD_ID='2026-11-01T16:58:11Z';
 const GAME_VER='1.3';
 const BUILD=(()=>{if(!BUILD_ID.startsWith('__'))return BUILD_ID;const d=new Date(document.lastModified);return isNaN(d)?'0':d.toISOString()})();
 const LANE_COL=['#c24b99','#00e5f2','#2ff06a','#f9393f'];
@@ -3009,21 +3009,22 @@ const VO_KINDS={roast:{i:'🔥',n:'ОБЗИВАЛОВКА',c:'#f9393f'},love:{i:
 const VO_GENRES=Object.keys(VO_KINDS);
 const VO_STYLES={'Хіп-хоп':{d:'Хіп-хоп',bpm:92,prog:'Am–F–C–G'},'Рок':{d:'Рок',bpm:100,prog:'C–G–Am–F'},'Хаус':{d:'Хаус',bpm:110,prog:'Dm–B♭–F–C'},'Трап':{d:'Трап',bpm:94,prog:'Am–Em–F–E'},
   'Лірика':{d:'Хіп-хоп',bpm:84,prog:'C–G–Am–F'},'Моторошний біт':{d:'Хіп-хоп',bpm:88,prog:'Am–Em–F–E'}};
-const GENRE_STYLE={roast:['Трап','Хіп-хоп'],love:['Лірика','Хаус'],prank:['Хіп-хоп','Рок','Хаус'],brag:['Трап','Рок'],scary:['Моторошний біт'],weird:['Хаус','Рок','Трап']};
+// один стиль на жанр: під його темп озвучені вірші (voice/)
+const GENRE_STYLE={roast:['Трап'],love:['Лірика'],prank:['Хіп-хоп'],brag:['Трап'],scary:['Моторошний біт'],weird:['Рок']};
 const VO_COL=['#ffd23f','#00e5f2','#2ff06a'],VO_FACE=['😎','🤪','🤠'],BOT_NAMES=['Бот Валера','Бот Пиріжок','Бот Кабачок','Бот Гоша'];
 const EMOJI_F='"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
 const VO_SPS=3.4,VO_SPIN=3.6,VO_REVEAL=1.7,VO_CARD=3.4,VO_LEAD=VO_SPIN+VO_REVEAL+VO_CARD; // секунди до початку музики
 let VO={on:false},VO_WK_AC=null;
 const VO_META={};
 function sylCount(t){return(t.match(/[аеєиіїоуюя]/gi)||[]).length||1}
-// скільки тактів на рядок: склад на кожну 1/8, а якщо задовго — на 1/16
-function voBars(n,P,bar){let need=n*P/2+0.4;if(need>3*bar)need=n*P/4+0.4;return clamp(Math.ceil(need/(bar/2))/2,0.5,3)}
-// склади рядка на сітці 1/8 (або 1/16): по цих моментах читає бот і підсвічується текст
+// скільки тактів на рядок: склад на кожну тріоль, а якщо задовго — на 1/16
+function voBars(n,P,bar){let need=n*P/3+0.4;if(need>3*bar)need=n*P/4+0.4;return clamp(Math.ceil(need/(bar/2))/2,0.5,3)}
+// склади рядка на сітці тріолей (або 1/16): по цих моментах читає бот і підсвічується текст
 function voSyl(l,p){if(l._y&&l._y.t0===l.t0&&l._y.t1===l.t1)return l._y;const re=/[^аеєиіїоуюя]*[аеєиіїоуюя]/gi,ends=[];while(re.exec(l.txt))ends.push(re.lastIndex);
   if(ends.length)ends[ends.length-1]=l.txt.length;
   // кінцеві приголосні й розділові знаки слова — до свого складу («Бот » + «Ва», а не «Бо» + «т Ва»)
   for(let i=0;i<ends.length-1;i++){const seg=l.txt.slice(ends[i],ends[i+1]-1),m=seg.match(/.*[\s,.!?;:—–«»"…]/);if(m)ends[i]+=m[0].length}
-  const n=ends.length,D=l.t1-l.t0-0.2;let step=p.P/2;if(n*step>D)step=p.P/4;if(n*step>D)step=D/Math.max(1,n);
+  const n=ends.length,D=l.t1-l.t0-0.2;let step=p.P/3;if(n*step>D)step=p.P/4;if(n*step>D)step=D/Math.max(1,n);
   const y={t0:l.t0,t1:l.t1,ends,step,t:ends.map((_,i)=>l.t0+0.03+i*step)};Object.defineProperty(l,'_y',{value:y,writable:true,configurable:true});return y}
 function voPlan(seed,names,bots,ids,free,pick){
   pick=pick||{};const R=rng(seed),n=names.length,rk=VO_GENRES[Math.floor(R()*VO_GENRES.length)],kind=VO_KINDS[pick.g]?pick.g:rk;let story;
@@ -3061,24 +3062,17 @@ function voBotSpeak(oc,out,l,p){
     g.connect(out);o.start(t);o.stop(t+len+0.02);
     if(/^[сшчцжзхф]/.test(s))nz(oc,t-0.01,0.05,'highpass',3500,0,envG(oc,out,t-0.01,0.003,0.2,0.05));
     else if(s.length>1)nz(oc,t,0.02,'bandpass',1500,1,envG(oc,out,t,0.001,0.15,0.02))})}
-// ---------- справжній голос: усі рядки озвучені заздалегідь ІІ-голосом Piper (uk_UA, 3 мовці) ----------
-// у файлі — кожне слово окремо; тут ставимо слово рівно на долю його першого складу
+// ---------- справжній голос: усі рядки озвучені заздалегідь (як у моді gta8: Piper high oleksa/mykyta + ланцюжок голосу) ----------
+// кожен рядок — цілим, уже під темп свого жанру (склад на тріоль); тут лише ставимо його на долю
 let VOICE_IDX=null;const VOICE_BUF={};
 async function voVoiceLoad(p){if(!p||p.free)return null;try{
-  if(!VOICE_IDX)VOICE_IDX=await(await fetch('voice/index.json',{cache:'force-cache'})).json();
-  const e=VOICE_IDX[p.kind+'|'+p.names.length+'|'+p.title];if(!e)return null;
-  if(!VOICE_BUF[e.f])VOICE_BUF[e.f]=await getAC().decodeAudioData(await(await fetch('voice/'+e.f)).arrayBuffer());
+  if(!VOICE_IDX)VOICE_IDX=await(await fetch('voice/index.json',{cache:'no-cache'})).json();
+  const e=VOICE_IDX[p.kind+'|'+p.names.length+'|'+p.title];if(!e||(e.bpm&&e.bpm!==p.bpm))return null;
+  if(!VOICE_BUF[e.f])VOICE_BUF[e.f]=await getAC().decodeAudioData(await(await fetch('voice/'+e.f,{cache:'no-cache'})).arrayBuffer());
   return{buf:VOICE_BUF[e.f],l:e.l}}catch(err){console.warn('voice',err);return null}}
-// час кожного слова шаблону: доля першого складу відповідного показаного слова
-function voTokTimes(l,p){const y=voSyl(l,p),dw=voWords(l.txt),toks=(l.tpl||l.txt).match(/\S+/g)||[],out=[];let di=0;
-  for(const tk of toks){const cnt=(tk.replace(/\{([ABC])\}/g,(m,k)=>p.names['ABC'.indexOf(k)]||'друже').match(/\S+/g)||[]).length;let t=null;
-    for(let k=0;k<cnt&&t==null;k++){const w=dw[di+k];if(!w)break;const si=y.ends.findIndex((e,i)=>{const s0=i?y.ends[i-1]:0;return s0>=w.a&&s0<w.b});if(si>=0)t=y.t[si]}
-    out.push(t);di+=cnt}return out}
-// озвучити рядок li у контексті ctx з моменту base (+ час рядка); повертає джерела, щоб можна було зупинити
-function voSpeakLine(ctx,out,l,p,vd,li,base){const segs=vd&&vd.l[li];if(!segs)return null;const tt=voTokTimes(l,p);
-  const ev=segs.map((sg,i)=>sg&&tt[i]!=null?{sg,t:tt[i]}:null).filter(Boolean);if(!ev.length)return null;const srcs=[];
-  ev.forEach((e,i)=>{const nx=i+1<ev.length?ev[i+1].t:l.t1-0.05,d=e.sg[1]-e.sg[0],rate=clamp(d/Math.max(0.08,nx-e.t-0.02),1,1.45);
-    const sc=ctx.createBufferSource();sc.buffer=vd.buf;sc.playbackRate.value=rate;sc.connect(out);sc.start(base+e.t,e.sg[0],d);srcs.push(sc)});return srcs}
+// озвучити рядок li у контексті ctx з моменту base (+ початок рядка); повертає джерела, щоб можна було зупинити
+function voSpeakLine(ctx,out,l,p,vd,li,base){const sg=vd&&vd.l[li];if(!sg||typeof sg[0]!=='number')return null;
+  const sc=ctx.createBufferSource();sc.buffer=vd.buf;sc.connect(out);sc.start(base+l.t0+0.03,sg[0],sg[1]-sg[0]);return[sc]}
 // увесь трек: музика + боти + живі голоси; voices[r] = {d:Float32Array, sr}
 async function voRender(p,voices,vd){
   const sr=44100,oc=new OfflineAudioContext(2,Math.ceil(p.dur*sr),sr),Q=[],at=(t,f)=>Q.push([t,f]);
@@ -3132,7 +3126,7 @@ function voOpen(plan,S0,role){
   VO={on:true,plan,S0,role,mine,phase:'spin',chunks:[],voices:[],clips:{},tick:-1,parts:{},conf:[],msg:''};
   $('#voOv').hidden=false;stopMenuBg();getAC().resume();
   if(mine.size)voMicStart();
-  const me=VO;const vl=voVoiceLoad(plan).then(v=>{me.voice=v;return v});if(plan.takes){requestAnimationFrame(voLoop);return}
+  const me=VO;const vl=voVoiceLoad(plan).then(v=>{me.voice=v;return v});me.vl=vl;if(plan.takes){requestAnimationFrame(voLoop);return}
   vl.then(v=>voRender(plan,[],v)).then(buf=>{if(VO!==me||!me.on)return;me.prev=buf;voSchedule(me)}).catch(e=>{console.error(e);toast('Не вдалося зробити музику','err')});
   me.endT=setTimeout(()=>{if(VO===me&&me.on&&me.phase!=='done')voEnd()},S0+(VO_LEAD+plan.dur)*1000-performance.now()+150); // і коли вкладка у фоні
   requestAnimationFrame(voLoop)}
@@ -3338,6 +3332,7 @@ function voUkVoice(){try{const vs=speechSynthesis.getVoices().filter(v=>/^uk/i.t
 function voTakeHow(){
   const me=VO,p=me.plan;if(me.recOn||me.count)return;
   if(me.tts){voStopPreview();voTakeBtns();return}
+  if(me.voice===undefined&&me.vl){me.vl.then(()=>{if(VO===me)voTakeHow()});return} // озвучка ще вантажиться
   voStopPreview();
   if(me.voice&&me.voice.l[me.li]){const ac=getAC();ac.resume();const t0=ac.currentTime+0.1;for(let i=0;i<4;i++)voClick(t0+i*p.P,i===0);
     const ln=p.lines[me.li],srcs=voSpeakLine(ac,ac.destination,{txt:me.gl.txt,tpl:ln.tpl,r:ln.r,t0:0,t1:me.gl.t1},p,me.voice,me.li,t0+4*p.P);
@@ -3394,7 +3389,7 @@ function voCheckTakes(){const me=VO,p=me.plan;if(!me.on||me.phase!=='done'||me.m
 // музика під довжину кожного запису: кожен рядок займає стільки тактів, скільки треба
 function voFinishTakes(){
   const me=VO,p=me.plan;if(me.mixing)return;let t=2*p.bar;
-  const lines=p.lines.map((l,i)=>{const c=me.clips[i],need=p.bots[l.r]?sylCount(l.txt)*p.P/2+0.4:c?c.d.length/c.sr+0.25:p.bar;
+  const lines=p.lines.map((l,i)=>{const c=me.clips[i],need=p.bots[l.r]?sylCount(l.txt)*p.P/3+0.4:c?c.d.length/c.sr+0.25:p.bar;
     const bars=clamp(Math.ceil(need/(p.bar/2))/2,0.5,8),o={r:l.r,txt:l.txt,tpl:l.tpl,t0:t,t1:t+bars*p.bar};t+=bars*p.bar;return o});
   me.plan=Object.assign({},p,{lines,dur:t+2*p.bar+0.6});
   me.voices=lines.map((l,i)=>me.clips[i]?{d:me.clips[i].d,sr:me.clips[i].sr,at:l.t0+0.02}:null).filter(Boolean);
