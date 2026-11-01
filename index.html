@@ -115,6 +115,15 @@ table.res tr.me td{background:rgba(255,210,63,.07)}
 #upd button{background:#1a1300;color:var(--acc);border:none;padding:6px 14px}
 .rc{display:flex;gap:6px;margin-top:6px}.rc .rcp{flex:1;text-align:left;font-size:13px;display:flex;justify-content:space-between;gap:8px;overflow:hidden;min-width:0}.rc .rcp span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.rc .rcp small{color:var(--mut);font:11px 'JetBrains Mono',monospace;white-space:nowrap}.rc .rcx{flex:0 0 40px;padding:0}
 #voOv{position:fixed;inset:0;z-index:45;background:#0c0a1d;touch-action:none;user-select:none}#voCv{width:100%;height:100%;display:block}#voChoice{position:absolute;left:0;right:0;bottom:12%;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;padding:0 16px}#voChoice button{font-size:17px;padding:14px 20px}
+#voTake{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(820px,calc(100% - 32px));text-align:center}
+#vtProg{color:var(--mut);font:600 13px Onest;margin-bottom:14px}#vtPrev{font:600 16px/1.4 Onest;color:#bdb7e4;margin-bottom:22px}
+#vtWho{font:800 14px Unbounded;letter-spacing:.06em;margin-bottom:6px}
+#vtLine{position:relative;font:800 clamp(24px,4.6vw,42px)/1.5 Onest;margin:4px 0 16px;color:var(--text)}#vtLine span{opacity:.55;transition:opacity .08s}
+#vtLine span.on{opacity:1}#vtLine span.cur{opacity:1;color:#fff;text-shadow:0 0 14px currentColor}
+#vtBall{position:absolute;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:var(--acc);border:2px solid #120c24;opacity:0;pointer-events:none}#vtBall.beat{background:#fff;width:18px;height:18px;margin-left:-9px}
+#vtMeter{height:10px;background:rgba(255,255,255,.12);border-radius:6px;overflow:hidden;margin:6px auto;max-width:420px}#vtMeter i{display:block;height:100%;width:0;transition:width .05s}
+#vtSt{font:600 14px Onest;min-height:20px;margin:10px 0}#voTake .row{justify-content:center}#voTake .row button{flex:0 1 auto;font-size:15px;padding:12px 14px}
+#vtRec.rec{background:var(--l3);border-color:var(--l3);color:#fff}
 #voX{position:absolute;top:12px;right:12px;z-index:2;background:rgba(0,0,0,.45)}
 #edOv{position:fixed;inset:0;z-index:40;background:var(--bg);display:flex;flex-direction:column}
 #edBar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--line);background:var(--panel)}
@@ -169,6 +178,7 @@ body{touch-action:manipulation;overscroll-behavior-x:none}
         <div class="hint">Ви читаєте вірш у риму. Барабан обирає, про що він: 🔥 обзиваловка з вашими ніками, 💘 люболовка, 😂 прикол, 👑 хвастуни, 👻 страшилка або 🌀 дивнота. Кожен читає свої рядки в мікрофон, музика підбирається сама, а потім ви граєте трек зі своїми голосами. Соло — разом з ботом, в онлайн-кімнаті — з друзями (хост + 2). Краще в навушниках.</div>
         <label class="chk"><input type="checkbox" id="chVoFree"><span>Своїми словами <small>замість готової історії — тема, і кожен по черзі каже що хоче</small></span></label>
         <div class="field"><div class="t">Музика</div><div class="seg" id="segVoMus"><button data-v="1">🎵 З музикою</button><button data-v="0">🔇 Без музики</button></div></div>
+        <div class="field"><div class="t">Запис</div><div class="seg" id="segVoTakes"><button data-v="1">🔁 По рядках — скільки завгодно спроб</button><button data-v="0">🎯 Одна спроба в ритм</button></div></div>
         <div class="field" id="voSoloBox"><div class="t">Соло</div><div class="seg" id="segVoSelf"><button data-v="0">🤖 З ботом</button><button data-v="1">🎭 Сам за двох</button></div></div>
         <button id="btnVoice" class="acc" style="width:100%">🎰 Крутити барабан</button>
         <div class="mut" id="voSt" style="margin-top:6px"></div>
@@ -289,13 +299,15 @@ body{touch-action:manipulation;overscroll-behavior-x:none}
 
 
 <div id="voOv" hidden><canvas id="voCv"></canvas><button id="voX">✕ Скасувати</button>
+  <div id="voTake" hidden><div id="vtProg"></div><div id="vtPrev"></div><div id="vtWho"></div><div id="vtLine"></div><div id="vtMeter"><i id="vtLvl"></i></div><div id="vtSt"></div>
+    <div class="row"><button id="vtHow">👂 Як читати</button><button id="vtRec" class="acc">⏺ Записати</button><button id="vtPlay">▶ Послухати</button><button id="vtClear">🗑 Очистити</button><button id="vtSend">✅ Відправити</button></div></div>
   <div id="voChoice" hidden><button id="voListenB">▶ Послухати</button><button id="voPlayB" class="acc">🎮 Грати на стрілочках</button><button id="voMenuB">В меню</button></div></div>
 
 <div id="toasts"></div>
 <script>
 'use strict';
 // ====================== БАЗА ======================
-const BUILD_ID='2026-11-01T14:14:51Z';
+const BUILD_ID='2026-11-01T14:25:26Z';
 const GAME_VER='1.3';
 const BUILD=(()=>{if(!BUILD_ID.startsWith('__'))return BUILD_ID;const d=new Date(document.lastModified);return isNaN(d)?'0':d.toISOString()})();
 const LANE_COL=['#c24b99','#00e5f2','#2ff06a','#f9393f'];
@@ -326,7 +338,7 @@ function hexA(hex,a){const n=parseInt(hex.slice(1),16);return`rgba(${n>>16},${n>
 
 // ====================== НАЛАШТУВАННЯ ======================
 const DEF_KEYS=[['ArrowLeft','KeyD'],['ArrowDown','KeyF'],['ArrowUp','KeyJ'],['ArrowRight','KeyK']];
-const S={name:'',diff:1,events:50,smin:0.9,smax:2.7,shake:100,side:1,scroll:0,keys:DEF_KEYS.map(k=>k.slice()),offset:0,nofail:false,sing:false,calibrated:false,sens:100,sensV:1,color:'#00b8c4',hitsound:false,hitvol:60,vibro:true,skin:0,chars:true,voMusic:true,voSelf:false};
+const S={name:'',diff:1,events:50,smin:0.9,smax:2.7,shake:100,side:1,scroll:0,keys:DEF_KEYS.map(k=>k.slice()),offset:0,nofail:false,sing:false,calibrated:false,sens:100,sensV:1,color:'#00b8c4',hitsound:false,hitvol:60,vibro:true,skin:0,chars:true,voMusic:true,voSelf:false,voTakes:true};
 try{const o=JSON.parse(localStorage.getItem('ritmbatl')||'{}');for(const k in S)if(o[k]!==undefined&&typeof o[k]===typeof S[k])S[k]=o[k];
   if(!o.sensV){if(S.sens===50)S.sens=100;S.sensV=1} // старий стандарт 50 → новий 100
   if(!Array.isArray(S.keys)||S.keys.length!==4||S.keys.some(k=>!Array.isArray(k)||k.length!==2))S.keys=DEF_KEYS.map(k=>k.slice());}catch(e){}
@@ -1761,6 +1773,7 @@ function hostMsg(p,m){
     case 'upChunk':if(p.up)hostUpData(p,b64dec(m.d),m.off);break;
     case 'upEnd':hostUpEnd(p);break;
     case 'voV':hostVoVoice(p.id,m);break;
+    case 'voC':hostVoClip(p.id,m);break;
     default:hostCommon(p.id,p.name,m);
   }
 }
@@ -2453,7 +2466,7 @@ C: Найкращий хакер у світі — бабця з намисто�
 `;
 
 const VO_ROAST2=`
-# картопля
+# Картопля
 A: Слухай, {B}, ти така сонна картопля!
 B: А ти, {A}, — розмоклий у супі бублик і кропля!
 A: Ти бігаєш так повільно, що тебе обганяє равлик!
@@ -2463,7 +2476,7 @@ B: А в тебе зачіска, наче тебе облизала коров�
 A: Ну все, ти — пельмень без начинки!
 B: А ти — шкарпетка з дірою посередині ялинки!
 
-# скрипуче крісло
+# Скрипуче крісло
 A: {B}, у тебе голос, як у старого скрипучого крісла!
 B: А в тебе, {A}, обличчя, як у сонної риби в мисці!
 A: Ти так танцюєш, ніби тебе вкусили мурахи!
@@ -2473,7 +2486,7 @@ B: А твій — шукати тапки в кожній вітальні!
 A: Ти як вайфай у селі — тебе ніколи нема!
 B: А ти як будильник у неділю — всіх бісиш сама!
 
-# гравці
+# Гравці
 A: {B}, ти граєш, як бабуся без окулярів!
 B: А ти, {A}, промахуєшся навіть по хмарах!
 A: Ти тиснеш стрілки ліктем і носом!
@@ -2483,7 +2496,7 @@ B: А твій — нуль балів і купа погрози!
 A: Ти програв ботові, і бот сміявся!
 B: А ти програв паузі, бо до неї не дотягнувся!
 
-# зоопарк
+# Зоопарк
 A: Ти схожий на жирафа, що застряг у ліфті!
 B: А ти на пінгвіна, що впав у компот на лікті!
 A: {B}, ти хропиш, як бегемот у ванні!
@@ -2493,7 +2506,7 @@ B: А ти ходиш, як качка в ластах по піску!
 A: Ти мавпа без банана, ось хто ти!
 B: А ти лінивець, що проспав свої ж турботи!
 
-# кухня
+# Кухня
 A: {B}, ти — як каша без солі, нудна і сіра!
 B: А ти — як холодний чай, в якому плаває дірка!
 A: Ти пересмажений млинець, весь у диму!
@@ -2503,7 +2516,7 @@ B: А ти — як часник на першому побаченні, кох�
 A: Ти — макарона, що прилипла до стелі!
 B: А ти — огірок, що забув, як бути веселим!
 
-# супергерої
+# Супергерої
 A: Ти супергерой — Людина-Повільний-Інтернет!
 B: А ти — Капітан Шкарпетка, найгірший в світі бренд!
 A: Твоя суперсила — спати на уроках!
@@ -2513,7 +2526,7 @@ B: А ти літаєш, але тільки в сні й на ракетці!
 A: Твій плащ — це мамин рушник з квіточками!
 B: А твоя маска — це шкарпетка з кісточками!
 
-# зачіска
+# Зачіска
 A: {B}, твоя зачіска — як гніздо для ворони!
 B: А твоя, {A}, — ніби тебе облизали корови!
 A: Ти мила не бачив, мабуть, з минулого літа!
@@ -2523,7 +2536,7 @@ B: А твої шкарпетки самі ходять по залу!
 A: Ти модний, як мамина скатертина з квітами!
 B: А ти стильний, як дідусеві труси з дірками!
 
-# школа
+# Школа
 A: Ти в школі найкращий... у сні на перерві!
 B: А ти, {A}, — чемпіон з втрати нервів!
 A: Ти пишеш так криво, що вчителька плаче!
@@ -2977,6 +2990,15 @@ const VO_SPS=3.4,VO_SPIN=3.6,VO_REVEAL=1.7,VO_CARD=3.4,VO_LEAD=VO_SPIN+VO_REVEAL
 let VO={on:false},VO_WK_AC=null;
 const VO_META={};
 function sylCount(t){return(t.match(/[аеєиіїоуюя]/gi)||[]).length||1}
+// скільки тактів на рядок: склад на кожну 1/8, а якщо задовго — на 1/16
+function voBars(n,P,bar){let need=n*P/2+0.4;if(need>3*bar)need=n*P/4+0.4;return clamp(Math.ceil(need/bar),1,3)}
+// склади рядка на сітці 1/8 (або 1/16): по цих моментах читає бот і підсвічується текст
+function voSyl(l,p){if(l._y&&l._y.t0===l.t0&&l._y.t1===l.t1)return l._y;const re=/[^аеєиіїоуюя]*[аеєиіїоуюя]/gi,ends=[];while(re.exec(l.txt))ends.push(re.lastIndex);
+  if(ends.length)ends[ends.length-1]=l.txt.length;
+  // кінцеві приголосні й розділові знаки слова — до свого складу («Бот » + «Ва», а не «Бо» + «т Ва»)
+  for(let i=0;i<ends.length-1;i++){const seg=l.txt.slice(ends[i],ends[i+1]-1),m=seg.match(/.*[\s,.!?;:—–«»"…]/);if(m)ends[i]+=m[0].length}
+  const n=ends.length,D=l.t1-l.t0-0.2;let step=p.P/2;if(n*step>D)step=p.P/4;if(n*step>D)step=D/Math.max(1,n);
+  const y={t0:l.t0,t1:l.t1,ends,step,t:ends.map((_,i)=>l.t0+0.03+i*step)};Object.defineProperty(l,'_y',{value:y,writable:true,configurable:true});return y}
 function voPlan(seed,names,bots,ids,free){
   const R=rng(seed),n=names.length,kind=VO_GENRES[Math.floor(R()*VO_GENRES.length)];let story;
   if(free){const topic=VO_TOPICS[Math.floor(R()*VO_TOPICS.length)];
@@ -2986,7 +3008,7 @@ function voPlan(seed,names,bots,ids,free){
   const sn=GENRE_STYLE[kind][Math.floor(R()*GENRE_STYLE[kind].length)],st=Object.assign({n:sn},VO_STYLES[sn]);
   const bpm=st.bpm,P=60/bpm,bar=4*P;
   const sub=t=>t.replace(/\{([ABC])\}/g,(m,k)=>names['ABC'.indexOf(k)]||'друже');
-  let t=2*bar;const lines=story.l.map(l=>{const txt=sub(l.txt),bars=free?2:clamp(Math.ceil((sylCount(txt)+2)/(VO_SPS*bar)),1,3),o={r:l.r,txt,t0:t,t1:t+bars*bar};t+=bars*bar;return o});
+  let t=2*bar;const lines=story.l.map(l=>{const txt=sub(l.txt),bars=free?2:voBars(sylCount(txt),P,bar),o={r:l.r,txt,t0:t,t1:t+bars*bar};t+=bars*bar;return o});
   return{v:1,seed,kind,free:!!free,title:story.n,style:st.n,drum:st.d,prog:st.prog,bpm,P,bar,lines,dur:t+2*bar+0.6,names,bots,ids}}
 
 // ---------- звук: музика і голос бота ----------
@@ -3003,9 +3025,9 @@ const VOW={'а':[800,1200],'о':[500,850],'у':[330,800],'е':[520,1750],'є':[5
 // бот «читає реп»: склад на кожну 1/8 (або 1/16), голосні — формантами, приголосні — шумом
 function voBotSpeak(oc,out,l,p){
   const sy=l.txt.toLowerCase().match(/[^аеєиіїоуюя]*[аеєиіїоуюя]/g)||[];if(!sy.length)return;
-  const D=l.t1-l.t0-0.2;let step=p.P/2;if(sy.length*step>D)step=p.P/4;if(sy.length*step>D)step=D/sy.length;
+  const y=voSyl(l,p),step=y.step;
   const R=rng(p.seed+Math.round(l.t0*1000)),base=[150,175,128][l.r%3],pent=[0,2,4,7,9,12];
-  sy.forEach((s,i)=>{const t=l.t0+0.03+i*step,v=s[s.length-1],fm=VOW[v]||[600,1400],len=step*0.88,last=i===sy.length-1;
+  sy.forEach((s,i)=>{const t=y.t[i],v=s[s.length-1],fm=VOW[v]||[600,1400],len=step*0.88,last=i===sy.length-1;
     const f0=base*Math.pow(2,(pent[Math.floor(R()*pent.length)]-(last?5:0))/12);
     const o=oc.createOscillator();o.type='sawtooth';o.frequency.setValueAtTime(f0,t);o.frequency.linearRampToValueAtTime(f0*(last?0.8:1.04),t+len);
     const g=oc.createGain();g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.9,t+0.012);g.gain.setValueAtTime(0.8,t+len*0.7);g.gain.exponentialRampToValueAtTime(0.0001,t+len);
@@ -3022,7 +3044,7 @@ async function voRender(p,voices){
   else for(let i=4;i<8;i++)osc(oc,'sine',i===7?1320:880,envG(oc,master,i*p.P,0.003,0.18,0.1),i*p.P,0.12); // відлік перед першою реплікою
   for(const l of p.lines)if(p.bots[l.r])at(l.t0,()=>voBotSpeak(oc,master,l,p));
   for(const v of voices||[]){if(!v||!v.d||!v.d.length)continue;const b=oc.createBuffer(1,v.d.length,v.sr);b.copyToChannel(v.d,0);
-    const s=oc.createBufferSource();s.buffer=b;const hp=oc.createBiquadFilter();hp.type='highpass';hp.frequency.value=90;const g=oc.createGain();g.gain.value=1.15;s.connect(hp).connect(g).connect(master);s.start(0)}
+    const s=oc.createBufferSource();s.buffer=b;const hp=oc.createBiquadFilter();hp.type='highpass';hp.frequency.value=90;const g=oc.createGain();g.gain.value=1.15;s.connect(hp).connect(g).connect(master);s.start(v.at||0)}
   // вузли створюємо шматками під час рендеру — так граф малий і синтез швидкий
   const groups=new Map();for(const[t,f]of Q){const k=Math.max(0,Math.floor((t-0.4)*sr/128))*128;if(!groups.has(k))groups.set(k,[]);groups.get(k).push(f)}
   for(const[k,fs]of[...groups].sort((a,b)=>a[0]-b[0])){if(k===0)fs.forEach(f=>f());else oc.suspend(k/sr).then(()=>{fs.forEach(f=>f());oc.resume()})}
@@ -3039,7 +3061,7 @@ async function voMicStart(){
   if(VO!==me||!me.on){me.stream.getTracks().forEach(t=>t.stop());return}
   const src=ac.createMediaStreamSource(me.stream);me.src=src;me.an=ac.createAnalyser();me.an.fftSize=1024;me.lvl=new Float32Array(1024);src.connect(me.an);
   const sink=ac.createGain();sink.gain.value=0;sink.connect(ac.destination);me.sink=sink;
-  const push=(t,d)=>{if(me.on&&me.phase!=='done')me.chunks.push({t,d})};
+  const push=(t,d)=>{if(me.on&&me.phase!=='done'&&(!me.plan.takes||me.recOn))me.chunks.push({t,d})};
   try{if(!ac.audioWorklet)throw 0;if(VO_WK_AC!==ac){await ac.audioWorklet.addModule(URL.createObjectURL(new Blob([VO_WK],{type:'application/javascript'})));VO_WK_AC=ac}
     const n=new AudioWorkletNode(ac,'vo-rec');n.port.onmessage=e=>push(e.data.t,e.data.d);src.connect(n);n.connect(sink);me.node=n}
   catch(e){const sp=ac.createScriptProcessor(4096,1,1);sp.onaudioprocess=e=>push(ac.currentTime-4096/ac.sampleRate,e.inputBuffer.getChannelData(0).slice());src.connect(sp);sp.connect(sink);me.node=sp}}
@@ -3063,10 +3085,11 @@ function voAssemble(){
 function voOpen(plan,S0,role){
   if(VO.on)voClose();
   const mine=new Set(plan.self?plan.names.map((_,i)=>i):role>=0&&!plan.bots[role]?[role]:[]);
-  VO={on:true,plan,S0,role,mine,phase:'spin',chunks:[],voices:[],tick:-1,parts:{},conf:[],msg:''};
+  VO={on:true,plan,S0,role,mine,phase:'spin',chunks:[],voices:[],clips:{},tick:-1,parts:{},conf:[],msg:''};
   $('#voOv').hidden=false;stopMenuBg();getAC().resume();
   if(mine.size)voMicStart();
-  const me=VO;voRender(plan,[]).then(buf=>{if(VO!==me||!me.on)return;me.prev=buf;voSchedule(me)}).catch(e=>{console.error(e);toast('Не вдалося зробити музику','err')});
+  const me=VO;if(plan.takes){requestAnimationFrame(voLoop);return}
+  voRender(plan,[]).then(buf=>{if(VO!==me||!me.on)return;me.prev=buf;voSchedule(me)}).catch(e=>{console.error(e);toast('Не вдалося зробити музику','err')});
   me.endT=setTimeout(()=>{if(VO===me&&me.on&&me.phase!=='done')voEnd()},S0+(VO_LEAD+plan.dur)*1000-performance.now()+150); // і коли вкладка у фоні
   requestAnimationFrame(voLoop)}
 function voSchedule(me){
@@ -3074,7 +3097,7 @@ function voSchedule(me){
   me.ctxStart=ts.contextTime+(zeroPerf-ts.performanceTime)/1000;me.outLat=clamp(ac.currentTime-ts.contextTime,0,0.4);
   const s=ac.createBufferSource();s.buffer=me.prev;const g=ac.createGain();g.gain.value=0.85;s.connect(g).connect(ac.destination);me.out=s;
   if(me.ctxStart>ac.currentTime+0.01)s.start(me.ctxStart);else s.start(ac.currentTime,ac.currentTime-me.ctxStart)}
-function voClose(){const me=VO;if(!me.on)return;me.on=false;$('#voChoice').hidden=true;voMicStop(me);try{me.out&&me.out.stop()}catch(e){}clearTimeout(me.waitT);clearTimeout(me.endT);$('#voOv').hidden=true;if($('#game').hidden)startMenuBg()}
+function voClose(){const me=VO;if(!me.on)return;me.on=false;$('#voChoice').hidden=true;$('#voTake').hidden=true;voStopPreview(me);voMicStop(me);try{me.out&&me.out.stop()}catch(e){}clearTimeout(me.waitT);clearTimeout(me.endT);$('#voOv').hidden=true;if($('#game').hidden)startMenuBg()}
 function voCancel(){if(!VO.on||VO.mixing)return;if(NET.role==='host')netBroadcast({t:'voCancel'});voClose();toast('Історію скасовано')}
 function voTick(big){try{const ac=getAC(),t=ac.currentTime+0.01;osc(ac,big?'triangle':'square',big?1320:1900,envG(ac,ac.destination,t,0.001,big?0.25:0.06,big?0.35:0.03),t,big?0.4:0.05)}catch(e){}}
 function voLoop(){
@@ -3084,10 +3107,12 @@ function voLoop(){
   const c=cv.getContext('2d');c.setTransform(dpr,0,0,dpr,0,0);
   const p=me.plan,el=(performance.now()-me.S0)/1000,st=el-VO_LEAD,u=clamp(Math.min(W/900,H/640),0.45,1.6);
   if(me.phase==='done'||me.phase==='choice'){voDrawWait(c,W,H,el,u);return}
+  if(me.phase==='takes'){voDrawTakes(c,W,H,el,u);return}
   if(me.phase==='listen'){const lt=(performance.now()-me.lz)/1000;if(lt<p.dur)voDrawRead(c,W,H,Math.max(0,lt),u);else if(me.back)voChoice();else voClose();return}
   if(el<VO_SPIN)voDrawSpin(c,W,H,Math.max(0,el),u);
   else if(el<VO_SPIN+VO_REVEAL)voDrawReveal(c,W,H,el-VO_SPIN,u);
   else if(st<0)voDrawCard(c,W,H,el-VO_SPIN-VO_REVEAL,u);
+  else if(p.takes)voTakesStart();
   else if(st<p.dur)voDrawRead(c,W,H,st,u);
   else voEnd()}
 function voBg(c,W,H,t){const g=c.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0c0a1d');g.addColorStop(1,'#2b0e3c');c.fillStyle=g;c.fillRect(0,0,W,H);
@@ -3130,7 +3155,23 @@ function voDrawCard(c,W,H,t,u){
   p.names.forEach((nm,i)=>{const y=H*0.53+i*58*u,me=VO.mine.has(i),bw=Math.min(W-24,460*u);
     c.fillStyle=hexA(VO_COL[i],me?0.22:0.1);c.fillRect(W/2-bw/2,y-24*u,bw,48*u);
     drawText(c,(p.bots[i]?'🤖':VO_FACE[i])+'  '+nm+(me?' — це ти':'')+'  ·  реплік: '+p.lines.filter(l=>l.r===i).length,W/2,y,Math.round(Math.min(20*u,W/26)),VO_COL[i],{f:'Onest, '+EMOJI_F,w:800})});
-  drawText(c,(VO.mine.size?'🎤 Читай у мікрофон рядки свого кольору · ':'')+'старт через '+Math.ceil(VO_CARD-t),W/2,H*0.9,Math.round(Math.min(16*u,W/34)),'#efecff',{f:'Onest, '+EMOJI_F,w:700,stroke:false});c.globalAlpha=1}
+  drawText(c,(VO.mine.size?(p.takes?'🎤 Далі кожен записує свої рядки — скільки завгодно спроб · ':'🎤 Читай у мікрофон рядки свого кольору · '):'')+'старт через '+Math.ceil(VO_CARD-t),W/2,H*0.9,Math.round(Math.min(16*u,W/34)),'#efecff',{f:'Onest, '+EMOJI_F,w:700,stroke:false});c.globalAlpha=1}
+// рядок з підсвіткою по складах: склад загоряється рівно у свою 1/8, над ним стрибає м'ячик (на долю — вище)
+function voDrawLine(c,W,cy,u,l,p,st,col,mine,fr){
+  const fs=Math.round(Math.min(46*u,W/14)),font='800 '+fs+'px Onest, sans-serif';c.font=font;const rows=voWrap(c,l.txt,W*0.86),lh=fs*1.35;
+  const rhythm=!p.free&&!(p.takes&&!p.bots[l.r]);let y=null,k=0,hi,cs=0;
+  if(rhythm){y=voSyl(l,p);while(k<y.t.length&&st>=y.t[k]-0.02)k++;hi=k?y.ends[k-1]:0;cs=k>=2?y.ends[k-2]:0}else hi=Math.round(fr*l.txt.length);
+  let off=0;rows.forEach((r,i)=>{const yy=cy+(i-(rows.length-1)/2)*lh,s0=off;off+=r.length+1;
+    drawText(c,r,W/2,yy,fs,mine?'#efecff':'#bdb7e4',{f:'Onest, sans-serif',w:800});c.font=font;
+    const w=c.measureText(r).width,x0=W/2-w/2,e=clamp(hi-s0,0,r.length);
+    if(e>0){const pw=c.measureText(r.slice(0,e)).width;c.save();c.beginPath();c.rect(x0-4,yy-lh/2,pw+4,lh);c.clip();drawText(c,r,W/2,yy,fs,col,{f:'Onest, sans-serif',w:800});c.restore()}
+    if(!y||!k)return;const a=cs-s0,b=hi-s0;if(b<=0||a>=r.length)return;
+    const seg=r.slice(Math.max(0,a),Math.min(r.length,b)),lead=seg.length-seg.trimStart().length,core=seg.trim();if(!core)return;
+    const xa=x0+c.measureText(r.slice(0,Math.max(0,a)+lead)).width,xc=xa+c.measureText(core).width/2;
+    const ts=y.t[k-1],ph=clamp((st-ts)/y.step,0,1),beat=Math.abs(((ts-l.t0-0.03)/p.P+1e-6)%1)<0.02;
+    const by=yy-fs*0.78-Math.sin(ph*Math.PI)*fs*(beat?0.6:0.32),rad=fs*(beat?0.16:0.11);
+    c.beginPath();c.arc(xc,by,rad,0,Math.PI*2);c.fillStyle=beat?'#fff':col;c.fill();c.lineWidth=2;c.strokeStyle='rgba(8,5,20,.9)';c.stroke()});
+  return rows.length}
 function voWrap(c,txt,maxW){const ws=txt.split(' '),out=[];let cur='';for(const w of ws){const t=cur?cur+' '+w:w;if(c.measureText(t).width>maxW&&cur){out.push(cur);cur=w}else cur=t}if(cur)out.push(cur);return out}
 function voDrawRead(c,W,H,st,u){
   const p=VO.plan;
@@ -3144,11 +3185,7 @@ function voDrawRead(c,W,H,st,u){
     const who=mine?'🎤 ТВОЯ РЕПЛІКА — ГОВОРИ!':(p.bots[l.r]?'🤖 ':VO_FACE[l.r]+' ')+p.names[l.r]+' говорить';
     const pulse=mine?1+0.06*Math.sin(st*10):1;
     c.save();c.translate(W/2,H*0.2);c.scale(pulse,pulse);drawText(c,who,0,0,Math.round(Math.min(26*u,W/22)),col,{f:'Unbounded, '+EMOJI_F});c.restore();
-    const fs=Math.round(Math.min(46*u,W/14));c.font='800 '+fs+'px Onest, sans-serif';const rows=voWrap(c,l.txt,W*0.86),lh=fs*1.25;
-    const total=rows.reduce((a,r)=>a+r.length,0);let done=fr*total;
-    rows.forEach((r,i)=>{const y=H*0.4+(i-(rows.length-1)/2)*lh;drawText(c,r,W/2,y,fs,mine?'#efecff':'#bdb7e4',{f:'Onest, sans-serif',w:800});
-      const k=clamp(done,0,r.length);done-=r.length;if(k<=0)return;c.font='800 '+fs+'px Onest, sans-serif';const w=c.measureText(r).width,pw=c.measureText(r.slice(0,Math.round(k))).width;
-      c.save();c.beginPath();c.rect(W/2-w/2-4,y-lh/2,pw+4,lh);c.clip();drawText(c,r,W/2,y,fs,col,{f:'Onest, sans-serif',w:800});c.restore()});
+    voDrawLine(c,W,H*0.42,u,l,p,st,col,mine,fr);
     c.fillStyle='rgba(255,255,255,.12)';c.fillRect(W*0.2,H*0.6,W*0.6,6*u);c.fillStyle=col;c.fillRect(W*0.2,H*0.6,W*0.6*clamp((st-l.t0)/(l.t1-l.t0),0,1),6*u)}
   const nx=l&&st>=l.t0?p.lines[li+1]:l;
   if(nx){c.globalAlpha=0.8;c.font='600 '+Math.round(Math.min(17*u,W/40))+'px Onest, sans-serif';const t='Далі: '+(VO.mine.has(nx.r)?'ТИ':p.names[nx.r])+' — '+nx.txt,rows=voWrap(c,t,W*0.9);
@@ -3200,22 +3237,123 @@ function voListen(back){
   VO={on:true,plan:m,mine:new Set(),phase:'listen',conf:[],out:s,back,S0:performance.now(),lz:ts.performanceTime+(at-ts.contextTime)*1000};
   $('#voOv').hidden=false;$('#voChoice').hidden=true;stopMenuBg();requestAnimationFrame(voLoop)}
 function voPlay(){voClose();if(!T.chart||!T.buf)return;const go=()=>startGame({mode:'solo',chart:T.chart,buf:T.buf,smin:S.smin,smax:S.smax,video:true});if(!S.calibrated)runCalibration(go);else go()}
+// ---------- запис по репліках: скільки завгодно спроб, потім «Відправити» ----------
+function voTakesStart(){
+  const me=VO,p=me.plan;if(me.phase==='takes'||me.phase==='done')return;me.phase='takes';
+  me.my=p.lines.map((l,i)=>i).filter(i=>me.mine.has(p.lines[i].r));me.ti=0;me.take=null;me.recOn=false;
+  if(!me.my.length){me.phase='done';me.msg='Друзі записують свої рядки — трек прийде сам';setTimeout(()=>{if(VO===me)voClose()},2500);return}
+  $('#voTake').hidden=false;voTakeShow()}
+function voTakeShow(){
+  const me=VO,p=me.plan;if(me.ti>=me.my.length)return voTakesDone();
+  const li=me.my[me.ti],l=p.lines[li],prev=p.lines[li-1];
+  $('#vtProg').textContent='Твій рядок '+(me.ti+1)+' з '+me.my.length+' · «'+p.title+'»';
+  $('#vtPrev').innerHTML=prev?'<b style="color:'+VO_COL[prev.r]+'">'+esc((p.bots[prev.r]?'🤖 ':'')+p.names[prev.r])+':</b> '+esc(prev.txt):'Ти починаєш вірш!';
+  $('#vtWho').textContent=(p.self?p.names[l.r]+' — ':'')+'ЧИТАЙ:';$('#vtWho').style.color=VO_COL[l.r];
+  // рядок по складах — щоб підсвічувати в ритм
+  me.gl={txt:l.txt,t0:0,t1:voBars(sylCount(l.txt),p.P,p.bar)*p.bar};const y=voSyl(me.gl,p);
+  $('#vtLine').innerHTML=y.ends.map((e,i)=>'<span>'+esc(l.txt.slice(i?y.ends[i-1]:0,e))+'</span>').join('')+'<i id="vtBall"></i>';$('#vtLine').style.color=VO_COL[l.r];
+  $('#vtHow').hidden=!!p.free;me.take=null;me.guide=0;voTakeBtns()}
+function voTakeBtns(){
+  const me=VO,busy=me.recOn||me.count;
+  $('#vtRec').textContent=busy?'⏹ Стоп':'⏺ Записати';$('#vtRec').classList.toggle('rec',!!busy);$('#vtRec').disabled=!!me.noMic||!!me.take;
+  $('#vtPlay').disabled=!me.take||busy;$('#vtClear').disabled=!me.take||busy;$('#vtSend').disabled=!(me.take||me.noMic)||busy;$('#vtHow').disabled=!!busy;
+  $('#vtSt').textContent=me.noMic?'Мікрофона немає — тисни «Відправити», рядок буде тихим':me.count?'Приготуйся… '+me.count:me.recOn?'🔴 Говори за підсвіткою… потім «Стоп» (Пробіл)':
+    me.take?'Послухай. Подобається — «Відправити» (Enter). Ні — «Очистити» і заново':'«Як читати» — бот покаже ритм. «Записати» (Пробіл) — відлік і читай за підсвіткою'}
+// підсвітка рядка в ритм: від моменту me.guide (performance.now першого складу)
+function voGuideStart(at){VO.guide=at}
+function voClick(t,big){const ac=getAC();osc(ac,'square',big?1600:1100,envG(ac,ac.destination,t,0.001,big?0.12:0.07,0.04),t,0.05)}
+function voTakeRec(){
+  const me=VO;if(me.phase!=='takes'||me.noMic||me.take)return;
+  if(me.recOn||me.count){clearTimeout(me.countT);const was=me.recOn;me.recOn=false;me.count=0;me.guide=0;
+    if(was){const clip=voClip(me.chunks);me.chunks=[];if(!clip)toast('Нічого не чути — спробуй ще раз, ближче до мікрофона','err');me.take=clip}voTakeBtns();return}
+  if(!me.src){toast('Мікрофон ще вмикається…');return}
+  voStopPreview();const ac=getAC(),P=me.plan.P,t0=ac.currentTime+0.1;for(let i=0;i<4;i++)voClick(t0+i*P,i===0);
+  const ts=outTs(),zero=ts.performanceTime+(t0+4*P-ts.contextTime)*1000;me.count=3;
+  const tick=()=>{if(VO!==me||!me.count)return;const left=Math.ceil((zero-performance.now())/(P*1000));if(left<=0){me.count=0;me.chunks=[];me.recOn=true;voGuideStart(zero);voTakeBtns();return}
+    me.count=left;voTakeBtns();me.countT=setTimeout(tick,40)};
+  me.chunks=[];tick()}
+// «Як читати»: бот читає рядок по складах під клацання, текст підсвічується
+async function voTakeHow(){
+  const me=VO,p=me.plan;if(me.recOn||me.count)return;voStopPreview();
+  const l={txt:me.gl.txt,r:2,t0:4*p.P,t1:4*p.P+me.gl.t1},sr=44100,oc=new OfflineAudioContext(1,Math.ceil((l.t1+0.3)*sr),sr);
+  for(let i=0;i<4;i++)osc(oc,'square',i?1100:1600,envG(oc,oc.destination,i*p.P,0.001,i?0.07:0.12,0.04),i*p.P,0.05);
+  voBotSpeak(oc,oc.destination,l,p);const buf=await oc.startRendering();if(VO!==me)return;
+  const ac=getAC(),s=ac.createBufferSource();s.buffer=buf;s.connect(ac.destination);const at=ac.currentTime+0.08;s.start(at);me.pv=s;
+  const ts=outTs();voGuideStart(ts.performanceTime+(at+l.t0-ts.contextTime)*1000)}
+function voClip(chs){
+  const sr=getAC().sampleRate;let n=0;for(const c of chs)n+=c.d.length;if(n<sr*0.2)return null;
+  const d=new Float32Array(n);let o=0;for(const c of chs){d.set(c.d,o);o+=c.d.length}
+  // обрізаємо тишу з країв (по 20 мс)
+  const B=Math.round(sr*0.02),en=[];let pk=0;for(let i=0;i<n;i+=B){let s=0;for(let k=i;k<Math.min(n,i+B);k++)s+=d[k]*d[k];const r=Math.sqrt(s/B);en.push(r);if(r>pk)pk=r}
+  if(pk<0.004)return null;const th=Math.max(0.003,pk*0.1);const a=en.findIndex(r=>r>th);let b=en.length-1;while(b>a&&en[b]<=th)b--;
+  const out=d.slice(Math.max(0,(a-3)*B),Math.min(n,(b+6)*B));
+  let rs=0,rn=0;for(const v of out)if(v*v>1e-6){rs+=v*v;rn++}
+  const gn=clamp(0.14/Math.sqrt(rs/Math.max(1,rn)),0.5,10);let mx=0;for(let i=0;i<out.length;i++){out[i]*=gn;const q=Math.abs(out[i]);if(q>mx)mx=q}
+  if(mx>0.95)for(let i=0;i<out.length;i++)out[i]*=0.95/mx;
+  const f=Math.min(Math.round(sr*0.01),out.length>>1);for(let i=0;i<f;i++){out[i]*=i/f;out[out.length-1-i]*=i/f}
+  return{d:out,sr}}
+function voTakePlay(){const me=VO;if(!me.take)return;voStopPreview();const ac=getAC(),b=ac.createBuffer(1,me.take.d.length,me.take.sr);b.copyToChannel(me.take.d,0);
+  const s=ac.createBufferSource();s.buffer=b;s.connect(ac.destination);s.start();me.pv=s}
+function voStopPreview(me){me=me||VO;try{me.pv&&me.pv.stop()}catch(e){}me.pv=null;me.guide=0}
+function voTakeClear(){const me=VO;if(me.recOn||me.count)return;voStopPreview();me.take=null;voTakeBtns()}
+function voTakeSend(){
+  const me=VO;if(me.phase!=='takes'||me.recOn||me.count||(!me.take&&!me.noMic))return;voStopPreview();
+  const li=me.my[me.ti],clip=me.take||null;me.clips[li]=clip;
+  if(NET.role==='guest'){const sid=me.plan.seed;me.sending=(me.sending||Promise.resolve()).then(()=>voSendClip(sid,li,clip)).catch(e=>console.error(e))}
+  me.ti++;voTakeShow()}
+async function voTakesDone(){
+  const me=VO;$('#voTake').hidden=true;me.phase='done';voMicStop(me);
+  for(let i=0;i<60;i++)me.conf.push({x:Math.random()*innerWidth,y:-20-Math.random()*200,vx:(Math.random()-0.5)*200,vy:0,c:LANE_COL[i%4],r:Math.random()*6});
+  if(NET.role==='guest'){me.msg='Відправляю твої рядки хосту…';await me.sending;me.msg='Твої рядки в хоста ✓ Чекай трек';await sleep(1500);if(VO===me)voClose();return}
+  me.msg='Чекаю рядки друзів…';me.waitT=setTimeout(()=>{if(VO===me&&!me.mixing){toast('Не всі рядки дійшли — зводжу без них','err');voFinishTakes()}},240000);voCheckTakes()}
+function voCheckTakes(){const me=VO,p=me.plan;if(!me.on||me.phase!=='done'||me.mixing||!p.takes)return;
+  if(p.lines.every((l,i)=>p.bots[l.r]||i in me.clips))voFinishTakes()}
+// музика під довжину кожного запису: кожен рядок займає стільки тактів, скільки треба
+function voFinishTakes(){
+  const me=VO,p=me.plan;if(me.mixing)return;let t=2*p.bar;
+  const lines=p.lines.map((l,i)=>{const c=me.clips[i],need=p.bots[l.r]?sylCount(l.txt)*p.P/2+0.4:c?c.d.length/c.sr+0.25:p.bar;
+    const bars=clamp(Math.ceil(need/p.bar),1,8),o={r:l.r,txt:l.txt,t0:t,t1:t+bars*p.bar};t+=bars*p.bar;return o});
+  me.plan=Object.assign({},p,{lines,dur:t+2*p.bar+0.6});
+  me.voices=lines.map((l,i)=>me.clips[i]?{d:me.clips[i].d,sr:me.clips[i].sr,at:l.t0+0.02}:null).filter(Boolean);
+  voFinishMix()}
+function voDrawTakes(c,W,H,el,u){
+  const me=VO;voBg(c,W,H,el);voConfetti(c,u);
+  if(me.an){me.an.getFloatTimeDomainData(me.lvl);let s=0;for(const v of me.lvl)s+=v*v;const lv=clamp(Math.sqrt(s/me.lvl.length)*8,0,1);me.lv=Math.max(lv,(me.lv||0)*0.9);
+    const b=$('#vtLvl');b.style.width=Math.round(me.lv*100)+'%';b.style.background=me.recOn?(me.lv>0.85?'#f9393f':'#2ff06a'):'#6b63a8'}
+  // підсвітка складів у ритм
+  const spans=$('#vtLine').querySelectorAll('span'),ball=$('#vtBall');if(!spans.length)return;
+  if(!me.guide){spans.forEach(sp=>sp.className='');ball.style.opacity=0;return}
+  const y=voSyl(me.gl,me.plan),tt=(performance.now()-me.guide)/1000;let k=0;while(k<y.t.length&&tt>=y.t[k]-0.03-0.02)k++;
+  spans.forEach((sp,i)=>sp.className=i<k-1?'on':i===k-1?'cur':'');
+  if(!k||tt>y.t[y.t.length-1]+y.step*2){ball.style.opacity=0;if(tt>y.t[y.t.length-1]+1.2&&!me.recOn)me.guide=0;return}
+  const sp=spans[k-1],ts=y.t[k-1]-0.03,ph=clamp((tt-ts-0.03)/y.step,0,1),beat=Math.abs(((ts)/me.plan.P+1e-6)%1)<0.02;
+  ball.style.opacity=1;ball.style.left=(sp.offsetLeft+sp.offsetWidth/2)+'px';ball.style.top=(sp.offsetTop-Math.sin(ph*Math.PI)*(beat?26:14)-8)+'px';ball.classList.toggle('beat',beat)}
+// ---------- рядок гравця → хосту ----------
+async function voEnc(v){const SR=22050,oc=new OfflineAudioContext(1,Math.ceil(v.d.length*SR/v.sr),SR),b=oc.createBuffer(1,v.d.length,v.sr);b.copyToChannel(v.d,0);
+  const s=oc.createBufferSource();s.buffer=b;s.connect(oc.destination);s.start(0);const r=(await oc.startRendering()).getChannelData(0);
+  const i16=new Int16Array(r.length);for(let i=0;i<r.length;i++)i16[i]=clamp(r[i],-1,1)*32767;return{bytes:i16.buffer,sr:SR}}
+async function voSendClip(sid,li,v){
+  if(!NET.host||!NET.host.open)return;if(!v){NET.host.send({t:'voC',sid,li,i:0,n:0});return}
+  const{bytes,sr}=await voEnc(v),CH=60000,n=Math.ceil(bytes.byteLength/CH),dc=NET.host.dataChannel;
+  for(let i=0;i<n;i++){while((dc&&dc.bufferedAmount>(1<<20))||(NET.host.bufferSize||0)>4)await sleep(15);NET.host.send({t:'voC',sid,li,i,n,sr,d:bytes.slice(i*CH,(i+1)*CH)})}}
+function voJoin(a){let len=0;for(const x of a)len+=x.byteLength;const u=new Uint8Array(len);let o=0;for(const x of a){u.set(new Uint8Array(x),o);o+=x.byteLength}
+  const i16=new Int16Array(u.buffer,0,len>>1),f=new Float32Array(i16.length);for(let i=0;i<f.length;i++)f[i]=i16[i]/32768;return f}
+function hostVoClip(pid,m){
+  const me=VO,p=me.plan;if(!p||m.sid!==p.seed||!p.takes)return;const ri=p.ids.indexOf(pid),l=p.lines[m.li];if(ri<0||!l||l.r!==ri)return;
+  if(!m.n){me.clips[m.li]=null;voCheckTakes();return}
+  const P=me.parts['c'+m.li]||(me.parts['c'+m.li]={a:new Array(m.n),k:0});if(!P.a[m.i]){P.a[m.i]=m.d;P.k++}
+  if(P.k===m.n){me.clips[m.li]={d:voJoin(P.a),sr:m.sr};delete me.parts['c'+m.li];voCheckTakes()}}
 // ---------- голос гравця → хосту (22 кГц, 16 біт) ----------
 async function voSendVoice(v){
   const sid=VO.plan.seed;if(!NET.host||!NET.host.open)return;
   if(!v){NET.host.send({t:'voV',sid,i:0,n:0});return}
-  const SR=22050,oc=new OfflineAudioContext(1,Math.ceil(v.d.length*SR/v.sr),SR),b=oc.createBuffer(1,v.d.length,v.sr);b.copyToChannel(v.d,0);
-  const s=oc.createBufferSource();s.buffer=b;s.connect(oc.destination);s.start(0);const r=(await oc.startRendering()).getChannelData(0);
-  const i16=new Int16Array(r.length);for(let i=0;i<r.length;i++)i16[i]=clamp(r[i],-1,1)*32767;
-  const bytes=i16.buffer,CH=60000,n=Math.ceil(bytes.byteLength/CH),dc=NET.host.dataChannel;
-  for(let i=0;i<n;i++){while((dc&&dc.bufferedAmount>(1<<20))||(NET.host.bufferSize||0)>4)await sleep(15);NET.host.send({t:'voV',sid,i,n,sr:SR,d:bytes.slice(i*CH,(i+1)*CH)})}}
+  const{bytes,sr}=await voEnc(v),CH=60000,n=Math.ceil(bytes.byteLength/CH),dc=NET.host.dataChannel;
+  for(let i=0;i<n;i++){while((dc&&dc.bufferedAmount>(1<<20))||(NET.host.bufferSize||0)>4)await sleep(15);NET.host.send({t:'voV',sid,i,n,sr,d:bytes.slice(i*CH,(i+1)*CH)})}}
 function hostVoVoice(pid,m){
   const me=VO;if(!me.plan||m.sid!==me.plan.seed)return;const ri=me.plan.ids.indexOf(pid);if(ri<0)return;me.got=me.got||{};
   if(!m.n){me.got[ri]=1;voCheckAll();return}
   const P=me.parts[ri]||(me.parts[ri]={a:new Array(m.n),k:0});if(!P.a[m.i]){P.a[m.i]=m.d;P.k++}
-  if(P.k===m.n){let len=0;for(const x of P.a)len+=x.byteLength;const u=new Uint8Array(len);let o=0;for(const x of P.a){u.set(new Uint8Array(x),o);o+=x.byteLength}
-    const i16=new Int16Array(u.buffer,0,len>>1),f=new Float32Array(i16.length);for(let i=0;i<f.length;i++)f[i]=i16[i]/32768;
-    me.voices[ri]={d:f,sr:m.sr};me.got[ri]=1;toast('🎤 Голос '+me.plan.names[ri]+' отримано','ok');voCheckAll()}}
+  if(P.k===m.n){me.voices[ri]={d:voJoin(P.a),sr:m.sr};me.got[ri]=1;toast('🎤 Голос '+me.plan.names[ri]+' отримано','ok');voCheckAll()}}
 // ---------- старт ----------
 function voStart(){
   if(VO.on)return;if(T.busy){toast('Зачекай, ще слухаю трек…');return}
@@ -3227,12 +3365,12 @@ function voStart(){
   const self=!NET.role&&S.voSelf;
   if(self){names.push((S.name||'Ти')+' №2');ids.push('self');bots.push(false)}
   else if(names.length<2){names.push(BOT_NAMES[seed%BOT_NAMES.length]);ids.push('bot');bots.push(true)}
-  const plan=voPlan(seed,names,bots,ids,free);plan.self=self;plan.music=!!S.voMusic;
+  const plan=voPlan(seed,names,bots,ids,free);plan.self=self;plan.music=!!S.voMusic;plan.takes=!!S.voTakes;
   if(NET.role==='host'){const maxRtt=Math.max(0,...[...NET.conns.values()].map(p=>p.rtt||0)),at=performance.now()+800+maxRtt;netBroadcast({t:'voGo',plan,at});voOpen(plan,at,0)}
   else voOpen(plan,performance.now()+300,0)}
 function guestVoGo(m){if(G.on)return;const p=m.plan;voOpen(p,m.at-NET.g.off,p.ids.indexOf(NET.myId))}
 // ---------- вірш для гри: хто що каже (текст унизу екрана) ----------
-function voMetaPack(p){return{kind:p.kind,title:p.title,names:p.names,bots:p.bots,P:p.P,dur:p.dur,music:p.music,lines:p.lines.map(l=>({r:l.r,txt:l.txt,t0:l.t0,t1:l.t1}))}}
+function voMetaPack(p){return{kind:p.kind,title:p.title,names:p.names,bots:p.bots,P:p.P,dur:p.dur,music:p.music,free:p.free,takes:p.takes,lines:p.lines.map(l=>({r:l.r,txt:l.txt,t0:l.t0,t1:l.t1}))}}
 function voSaveMeta(fp,p){const m=p.seed!=null?voMetaPack(p):p;VO_META[fp]=m;try{const a=JSON.parse(localStorage.getItem('ritmbatl_vo')||'{}');a[fp]={t:Date.now(),p:m};
   for(const k of Object.keys(a).sort((x,y)=>a[y].t-a[x].t).slice(20))delete a[k];localStorage.setItem('ritmbatl_vo',JSON.stringify(a))}catch(e){}}
 function voMetaFor(fp){if(!fp)return null;if(VO_META[fp])return VO_META[fp];try{const a=JSON.parse(localStorage.getItem('ritmbatl_vo')||'{}');return a[fp]?a[fp].p:null}catch(e){return null}}
@@ -3282,6 +3420,7 @@ function syncUI(){
   $('#chChars').checked=S.chars;$('#chVibro').checked=S.vibro;
   document.querySelectorAll('#segVoMus button').forEach(b=>b.classList.toggle('on',+b.dataset.v===(S.voMusic?1:0)));
   document.querySelectorAll('#segVoSelf button').forEach(b=>b.classList.toggle('on',+b.dataset.v===(S.voSelf?1:0)));
+  document.querySelectorAll('#segVoTakes button').forEach(b=>b.classList.toggle('on',+b.dataset.v===(S.voTakes?1:0)));
 }
 let KEYWAIT=null;
 function renderKeys(){
@@ -3355,6 +3494,8 @@ async function checkUpdate(){
   $('#voListenB').onclick=()=>voListen(true);$('#voPlayB').onclick=voPlay;$('#voMenuB').onclick=voClose;
   document.querySelectorAll('#segVoMus button').forEach(b=>b.onclick=()=>{S.voMusic=b.dataset.v==='1';saveS();syncUI()});
   document.querySelectorAll('#segVoSelf button').forEach(b=>b.onclick=()=>{S.voSelf=b.dataset.v==='1';saveS();syncUI()});
+  document.querySelectorAll('#segVoTakes button').forEach(b=>b.onclick=()=>{S.voTakes=b.dataset.v==='1';saveS();syncUI()});
+  const vtb=(id,f)=>{$(id).onclick=e=>{e.currentTarget.blur();f()}};vtb('#vtRec',voTakeRec);vtb('#vtPlay',voTakePlay);vtb('#vtClear',voTakeClear);vtb('#vtSend',voTakeSend);vtb('#vtHow',voTakeHow);
   // клавіатура
   // під час гри браузер не повинен змінювати масштаб: «щипок» тачпада / Ctrl+колесо / Ctrl+«+»/«−»
   // «щипок» тачпада ноутбука при гортанні меню браузер сприймає як Ctrl+колесо і збільшує сторінку — блокуємо скрізь
@@ -3363,7 +3504,8 @@ async function checkUpdate(){
   document.addEventListener('keydown',e=>{
     if((e.ctrlKey||e.metaKey)&&G.on&&!G.ended&&['Equal','Minus','NumpadAdd','NumpadSubtract','Digit0','Numpad0'].includes(e.code)){e.preventDefault();return}
     if(ED.on){edKey(e);return}
-    if(VO.on){if(e.code==='Escape'){e.preventDefault();voCancel(true)}return}
+    if(VO.on){if(e.code==='Escape'){e.preventDefault();voCancel(true)}
+      else if(VO.phase==='takes'&&!e.repeat){if(e.code==='Space'){e.preventDefault();voTakeRec()}else if(e.code==='Enter'){e.preventDefault();voTakeSend()}}return}
     if(KEYWAIT){e.preventDefault();if(e.code!=='Escape'){const{l,i}=KEYWAIT;for(let a=0;a<4;a++)for(let b=0;b<2;b++)if(S.keys[a][b]===e.code)S.keys[a][b]=S.keys[l][i];S.keys[l][i]=e.code;saveS()}KEYWAIT=null;renderKeys();return}
     if(CAL.on){if(e.code==='Escape'){calClose(false);return}if(!e.repeat&&!CAL.done){e.preventDefault();calTap(e)}return}
     if(!G.on)return;
