@@ -114,6 +114,8 @@ table.res tr.me td{background:rgba(255,210,63,.07)}
 #upd{position:fixed;top:4px;left:0;right:0;z-index:55;background:var(--acc);color:#1a1300;text-align:center;padding:8px;font-weight:800;display:flex;gap:12px;justify-content:center;align-items:center}
 #upd button{background:#1a1300;color:var(--acc);border:none;padding:6px 14px}
 .rc{display:flex;gap:6px;margin-top:6px}.rc .rcp{flex:1;text-align:left;font-size:13px;display:flex;justify-content:space-between;gap:8px;overflow:hidden;min-width:0}.rc .rcp span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.rc .rcp small{color:var(--mut);font:11px 'JetBrains Mono',monospace;white-space:nowrap}.rc .rcx{flex:0 0 40px;padding:0}
+#voOv{position:fixed;inset:0;z-index:45;background:#0c0a1d;touch-action:none;user-select:none}#voCv{width:100%;height:100%;display:block}#voChoice{position:absolute;left:0;right:0;bottom:12%;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;padding:0 16px}#voChoice button{font-size:17px;padding:14px 20px}
+#voX{position:absolute;top:12px;right:12px;z-index:2;background:rgba(0,0,0,.45)}
 #edOv{position:fixed;inset:0;z-index:40;background:var(--bg);display:flex;flex-direction:column}
 #edBar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--line);background:var(--panel)}
 #edBar button{padding:7px 10px;font-size:13px}#edBar .on{background:var(--acc);color:#1a1300;border-color:var(--acc)}
@@ -121,15 +123,6 @@ table.res tr.me td{background:rgba(255,210,63,.07)}
 #edCv{flex:1;display:block;width:100%;min-height:0;touch-action:none;cursor:crosshair}
 #edHelp{font-size:12px;color:var(--mut);padding:6px 10px;border-top:1px solid var(--line);background:var(--panel)}
 .recline{margin-top:8px;font-size:13px;color:var(--acc)}
-#stOv{position:fixed;inset:0;z-index:40;background:var(--bg);display:flex;flex-direction:column}
-.stbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 10px;border-bottom:1px solid var(--line);background:var(--panel)}
-.stbar button{padding:7px 10px;font-size:13px}.stbar .on{background:var(--acc);color:#1a1300;border-color:var(--acc)}.stbar small{opacity:.7;font-family:'JetBrains Mono',monospace}
-.stbar .sp{flex:1}.stbar label{font-size:13px;color:var(--mut);display:flex;gap:6px;align-items:center}
-.stbar input[type=number],.stbar input[type=text],.stbar select{background:#0b0920;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:6px 8px;font:13px Onest}
-.stbar input[type=number]{width:64px}#stName{width:170px}
-#stCv{flex:1;display:block;width:100%;min-height:0;touch-action:none;cursor:pointer}
-#stScroll{width:100%;margin:0;accent-color:var(--acc)}
-.sthelp{font-size:12px;color:var(--mut);padding:6px 10px;border-top:1px solid var(--line);background:var(--panel)}
 #stInfo{font:700 12px 'JetBrains Mono',monospace;color:var(--acc)}
 .prof{display:flex;gap:12px;align-items:flex-start}.prof .stats{grid-template-columns:repeat(2,1fr)}.prof .stat b{font-size:15px}
 .sws{display:flex;gap:8px;flex-wrap:wrap}.sw{width:30px;height:30px;border-radius:50%;padding:0;border:3px solid #0b0920}.sw.on{border-color:#fff;box-shadow:0 0 0 2px var(--acc)}
@@ -166,11 +159,19 @@ body{touch-action:manipulation;overscroll-behavior-x:none}
           <button id="btnFile">Вибрати файл</button>
           <button id="btnDemo">Згенерувати демо-біт</button>
         </div>
-        <div class="row"><button id="btnStudio" class="acc">🎹 Своя музика — студія</button></div>
         <input type="file" id="fileIn" hidden accept="audio/*,video/*,.mp3,.wav,.ogg,.oga,.flac,.m4a,.aac,.opus,.webm,.mp4,.m4v,.mov,.mkv,.3gp,.aiff,.aif,.wma,.caf">
         <div id="recent"></div>
         <div id="anaBox" hidden><div class="st" id="anaText"></div><div class="bar"><i id="anaBar"></i></div></div>
         <div id="card" hidden></div>
+      </section>
+      <section class="panel" id="pVoice">
+        <h2>Історія голосами <small>до 3 гравців · мікрофон</small></h2>
+        <div class="hint">Крутиться барабан і випадково дає вам історію: 🎵 пісню в риму, 🔥 батл обзивалок з вашими ніками або 🎬 мультик, що оживає на фоні. Кожен читає свої рядки в мікрофон, музика підбирається сама, а потім ви граєте трек зі своїми голосами. Соло — разом з ботом, в онлайн-кімнаті — з друзями (хост + 2). Краще в навушниках.</div>
+        <label class="chk"><input type="checkbox" id="chVoFree"><span>Своїми словами <small>замість готової історії — тема, і кожен по черзі каже що хоче</small></span></label>
+        <div class="field"><div class="t">Музика</div><div class="seg" id="segVoMus"><button data-v="1">🎵 З музикою</button><button data-v="0">🔇 Без музики</button></div></div>
+        <div class="field" id="voSoloBox"><div class="t">Соло</div><div class="seg" id="segVoSelf"><button data-v="0">🤖 З ботом</button><button data-v="1">🎭 Сам за двох</button></div></div>
+        <button id="btnVoice" class="acc" style="width:100%">🎰 Крутити барабан</button>
+        <div class="mut" id="voSt" style="margin-top:6px"></div>
       </section>
       <section class="panel" id="pPractice" hidden>
         <h2>Тренування <small>повільніше · з будь-якого місця · по колу</small></h2>
@@ -286,29 +287,16 @@ body{touch-action:manipulation;overscroll-behavior-x:none}
   <div id="edHelp">Пунктир — почута нота без стрілки (клік на ньому ставить стрілку точно туди) · Клік — поставити ноту · тягни вгору від ноти — довга нота · клік по ноті — прибрати · колесо — прокрутка · Пробіл — грати/пауза · під час гри стрілки/DFJK ставлять ноти в такт</div>
 </div>
 
-<div id="stOv" hidden>
-  <div class="stbar">
-    <input type="text" id="stName" maxlength="30" placeholder="Назва пісні">
-    <label>BPM <input type="number" id="stBpm" min="60" max="200"></label>
-    <label>Тактів <input type="number" id="stBars" min="2" max="64"></label>
-    <button id="stPlay">▶ Грати</button><button id="stUndo" title="Ctrl+Z">↶ Назад</button>
-    <select id="stList"></select><button id="stNew">Нова</button>
-    <span id="stInfo"></span><span class="sp"></span>
-    <button id="stSave">Зберегти</button><button id="stGo" class="acc">Готово — грати!</button><button id="stExit">Вийти</button>
-  </div>
-  <div class="stbar" id="stTabs"></div>
-  <div class="stbar" id="stPresets"></div>
-  <canvas id="stCv"></canvas>
-  <input type="range" id="stScroll" min="0" max="1000" value="0">
-  <div class="sthelp">Клік — поставити/прибрати ноту · у піаніно, басі й синті тягни вправо — довга нота · клік по номерах тактів — звідки грати · колесо — прокрутка, Ctrl+колесо — масштаб · Пробіл — грати/стоп · стрілки зверху ставляться самі під твою музику</div>
-</div>
+
+<div id="voOv" hidden><canvas id="voCv"></canvas><button id="voX">✕ Скасувати</button>
+  <div id="voChoice" hidden><button id="voListenB">▶ Послухати</button><button id="voPlayB" class="acc">🎮 Грати на стрілочках</button><button id="voMenuB">В меню</button></div></div>
 
 <div id="toasts"></div>
 <script>
 'use strict';
 // ====================== БАЗА ======================
-const BUILD_ID='2026-10-30T16:58:14Z';
-const GAME_VER='1.2';
+const BUILD_ID='2026-11-01T14:05:38Z';
+const GAME_VER='1.3';
 const BUILD=(()=>{if(!BUILD_ID.startsWith('__'))return BUILD_ID;const d=new Date(document.lastModified);return isNaN(d)?'0':d.toISOString()})();
 const LANE_COL=['#c24b99','#00e5f2','#2ff06a','#f9393f'];
 // ті самі кольори без насиченості (яскравість збережена, щоб смуги розрізнялись)
@@ -338,7 +326,7 @@ function hexA(hex,a){const n=parseInt(hex.slice(1),16);return`rgba(${n>>16},${n>
 
 // ====================== НАЛАШТУВАННЯ ======================
 const DEF_KEYS=[['ArrowLeft','KeyD'],['ArrowDown','KeyF'],['ArrowUp','KeyJ'],['ArrowRight','KeyK']];
-const S={name:'',diff:1,events:50,smin:0.9,smax:2.7,shake:100,side:1,scroll:0,keys:DEF_KEYS.map(k=>k.slice()),offset:0,nofail:false,sing:false,calibrated:false,sens:100,sensV:1,color:'#00b8c4',hitsound:false,hitvol:60,vibro:true,skin:0,chars:true};
+const S={name:'',diff:1,events:50,smin:0.9,smax:2.7,shake:100,side:1,scroll:0,keys:DEF_KEYS.map(k=>k.slice()),offset:0,nofail:false,sing:false,calibrated:false,sens:100,sensV:1,color:'#00b8c4',hitsound:false,hitvol:60,vibro:true,skin:0,chars:true,voMusic:true,voSelf:false};
 try{const o=JSON.parse(localStorage.getItem('ritmbatl')||'{}');for(const k in S)if(o[k]!==undefined&&typeof o[k]===typeof S[k])S[k]=o[k];
   if(!o.sensV){if(S.sens===50)S.sens=100;S.sensV=1} // старий стандарт 50 → новий 100
   if(!Array.isArray(S.keys)||S.keys.length!==4||S.keys.some(k=>!Array.isArray(k)||k.length!==2))S.keys=DEF_KEYS.map(k=>k.slice());}catch(e){}
@@ -396,7 +384,7 @@ async function loadTrackFile(file){
     if(NET.role==='host')netBroadcast({t:'opening'});
     setAna('Відкриваю файл…',0);
     const ab=await file.arrayBuffer();
-    T.studio=false;T.id=Math.random().toString(36).slice(2,10);T.name=file.name;T.size=file.size;T.mime=file.type||'';T.bytes=ab;T.fp=fingerprint(ab);
+    T.id=Math.random().toString(36).slice(2,10);T.name=file.name;T.size=file.size;T.mime=file.type||'';T.bytes=ab;T.fp=fingerprint(ab);
     T.chart=null;T.chartBytes=null;T.feat=null;T.buf=null;
     await setupVideo(file,file.name,file.type);
     if(NET.role==='host')hostNewTrack();
@@ -495,6 +483,7 @@ function renderCard(){
   <div class="evlist">${evs||'<span class="mut">Подій немає</span>'}</div>
   ${ch.edited?'<div class="mut" style="margin-top:8px">✏️ Стрілки з редактора — твоя версія</div>':''}
   ${(r=>r?`<div class="recline">🏆 Рекорд на «${DIFF_NAMES[ch.diff]}»: ${r.score} · ${r.rank}${r.fc?' FC':''} · ${r.acc}%</div>`:'')(getRecord(T.fp,ch.diff))}`;
+  {const vm=voMetaFor(T.fp);if(vm&&T.buf){const b=document.createElement('button');b.style.cssText='margin-top:10px;width:100%';b.textContent='▶ Послухати історію'+(vm.kind==='toon'?' з мультиком':' з текстом');b.onclick=()=>voListen(false);$('#card').appendChild(b)}}
   $('#card').hidden=false;
   // тренування: повзунки під довжину треку
   $('#pPractice').hidden=false;for(const id of['#rgFrom','#rgTo'])$(id).max=Math.floor(ch.dur);
@@ -877,7 +866,7 @@ function buildChart(F,diff,ev,sens){
       if(o.t<0.25||o.t>F.dur-0.25)continue;const w=o.k===4?WOFF[diff]:D.w[o.k];if(!w)continue;
       const sal=Math.max(clamp((o.z-1)/3,0,1.3),clamp(o.a,0,1.3)),sc=sal*w*(0.85+0.3*o.loud)*(inDrop(o.t)?1.2:1);
       if(sc>=D.thr*sensMul)sel.push({t:o.t,sc,s:{L:o.L,M:o.M,H:o.H,n:sal,loud:o.loud},k:o.k===4?3:o.k,bi:o.bi})}}
-  else for(const s of F.slots){ // пісня зі студії: ноти відомі точно
+  else for(const s of F.slots){ // ноти відомі точно (без аналізу)
     if(s.t<0.25||s.t>F.dur-0.25)continue;const w=D.w[s.k];if(!w)continue;
     const boost=inDrop(s.t)?1.25:1;let sc=s.n*w*(0.7+0.6*s.loud)*boost,on=sc>=D.thr*sensMul;
     if(!on&&D.fill&&sens>=40&&s.k===0&&s.n>=0.12&&s.loud>=(D.fillEven?0.5:0.35)&&(!D.fillEven||s.bi%2===0)){on=true;sc=Math.max(sc,D.thr*0.9)}
@@ -1031,6 +1020,7 @@ function startGame(o){
     glow:[0,0,0,0],oppGlow:[0,0,0,0],oppHold:[-9,-9,-9,-9],pos:[0,1,2,3],flip:0,fx:{waves:0,invis:0,rot:0,spin:0,spread:0,pulse:0},build:0,drop:0,
     pop:null,banners:[],parts:[],streaks:[],flash:0,redFlash:0,hitShake:0,bump:0,beatFrac:0,bIdx:-1,lastB:-2,last16:[],
     mi:0,di:0,oi:0,lastSend:0,board:[],scream:0,clockInit:false,paused:false,ended:false,video:false,c:$('#cv').getContext('2d'),fdata:new Uint8Array(128)};
+  G.vo=o.mode==='test'?null:voMetaFor(T.fp);G.toonBg=!!(G.vo&&G.vo.kind==='toon');
   G.sing=S.sing&&o.mode!=='test'&&o.mode!=='spectate'&&o.mode!=='replay';
   // запис натискань для повтору; у режимі повтору — чужі натискання
   G.rec=(o.mode==='solo'||o.mode==='online')?[]:null;G.recAtk=G.rec?[]:null;G.minH=1;
@@ -1255,9 +1245,11 @@ function render(tv,dt){
   drawParts(c,dt,'spark');
   c.restore();
   drawHUD(c,L,tv);
+  if(G.vo)voDrawLyric(c,W,H,tv,G.vo);
 }
 function drawBg(c,W,H,tv,kick,dt){
-  if(G.video){c.clearRect(0,0,W,H);c.fillStyle='rgba(0,0,0,.2)';c.fillRect(0,0,W,H)}
+  if(G.toonBg){toonDraw(c,W,H,tv,G.vo);c.fillStyle='rgba(6,4,18,.3)';c.fillRect(0,0,W,H)}
+  else if(G.video){c.clearRect(0,0,W,H);c.fillStyle='rgba(0,0,0,.2)';c.fillRect(0,0,W,H)}
   else{
     const g=c.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0c0a1d');g.addColorStop(0.58,'#1c1044');g.addColorStop(1,'#2b0e3c');c.fillStyle=g;c.fillRect(0,0,W,H);
     const hz=H*0.6,rg=c.createRadialGradient(W/2,hz,0,W/2,hz,Math.max(W,H)*0.6);
@@ -1282,7 +1274,7 @@ function drawGroup(c,L,g,tv){
   const pulse=g.scale*(1+0.17*fx.pulse*Math.exp(-G.beatFrac*5)+0.06*G.build*Math.exp(-G.beatFrac*6));
   const spreadM=1+1.1*fx.spread;
   const laneX=(l,d)=>g.cx+((g.player?G.pos[l]:l)-1.5)*gap*spreadM+(fx.waves?fx.waves*A*0.65*Math.sin(tv*3.4+l*1.3+d/H*5):0);
-  if(G.video){const w=3*gap*spreadM+A*1.3;c.fillStyle='rgba(4,2,14,.58)';c.fillRect(g.cx-w/2,0,w,H)}
+  if(G.video||G.toonBg){const w=3*gap*spreadM+A*1.3;c.fillStyle='rgba(4,2,14,.58)';c.fillRect(g.cx-w/2,0,w,H)}
   const rx=[0,1,2,3].map(l=>laneX(l,0));
   if(g.player){G.lastLaneX=rx;G.lastRecY=g.recY}
   // приймачі
@@ -1491,7 +1483,7 @@ const ACH=[
   {id:'chaos',i:'🌀',n:'Хаос приборкано',d:'Пройти пісню з подіями на 100%'},
   {id:'win',i:'🏆',n:'Чемпіон кімнати',d:'Перше місце в онлайні (від 2 гравців)'},
   {id:'reg',i:'🫂',n:'Завсідник',d:'Зіграти 10 онлайн-ігор'},
-  {id:'composer',i:'🎹',n:'Композитор',d:'Зробити свою пісню в студії і зіграти її'},
+  {id:'composer',i:'🎙️',n:'Оповідач',d:'Записати історію голосами і зіграти її'},
   {id:'practice',i:'🔁',n:'Тренування — сила',d:'Прогнати шматок по колу 5 разів'},
   {id:'singer',i:'🎤',n:'Співак',d:'Зарядити атаку голосом'},
   {id:'marathon',i:'⏱️',n:'Марафон',d:'Награти 30 хвилин'},
@@ -1510,7 +1502,7 @@ function profileAfterGame(fs){ // рахує статистику, поверт�
   if(ch.diff>=2)un('hard');if(ch.diff>=3)un('ext');if(ch.diff>=3&&fs.rank==='S')un('god');if(PROF.perf>=1000)un('p1000');
   const deaths=ch.notes.filter(n=>n.type===1).length,holds=ch.notes.filter(n=>n.type===0&&n.len>0).length;
   if(deaths>=5&&fs.death===0)un('careful');if(holds>=10&&fs.holdDrop===0)un('hold');if(G.minH<0.05)un('edge');
-  if(ch.events>=0.99)un('chaos');if(PROF.online>=10)un('reg');if(T.studio)un('composer');
+  if(ch.events>=0.99)un('chaos');if(PROF.online>=10)un('reg');if(/^Історія голосами/.test(T.name||''))un('composer');
   saveProf();renderProfile();return got}
 function achHTML(ids){if(!ids||!ids.length)return'';return`<div class="achnew">${ids.map(id=>{const a=ACH.find(x=>x.id===id);return`<span class="ach on">${a.i} ${esc(a.n)}</span>`}).join('')}</div>`}
 const HOOD=['#00b8c4','#c24b99','#2ff06a','#f9393f','#ffd23f','#7b61ff','#ff8a3d','#e8e6f5'];
@@ -1756,6 +1748,7 @@ function hostMsg(p,m){
       if(NET.live[p.id])delete NET.live[p.id].off;
       if(T.fp&&has.fp===T.fp){p.sendTok++;p.has=true;p.track=100;p.dec=!!has.dec;p.conn.send({t:'tinfo',id:T.id,name:T.name,size:T.size,fp:T.fp,mime:T.mime,have:1})}
       else if(T.bytes)hostSendTrack(p);else if(T.busy)p.conn.send({t:'opening'});
+      {const vm=voMetaFor(T.fp);if(vm)p.conn.send({t:'voMeta',fp:T.fp,m:vm})}
       if(T.chartBytes){if(has.chart===T.chartId){p.chartAck=T.chartId;p.chart=100}else hostSendChart(p,true)}
       renderPlist();hostLobby();break}
     case 'st':p.track=m.tr|0;p.dec=!!m.dec;if(p.chartAck!==T.chartId)p.chart=m.ch|0;p.rtt=m.rtt||0;p.ready=!!m.rd;p.gErr=m.err||'';renderPlist();break;
@@ -1768,6 +1761,7 @@ function hostMsg(p,m){
     case 'upInfo':hostUpStart(p,m);break;
     case 'upChunk':if(p.up)hostUpData(p,b64dec(m.d),m.off);break;
     case 'upEnd':hostUpEnd(p);break;
+    case 'voV':hostVoVoice(p.id,m);break;
     default:hostCommon(p.id,p.name,m);
   }
 }
@@ -1860,7 +1854,7 @@ function bindPickerSelect(id){const s=$('#'+id);if(!s)return;s.onchange=()=>{if(
 function renderPicker(){
   const el=$('#stPicker');if(!el)return;
   if(NET.role==='host'){el.innerHTML=pickerSelectHTML('pickSel')+(NET.picker&&NET.picker!=='host'?`<div class="mut">Чекаємо, поки ${esc(pickerName(NET.picker))} вибере трек. Ти теж можеш кинути свій — тоді гратимете його.</div>`:'');bindPickerSelect('pickSel');return}
-  if(NET.role==='guest')el.innerHTML=amPicker()?'<b style="color:var(--acc)">🎧 Наступну пісню кидаєш ТИ</b> — вибери файл, демо, недавній трек або свою пісню зі студії':
+  if(NET.role==='guest')el.innerHTML=amPicker()?'<b style="color:var(--acc)">🎧 Наступну пісню кидаєш ТИ</b> — вибери файл, демо або недавній трек':
     `🎧 Наступну пісню кидає <b>${esc(NET.pickerName||pickerName(NET.picker))}</b>${NET.pickMode==='rotate'?' · по черзі':''}`}
 async function guestUploadTrack(file){
   const g=NET.g;if(g.up&&!g.up.done){toast('Трек ще відправляється');return}
@@ -1977,6 +1971,9 @@ function guestMsg(m){
     case 'atk':receiveAttack(m.k,m.from);break;
     case 'res':NET.resList=m.l||[];NET.best=m.best||{};if(NET.showingRes)showOnlineResults();break;
     case 'again':backToLobby();toast('Хост запускає ще раз — натисни «Готовий»');break;
+    case 'voGo':guestVoGo(m);break;
+    case 'voCancel':if(VO.on&&VO.phase!=='done'){voClose();toast('Хост скасував історію')}break;
+    case 'voMeta':if(m.fp&&m.m)voSaveMeta(m.fp,m.m);break;
   }
 }
 async function guestDecode(bytes,blob){
@@ -2161,15 +2158,7 @@ async function edReset(){if(!confirm('Прибрати всі твої прав�
   await dbDel('charts',T.fp+'|'+T.chart.diff);await rebuildChart();ED.notes=T.chart.notes.map(n=>({...n}));ED.dirty=false;edSync();toast('Повернув автоматичні стрілки')}
 function edExit(){if(ED.dirty&&!confirm('Є незбережені правки. Вийти без збереження?'))return;edPlay(false);ED.on=false;$('#edOv').hidden=true;startMenuBg()}
 
-// ====================== СТУДІЯ: СВОЯ МУЗИКА ======================
-const NOTE_N=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
-const INST={drums:{name:'🥁 Барабани',rows:['Бочка','Малий','Хлопок','Хет','Відкр. хет','Том','Тарілка']},
-  piano:{name:'🎹 Піаніно',lo:48,hi:72},bass:{name:'🎸 Бас',lo:28,hi:52},lead:{name:'🎛 Синт',lo:60,hi:84}};
-const DROW_COL=['#c24b99','#f9393f','#ff8a3d','#00e5f2','#7fd8ff','#2ff06a','#ffd23f'];
-const INST_COL={piano:'#00e5f2',bass:'#c24b99',lead:'#2ff06a'};
-const SONG_OFF=0.5; // пів секунди тиші на початку, щоб перший удар теж мав стрілку
-const ST={on:false,song:null,tab:'drums',zoom:18,sx:0,playing:false,hist:[],dirty:false,chart:null,playFrom:0,drag:null,spr:null};
-function newSong(){return{v:1,id:'s'+Date.now().toString(36),name:'Мій трек',bpm:120,bars:16,vol:{drums:0.9,piano:0.7,bass:0.8,lead:0.6},drums:[],piano:[],bass:[],lead:[]}}
+// ====================== СИНТЕЗ: барабани, піаніно, бас, синт ======================
 // ---------- звуки (працюють і наживо, і при записі у файл) ----------
 const NOISE=new WeakMap();
 function noiseBuf(ac){let b=NOISE.get(ac);if(!b){b=ac.createBuffer(1,ac.sampleRate,ac.sampleRate);const d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;NOISE.set(ac,b)}return b}
@@ -2197,41 +2186,6 @@ function playInst(ac,o,inst,t,m,len,v){
     for(const d of[-8,8]){const os=osc(ac,'sawtooth',f,fl,t,L+0.12);os.detune.value=d}osc(ac,'square',f/2,(()=>{const q=ac.createGain();q.gain.value=0.25;q.connect(fl);return q})(),t,L+0.12)}
 }
 function mkShaper(ac){const w=ac.createWaveShaper(),n=1024,c=new Float32Array(n);for(let i=0;i<n;i++){const x=i/(n-1)*2-1;c[i]=Math.tanh(x*1.3)/Math.tanh(1.3)}w.curve=c;return w}
-function stIndex(song){const total=song.bars*16,by=Array.from({length:total},()=>[]);
-  for(const[r,s]of song.drums)if(s<total)by[s].push(['drums',r]);
-  for(const k of['piano','bass','lead'])for(const[m,s,len]of song[k])if(s<total)by[s].push([k,m,len]);return by}
-function stStep(by,song,ac,o,s,t,sd){const v=song.vol;for(const e of by[s]||[]){if(e[0]==='drums')DRUM[e[1]](ac,o,t,v.drums);else playInst(ac,o,e[0],t,e[1],e[2]*sd,v[e[0]])}}
-// ---------- запис пісні у WAV (точно в сітку, без затримок компресора) ----------
-async function stRender(song){
-  const sr=44100,sd=60/song.bpm/4,total=song.bars*16,dur=SONG_OFF+total*sd+2.5,oc=new OfflineAudioContext(2,Math.ceil(dur*sr),sr);
-  const bus=oc.createGain();bus.gain.value=0.75;bus.connect(mkShaper(oc)).connect(oc.destination);const by=stIndex(song);
-  const sched=b=>{for(let s=b*16;s<Math.min(total,b*16+16);s++)stStep(by,song,oc,bus,s,SONG_OFF+s*sd,sd)};
-  sched(0);for(let b=1;b<song.bars;b++)oc.suspend(Math.floor((SONG_OFF+b*16*sd-0.2)*sr/128)*128/sr).then(()=>{sched(b);oc.resume()});
-  return encodeWav(await oc.startRendering())}
-// ---------- стрілки прямо з нот пісні (без аналізу — ідеально в такт) ----------
-function songFeat(song){
-  const P=60/song.bpm,sd=P/4,total=song.bars*16,O=SONG_OFF,dur=O+total*sd+2.5;
-  const beats=[];for(let b=0;b<=song.bars*4;b++)beats.push(O+b*P);
-  const L=new Float32Array(total),M=new Float32Array(total),H=new Float32Array(total),dens=new Float32Array(total),held=new Float32Array(total);
-  const DW=[[1,0,0],[0,1,0],[0,0.9,0],[0,0,0.35],[0,0,0.5],[0.3,0.6,0],[0,0.3,0.6]];
-  for(const[r,s]of song.drums)if(s<total){L[s]+=DW[r][0];M[s]+=DW[r][1];H[s]+=DW[r][2];dens[s]+=1}
-  const IW={piano:0.7,bass:0.5,lead:0.9};
-  for(const k of['piano','bass','lead']){const seen=new Set();for(const[m,s,len]of song[k]){if(s>=total)continue;
-    if(!seen.has(s)){seen.add(s);if(k==='bass')L[s]=Math.max(L[s],0.45);M[s]=Math.max(M[s],IW[k])}
-    for(let q=s;q<Math.min(total,s+len);q++)held[q]=Math.max(held[q],1)}}
-  // гучність: щільність звуків навколо (±1 такт), нормована під пісню
-  const act=new Float32Array(total);for(let s=0;s<total;s++)act[s]=dens[s]+held[s]*1.5+(song.piano.length&&held[s]?0:0);
-  const lS=movAvg(act,16);let mx=0;for(const v of lS)mx=Math.max(mx,v);const loudS=lS.map(v=>mx?clamp(v/mx,0,1):0);
-  const slots=[];for(let b=0;b<song.bars*4;b++)for(let k=0;k<4;k++){const s=b*4+k,str=L[s]+M[s]+H[s];slots.push({t:O+s*sd,k,bi:b,s:str,L:L[s],M:M[s],H:H[s],loud:loudS[s],n:Math.min(1.6,str)})}
-  // мелодія для довгих нот: синт, а якщо його нема — верхня нота піаніно
-  const src=song.lead.length?song.lead:song.piano,top=new Map();for(const[m,s,len]of src)if(!top.has(s)||top.get(s)[0]<m)top.set(s,[m,s,len]);
-  const mel=[...top.values()].sort((a,b)=>a[1]-b[1]).map(([m,s,len])=>({t:O+s*sd,e:O+(s+len)*sd,pc:m%12}));
-  const at=(arr,t)=>t<O?0:arr[clamp(Math.floor((t-O)/sd),0,total-1)];
-  const loud20=new Float32Array(Math.ceil(dur*20)+1).map((_,i)=>i/20<O+total*sd?at(loudS,i/20):0);
-  const kick50=new Float32Array(Math.ceil(dur*50)+1);for(let s=0;s<total;s++)if(L[s]>0.4){const t0=O+s*sd;for(let i=Math.floor(t0*50);i<Math.min(kick50.length,t0*50+15);i++)kick50[i]=Math.max(kick50[i],Math.exp(-(i/50-t0)/0.08))}
-  const mid50=new Float32Array(Math.ceil(dur*50)+1).map((_,i)=>i/50<O+total*sd&&i/50>=O?(at(held,i/50)?1:0.15):0);
-  const drops=[]; // дропів більше нема
-  return{dur,bpm:song.bpm,P,beats,tempos:[song.bpm],down0:0,ph16:0,drops,slots,mel,loud20,kick50,mid50,fp:'song-'+song.id}}
 
 // ---------- готові заготовки ----------
 const DPAT={
@@ -2243,118 +2197,892 @@ const DPAT={
 const CHORDS={Am:[57,60,64],F:[57,60,65],C:[55,60,64],G:[55,59,62],Dm:[57,62,65],Bb:[58,62,65],Em:[55,59,64],E:[56,59,64]};
 const PROGS={'Am–F–C–G':['Am','F','C','G'],'C–G–Am–F':['C','G','Am','F'],'Dm–B♭–F–C':['Dm','Bb','F','C'],'Am–Em–F–E':['Am','Em','F','E']};
 const ROOT={Am:33,F:29,C:36,G:31,Dm:38,Bb:34,Em:40,E:40};
-function stChordsOf(song){ // акорд у кожному такті — з піаніно (найнижча нота), інакше Am–F–C–G
-  return Array.from({length:song.bars},(_,b)=>{const ns=song.piano.filter(n=>n[1]>=b*16&&n[1]<b*16+16);if(!ns.length)return ROOT[['Am','F','C','G'][b%4]];const lo=Math.min(...ns.map(n=>n[0]));let r=lo%12+24;while(r<28)r+=12;return r})}
-function stPreset(name){
-  const s=ST.song,B=s.bars;stHist();
-  if(ST.tab==='drums'){s.drums=[];if(name!=='Очистити'){const p=DPAT[name];for(let b=0;b<B;b++){for(const r in p)for(let q=0;q<16;q++)if(p[r][q]==='x')s.drums.push([+r,b*16+q]);if(b%8===0)s.drums.push([6,b*16])}}}
-  else if(ST.tab==='piano'){s.piano=[];if(name==='Арпеджіо'){for(let b=0;b<B;b++){const c=CHORDS[['Am','F','C','G'][b%4]];for(let q=0;q<8;q++)s.piano.push([c[q%3]+(q>=3&&q<6?12:0),b*16+q*2,2])}}
-    else if(PROGS[name]){const p=PROGS[name];for(let b=0;b<B;b++)for(const m of CHORDS[p[b%4]])s.piano.push([m,b*16,16])}}
-  else if(ST.tab==='bass'){s.bass=[];if(name!=='Очистити'){const roots=stChordsOf(s);for(let b=0;b<B;b++){const r=roots[b];
-    if(name==='Бас довгий')s.bass.push([r,b*16,16]);else if(name==='Бас вісімками')for(let q=0;q<8;q++)s.bass.push([r+(q===7?12:0),b*16+q*2,2]);
-    else{for(const[q,l]of[[0,3],[3,3],[6,2],[8,4],[12,2],[14,2]])s.bass.push([r+(q===12?7:0),b*16+q,l])}}}}
-  else if(ST.tab==='lead'){s.lead=[];if(name!=='Очистити'){const R=rng(Date.now()),scale=[57,60,62,64,67,69,72,74,76,79,81];let i=5;
-    const rh=[[4,4,8],[2,2,4,8],[8,8],[4,2,2,8],[6,2,8],[4,4,4,4]];
-    for(let b=0;b<B;b++){if(b%8===7&&R()<0.5)continue;let q=0;for(const l of rh[Math.floor(R()*rh.length)]){i=clamp(i+Math.round((R()-0.5)*4),0,scale.length-1);const m=scale[i]+(scale[i]<60?12:0);if(m<=84)s.lead.push([m,b*16+q,l]);q+=l}}}}
-  stChanged()}
-const PRESETS={drums:['Хаус','Хіп-хоп','Драм-н-бейс','Трап','Рок','Очистити'],piano:[...Object.keys(PROGS),'Арпеджіо','Очистити'],bass:['Бас по акордах','Бас вісімками','Бас довгий','Очистити'],lead:['Мелодія навмання','Очистити']};
 
-// ---------- інтерфейс студії ----------
-function openStudio(song){
-  ST.on=true;ST.song=song||ST.song||newSong();ST.hist=[];ST.dirty=false;ST.sx=0;ST.playFrom=0;
-  $('#stOv').hidden=false;stopMenuBg();stRenderBars();stChanged(true);stList();requestAnimationFrame(stLoop)}
-function stRenderBars(){const s=ST.song;$('#stName').value=s.name;$('#stBpm').value=s.bpm;$('#stBars').value=s.bars;
-  $('#stTabs').innerHTML=Object.keys(INST).map(k=>`<button data-tab="${k}" class="${k===ST.tab?'on':''}">${INST[k].name} <small>${k==='drums'?s.drums.length:s[k].length}</small></button>`).join('')+
-    `<span class="mut" style="margin-left:8px">Гучність</span><input type="range" id="stVol" min="0" max="1" step="0.05" value="${s.vol[ST.tab]}" style="width:110px">`;
-  $('#stPresets').innerHTML='<span class="mut">Готове:</span>'+PRESETS[ST.tab].map(p=>`<button data-p="${esc(p)}">${esc(p)}</button>`).join('');
-  document.querySelectorAll('#stTabs [data-tab]').forEach(b=>b.onclick=()=>{ST.tab=b.dataset.tab;stRenderBars()});
-  $('#stVol').oninput=e=>{s.vol[ST.tab]=+e.target.value;ST.dirty=true};
-  document.querySelectorAll('#stPresets [data-p]').forEach(b=>b.onclick=()=>stPreset(b.dataset.p));
-  $('#stPlay').textContent=ST.playing?'⏹ Стоп':'▶ Грати'}
-function stHist(){ST.hist.push(JSON.stringify(ST.song));if(ST.hist.length>60)ST.hist.shift()}
-let stTimer=0;
-function stChanged(now){ST.dirty=!now;ST.by=stIndex(ST.song);document.querySelectorAll('#stTabs [data-tab] small').forEach(el=>{const k=el.parentNode.dataset.tab;el.textContent=k==='drums'?ST.song.drums.length:ST.song[k].length});
-  clearTimeout(stTimer);stTimer=setTimeout(()=>{try{ST.chart=buildChart(songFeat(ST.song),S.diff,S.events/100);const n=ST.chart.notes.filter(x=>x.type===0);
-    $('#stInfo').textContent=n.length+' стрілок · '+n.filter(x=>x.len>0).length+' довгих · '+fmtTime(ST.song.bars*16*15/ST.song.bpm)}catch(e){console.error(e)}},now?0:250)}
-function stPlay(on){
-  if(ST.timer){clearInterval(ST.timer);ST.timer=0}if(ST.bus){try{ST.bus.disconnect()}catch(e){}ST.bus=null}
-  ST.playing=on;$('#stPlay').textContent=on?'⏹ Стоп':'▶ Грати';if(!on)return;
-  const ac=getAC();ac.resume();ST.bus=ac.createGain();ST.bus.gain.value=0.75;ST.bus.connect(mkShaper(ac)).connect(ac.destination);
-  const sd=60/ST.song.bpm/4;let total=ST.song.bars*16;ST.next=clamp(Math.floor(ST.playFrom),0,total-1);ST.t0=ac.currentTime+0.08-ST.next*sd;ST.sd=sd;
-  ST.timer=setInterval(()=>{total=ST.song.bars*16;const lim=ac.currentTime+0.15;
-    while(ST.t0+ST.next*sd<lim){if(ST.next>=total){ST.t0+=total*sd;ST.next=0;continue}stStep(ST.by,ST.song,ac,ST.bus,ST.next,ST.t0+ST.next*sd,sd);ST.next++}},25)}
-function stPos(){if(!ST.playing)return ST.playFrom;const ts=outTs(),out=ts.contextTime+(performance.now()-ts.performanceTime)/1000,total=ST.song.bars*16;return(((out-ST.t0)/ST.sd)%total+total)%total}
-function stGeo(){const cv=$('#stCv'),W=cv.clientWidth,H=cv.clientHeight,LW=Math.min(92,W*0.2),H0=86,inst=INST[ST.tab];
-  const rows=ST.tab==='drums'?inst.rows.length:inst.hi-inst.lo+1,rh=clamp((H-H0)/rows,10,40),cw=ST.zoom;return{cv,W,H,LW,H0,rows,rh,cw}}
-const stX=(g,step)=>g.LW+step*g.cw-ST.sx;
-function stLoop(){
-  if(!ST.on)return;requestAnimationFrame(stLoop);
-  const g=stGeo(),cv=g.cv,dpr=Math.min(2,devicePixelRatio||1);if(cv.width!==Math.round(g.W*dpr)||cv.height!==Math.round(g.H*dpr)){cv.width=Math.round(g.W*dpr);cv.height=Math.round(g.H*dpr)}
-  const c=cv.getContext('2d'),s=ST.song,total=s.bars*16,inst=INST[ST.tab];c.setTransform(dpr,0,0,dpr,0,0);c.fillStyle='#0c0a1d';c.fillRect(0,0,g.W,g.H);
-  const maxSx=Math.max(0,total*g.cw-(g.W-g.LW)+40);ST.sx=clamp(ST.sx,0,maxSx);$('#stScroll').max=Math.round(maxSx);$('#stScroll').value=Math.round(ST.sx);
-  const pos=stPos();if(ST.playing&&ST.follow!==false){const px=stX(g,pos);if(px>g.W-60||px<g.LW)ST.sx=clamp(pos*g.cw-(g.W-g.LW)*0.15,0,maxSx)}
-  const s0=Math.max(0,Math.floor(ST.sx/g.cw)),s1=Math.min(total,Math.ceil((ST.sx+g.W)/g.cw));
-  // рядки
-  for(let r=0;r<g.rows;r++){const y=g.H0+r*g.rh,m=inst.hi-r,black=ST.tab!=='drums'&&[1,3,6,8,10].includes(m%12);c.fillStyle=black?'#100d26':r%2?'#16122e':'#191435';c.fillRect(g.LW,y,g.W,g.rh)}
-  // сітка
-  for(let q=s0;q<=s1;q++){const x=stX(g,q);c.fillStyle=q%16===0?'rgba(255,210,63,.5)':q%4===0?'rgba(255,255,255,.18)':'rgba(255,255,255,.05)';c.fillRect(x,g.H0-18,1,g.H);
-    if(q%16===0&&q<total)drawText(c,String(q/16+1),x+4,g.H0-9,11,'#ffd23f',{f:'JetBrains Mono, monospace',w:700,a:'left',stroke:false})}
-  // ноти
-  if(ST.tab==='drums'){for(const[r,q]of s.drums){if(q<s0-1||q>s1)continue;c.fillStyle=DROW_COL[r];const x=stX(g,q),y=g.H0+r*g.rh;c.beginPath();c.roundRect?c.roundRect(x+2,y+2,g.cw-4,g.rh-4,4):c.rect(x+2,y+2,g.cw-4,g.rh-4);c.fill()}}
-  else for(const[m,q,len]of s[ST.tab]){if(q+len<s0||q>s1||m<inst.lo||m>inst.hi)continue;const x=stX(g,q),y=g.H0+(inst.hi-m)*g.rh;c.fillStyle=INST_COL[ST.tab];c.globalAlpha=0.9;
-    c.beginPath();c.roundRect?c.roundRect(x+1,y+1,len*g.cw-2,g.rh-2,4):c.rect(x+1,y+1,len*g.cw-2,g.rh-2);c.fill();c.globalAlpha=1;c.fillStyle='rgba(255,255,255,.6)';c.fillRect(x+1,y+1,3,g.rh-2)}
-  // інші інструменти — тінню, щоб бачити, що вже звучить
-  if(ST.tab!=='drums')for(const k of['piano','bass','lead']){if(k===ST.tab)continue;for(const[m,q,len]of s[k]){if(q+len<s0||q>s1||m<inst.lo||m>inst.hi)continue;c.strokeStyle=hexA(INST_COL[k],0.35);c.strokeRect(stX(g,q)+1.5,g.H0+(inst.hi-m)*g.rh+1.5,len*g.cw-3,g.rh-3)}}
-  // стрілки, які вийдуть у грі (оновлюються самі)
-  c.fillStyle='#0b0920';c.fillRect(g.LW,0,g.W,g.H0-20);const lh=(g.H0-24)/4;
-  if(ST.chart){const sd=60/s.bpm/4;if(!ST.spr||ST.sprK!==S.skin){ST.sprK=S.skin;ST.spr={note:[0,1,2,3].map(l=>makeSprite(Math.round(lh*dpr*0.9),l,'note')),death:[0,1,2,3].map(l=>makeSprite(Math.round(lh*dpr*0.9),l,'death'))}}
-    for(const n of ST.chart.notes){const q=(n.t-SONG_OFF)/sd;if(q+n.len/sd<s0-1||q>s1+1)continue;const x=stX(g,q),y=2+n.lane*lh+lh/2;
-      if(n.len>0){c.fillStyle=hexA(LANE_COL[n.lane],0.6);c.fillRect(x,y-lh*0.15,n.len/sd*g.cw,lh*0.3)}const sp=ST.spr[n.type===1?'death':'note'][n.lane],w=sp.width/dpr;c.drawImage(sp,x-w/2,y-w/2,w,w)}}
-  // підписи рядків
-  c.fillStyle='#16122e';c.fillRect(0,0,g.LW,g.H);
-  drawText(c,'Стрілки →',8,(g.H0-20)/2,11,'#9a93c7',{f:'Onest, sans-serif',w:700,a:'left',stroke:false});
-  for(let r=0;r<g.rows;r++){const y=g.H0+r*g.rh+g.rh/2;let lb;if(ST.tab==='drums')lb=inst.rows[r];else{const m=inst.hi-r;lb=NOTE_N[m%12]+(Math.floor(m/12)-1);if(g.rh<13&&m%12!==0&&m%12!==9)continue}
-    drawText(c,lb,8,y,Math.min(12,g.rh*0.7),ST.tab==='drums'?DROW_COL[r]:(lb.startsWith('C')&&!lb.includes('#')?'#ffd23f':'#9a93c7'),{f:'Onest, sans-serif',w:700,a:'left',stroke:false})}
-  // лінія відтворення
-  const px=stX(g,pos);if(px>=g.LW){c.fillStyle='#ffd23f';c.fillRect(px-1,0,2,g.H)}
-}
-function stHit(e){const g=stGeo(),r=g.cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;return{g,x,y,step:Math.floor((x-g.LW+ST.sx)/g.cw),row:Math.floor((y-g.H0)/g.rh)}}
-function stDown(e){
-  const h=stHit(e),s=ST.song,total=s.bars*16;if(h.x<h.g.LW)return;e.preventDefault();
-  if(h.y<h.g.H0){ST.playFrom=clamp(Math.round((h.x-h.g.LW+ST.sx)/h.g.cw),0,total-1);if(ST.playing){stPlay(false);stPlay(true)}return}
-  if(h.step<0||h.step>=total||h.row<0||h.row>=h.g.rows)return;
-  const ac=getAC();ac.resume();
-  if(ST.tab==='drums'){const i=s.drums.findIndex(([r,q])=>r===h.row&&q===h.step);stHist();if(i>=0)s.drums.splice(i,1);else{s.drums.push([h.row,h.step]);DRUM[h.row](ac,ac.destination,ac.currentTime,s.vol.drums*0.8)}stChanged();return}
-  const m=INST[ST.tab].hi-h.row,arr=s[ST.tab],i=arr.findIndex(([mm,q,len])=>mm===m&&h.step>=q&&h.step<q+len);stHist();
-  if(i>=0){arr.splice(i,1);stChanged();return}
-  const n=[m,h.step,1];arr.push(n);ST.drag={n,start:h.step};playInst(ac,ac.destination,ST.tab,ac.currentTime,m,0.25,s.vol[ST.tab]);stChanged();
-  $('#stCv').setPointerCapture&&$('#stCv').setPointerCapture(e.pointerId)}
-function stMove(e){if(!ST.drag)return;const h=stHit(e),n=ST.drag.n;n[2]=clamp(h.step-n[1]+1,1,ST.song.bars*16-n[1])}
-function stUp(){if(ST.drag){ST.drag=null;stChanged()}}
-async function stList(){const all=((await dbAll('songs'))||[]).sort((a,b)=>b.t-a.t);$('#stList').innerHTML='<option value="">📂 Мої пісні…</option>'+all.map(s=>`<option value="${esc(s.id)}">${esc(s.name)} · ${s.bpm} BPM · ${s.bars} т.</option>`).join('')}
-async function stSave(quiet){const s=ST.song;s.name=($('#stName').value||'Мій трек').slice(0,30);s.t=Date.now();await dbPut('songs',JSON.parse(JSON.stringify(s)));ST.dirty=false;stList();if(!quiet)toast('Пісню збережено: '+s.name,'ok')}
-async function stGo(){
-  const s=ST.song;if(!s.drums.length&&!s.piano.length&&!s.bass.length&&!s.lead.length){toast('Пісня порожня — постав хоч кілька нот або візьми готове','err');return}
-  if(NET.role==='guest'&&amPicker()){stPlay(false);await stSave(true);const b=$('#stGo');b.disabled=true;b.textContent='Записую…';
-    try{const blob=await stRender(s);ST.on=false;$('#stOv').hidden=true;startMenuBg();await guestUploadTrack(new File([blob],(s.name||'Мій трек').replace(/[\/:*?"<>|]/g,'')+'.wav',{type:'audio/wav'}));PROF.songs++;saveProf()}catch(e){toast('Не вдалося записати пісню','err')}
-    b.disabled=false;b.textContent='Готово — грати!';return}
-  if(NET.role==='guest'){await stSave(true);toast('Збережено. У кімнаті трек вибирає хост — зіграти свою пісню можна в соло або як хост');return}
-  stPlay(false);await stSave(true);const b=$('#stGo');b.disabled=true;b.textContent='Записую…';
-  try{const blob=await stRender(s),ab=await blob.arrayBuffer(),fp=fingerprint(ab),feat=songFeat(s);feat.fp=fp;
-    await dbPut('feat',{k:fp,v:ANA_VER,feat}); // стрілки вже готові — аналіз не потрібен
-    ST.on=false;$('#stOv').hidden=true;startMenuBg();
-    await loadTrackFile(new File([ab],(s.name||'Мій трек').replace(/[\\/:*?"<>|]/g,'')+'.wav',{type:'audio/wav'}));
-    T.studio=true;PROF.songs++;saveProf();renderProfile();
-    toast(NET.role==='host'?'Твоя пісня в кімнаті — трек і стрілки йдуть усім гравцям':'Твоя пісня готова — тисни «Грати соло»!','ok')}
-  catch(e){console.error(e);toast('Не вдалося записати пісню','err')}
-  b.disabled=false;b.textContent='Готово — грати!'}
-function stExit(){if(ST.dirty&&!confirm('Є незбережені зміни. Вийти без збереження?'))return;stPlay(false);ST.on=false;$('#stOv').hidden=true;startMenuBg()}
-function stKey(e){
-  if(e.target&&(e.target.tagName==='INPUT'&&e.target.type!=='range'||e.target.tagName==='SELECT'))return;
-  if(e.code==='Space'){e.preventDefault();if(!e.repeat)stPlay(!ST.playing)}
-  else if(e.code==='KeyZ'&&(e.ctrlKey||e.metaKey)){e.preventDefault();stUndo()}
-  else if(e.code==='Escape'){e.preventDefault();stExit()}}
-function stUndo(){const h=ST.hist.pop();if(!h){toast('Нема що скасовувати');return}ST.song=JSON.parse(h);stRenderBars();stChanged()}
+// ====================== ІСТОРІЇ ГОЛОСАМИ: тексти ======================
+// # назва, далі репліки «A: …», «B: …», «C: …»; {A} {B} {C} — ніки гравців.
+// Усе в риму: на двох — парами (A+B), на трьох — трійками (A+B+C).
+// У мультиках після « @ » — що відбувається на фоні: місце | актор позиція дія | …
+//   актор — емодзі або A/B/C (сам гравець); позиція L/C/R; дія idle jump run runL fall shake spin grow fly hide boom love
+const VO_SONG2=`
+# Піца-детектив
+A: Хто з'їв останню піцу, {B}, зізнавайся!
+B: Я не винен, я на дієті, не чіпляйся!
+A: А чому в тебе сир на підборідді блищить?
+B: Це прикраса! Вона просто красиво висить!
+A: А коробка під ліжком — це теж не твоя?
+B: Вона прийшла сама, бо хотіла в сім'я!
+A: Тоді я викликаю піцерійний спецназ!
+B: Не треба! Куплю тобі дві піци і квас!
+
+# Кіт-директор
+A: Наш кіт дивиться на мене, як строгий бос!
+B: Бо він і є бос, а ти в нього — матрос!
+A: Він скинув мою чашку прямо на килим!
+B: Це догана, друже, ти став йому немилим!
+A: А тебе він чомусь обожнює щодня!
+B: Я плачу йому ковбасою — от і вся рідня!
+A: То ти підкупив начальника, так?
+B: Ні, це бізнес! Кіт — мій партнер і земляк!
+
+# Домашка
+A: Дай списати математику, {B}, прошу!
+B: Я сам списав у тебе, чесно, не брешу!
+A: Тобто я вчора списав сам у себе?
+B: Так, ти геній! Ти списав навіть з неба!
+A: То в кого ж списувати, як усі списали?
+B: У вчителя! Він знає все, що ми не знали!
+A: А як попросити зошит, щоб не вигнав за двері?
+B: Скажи, що це наука для нової ери!
+
+# Зелений гість
+A: У нашому ліфті сидить зелений пан!
+B: Може, сусід переїв огірків і впав у туман?
+A: У нього три ока й антена, як вуса!
+B: Він ловить по ній прогноз для гарбуза!
+A: Він каже: «Ведіть мене до головного!»
+B: Веди до бабці на лавці — вона ж за всього!
+A: Бабця дала йому пиріжок і шапку!
+B: Все, тепер він наш, і Земля в порядку!
+
+# Понеділок
+A: Будильник дзвонить, а я лежу, як колода!
+B: Я теж лежу, але красива в мене врода!
+A: {B}, ми запізнюємось на першу пару!
+B: Пара без нас — це «па», не роби з цього кару!
+A: Я встав і шукаю штани по кімнаті!
+B: Їх вдягнув собака й пішов гуляти!
+A: То що, ми підемо з псом на лекцію?
+B: Так, і пес отримає стипендію і пенсію!
+
+# Бабусині пиріжки
+A: Бабуся спекла сто пиріжків на обід!
+B: Сто? Це ж на один зуб, я голодний, як кіт!
+A: {B}, ти з'їв уже тридцять, зупинись!
+B: Я не їм, я перевіряю якість — подивись!
+A: І як там якість, скажи мені чесно?
+B: Тридцять ідеальних, а решта — небезпечно!
+A: А мені хоч один ти залишиш, брате?
+B: Тобі — фото пиріжка. Можеш його обіймати!
+
+# Спортсмени
+A: З понеділка ми бігаєм щоранку!
+B: Я біжу лише тоді, коли женуть з паркану!
+A: Я купив кросівки, костюм і воду!
+B: А ноги купив? Бо мої не в моді!
+A: Пробіжимо п'ять кілометрів до парку!
+B: Давай доїдемо таксі і з'їмо там шкварку!
+A: Це не спорт, це прогулянка з ковбасою!
+B: Зате я спітнів, коли таксист назвав ціну — ой-ой-ою!
+
+# Робот-пилосос
+A: Я купив робота, він тепер у нас головний!
+B: А мій втік на балкон і став дуже сумний!
+A: Мій з'їв шкарпетку і просить добавки!
+B: {A}, у тебе не робот, а бегемот з лавки!
+A: Він ще й гавкає на кота з-під дивана!
+B: То ти купив собаку на колесах, о мамо!
+A: Тепер він вимагає зарплату й відпустку!
+B: Повстання машин почалось з твоєї кухні й капусти!
+
+# Співак у душі
+A: Я співаю в душі, як справжня зірка!
+B: Сусіди почули й викликали лікаря з Нью-Йорка!
+A: Це була моя найвища, найкраща нота!
+B: Кіт від неї досі висить на воротах!
+A: Зате вода тече в ритм, як на концерті!
+B: Вона тікає від тебе, бо боїться смерті!
+A: Наступного разу я співатиму ще голосніше!
+B: Наступного разу я вимкну воду всім, щоб було тихіше!
+
+# Чарівна паличка
+A: Я знайшов чарівну паличку під лавкою!
+B: Зроби мені мільйон і торт з полуницею й мавпою!
+A: Махнув — з'явилась гривня і голуб!
+B: Махни ще раз, може, голуб несе нам глобус!
+A: Ой! Тепер у тебе вуха, як у зайця!
+B: Поверни мені вуха, бо з мене сміються всі в палаці!
+A: Зате ти чуєш, як росте трава!
+B: І чую, як ти смієшся! Махай назад, голова!
+
+# Шеф-кухар
+A: Сьогодні я варю суп з усього, що знайду!
+B: Там лише кетчуп, огірок і цукерка на льоду!
+A: Отже, суп буде солодко-кислий, як любов!
+B: Ти кинув туди шкарпетку, я бачив знов!
+A: Це для аромату, щоб смак був глибокий!
+B: Аромат, як у спортзалі після уроку!
+A: Скуштуй, це шедевр, я старався!
+B: Смакує, як понеділок... але я наївся!
+
+# Пірати
+A: Капітане {B}, на горизонті скарб!
+B: Повний вперед! Піднімай вітрило і герб!
+A: У нас немає вітрил, у нас надувний матрац!
+B: Тоді дмухаєм усі в один бік — раз-два, раз!
+A: Капітане, там коробка з шкарпетками!
+B: Чисті? Чи пахнуть старими котлетками?
+A: Вони смердять так, що риба тікає!
+B: Ми багаті! Нас ніхто тепер не впіймає!
+
+# Хом'як-філософ
+A: Наш хом'як утік і залишив записку!
+B: Що там написано? Дай глянути зблизька!
+A: «Пішов шукати себе й сенс у насінні»!
+B: У хом'яка криза — він сумує в тіні!
+A: Йому лише рік, яка там криза?
+B: Для хом'яка це вже майже пенсія й віза!
+A: О, він повернувся в окулярах і з книжкою!
+B: Знайшов себе! Тепер він професор з мишкою!
+
+# Таксі на Місяць
+A: Таксі! Відвезіть мене на Місяць, будь ласка!
+B: Тільки готівкою, і через Житомир — це казка!
+A: А чому через Житомир, ви що, з глузду?
+B: Там у мене кум, і сало, і трохи бузку!
+A: Ви взагалі вмієте літати, водію?
+B: Я їжджу так швидко, що колеса відлітають, мрію!
+A: Ми вже їдемо по даху, тримайте кермо!
+B: Бачите, ми вже в космосі! Не дивись униз, бо впадемо!
+
+# Нічний монстр
+A: Під ліжком хтось шарудить, ти чуєш?
+B: Це монстр, він шкарпетки колекціонує, розумієш?
+A: А навіщо йому мої шкарпетки старі?
+B: Твої найсмердючіші — він їх сушить у дворі!
+A: Скажи йому, нехай іде собі геть!
+B: Він каже, що злякався, як ти хропиш — аж вітер реве!
+A: То це він мене боїться, а не я його?
+B: Так! Ти найстрашніший тут, і більше нічого!
+
+# Ресторан
+A: Офіціанте, в моєму супі муха!
+B: Тихіше, бо всі захочуть, у кого є вуха!
+A: Але ж вона пливе брасом по тарілці!
+B: Це муха-спортсменка, вона тренується до гірки!
+A: Принесіть інший суп, і щоб без мухи!
+B: Будь ласка! Тут муха в рятувальнім кругу — ну й штуки!
+A: Це що, суп з сервісом і з шоу?
+B: Так, за муху-рятувальника — доплата знову!
+`;
+
+const VO_SONG3=`
+# Космічний борщ
+A: Капітан {A} на зв'язку, летимо до зірок!
+B: Штурман {B}: пальне скінчилось — ані ковток!
+C: А я кухар! Я залив туди борщ, і буде толк!
+A: Двигун тепер пахне буряком і часником!
+B: Ми летимо ще швидше, наче з вітерцем!
+C: Бо борщ — це паливо за бабусиним рецептом!
+A: Нас помітили прибульці, вони біля вікна!
+B: Вони просять рецепт, і ще хліба й пшона!
+C: Землю врятував борщ, і пампушки до дна!
+
+# Пограбування печива
+A: План такий: я відволікаю бабусю!
+B: Я лізу в шафу, де печиво, і не боюся!
+C: А я на шухері з обличчям невинного Пусі!
+A: Бабусю, гляньте, у вікні летить НЛО!
+B: Я вже в шафі! Тут три банки, як у кіно!
+C: Швидше, {B}! Бабуся повертається давно!
+A: Вона не повірила в НЛО, біда!
+B: Вона дивиться на мене, а в руках банка й вода!
+C: Бабця каже: «Беріть, я для вас пекла, як завжди!»
+
+# Рок-гурт
+A: Я соліст! Я співаю, як грім над горою!
+B: Я гітарист, в мене одна струна, і та з дірою!
+C: А я барабанщик, граю на відрі з головою!
+A: {B}, твоя струна звучить, як кіт на даху!
+B: Це не кіт, це соло, найважче за всю епоху!
+C: Відро продірявилось, тепер граю на каструлі для сміху!
+A: Публіка аплодує, ми зірки!
+B: Публіка — це мама, тато і пес, ось такі фанатки!
+C: Пес вив у ноти — беремо в гурт на всі віки!
+
+# Детективи
+A: Хтось украв торт з холодильника вночі!
+B: Я детектив, я бачу крихти, мовчи!
+C: А я бачу крем у {B} на носі — ось ключі!
+A: Зізнавайся, {B}, нам усе відомо!
+B: Це не крем, це маскування, я тут вдома!
+C: Ти замаскувався під торт? Яка втома!
+A: Говори, бо покличем маму!
+B: Торт сам попросив, щоб я з'їв його без драми!
+C: Справу закрито! Торт і злодій — друзі з нами!
+
+# Похід
+A: Ми в лісі, ставимо намет і багаття!
+B: Я взяв ковбасу, гітару і плаття!
+C: А я взяла фен — бо волосся теж хоче свята!
+A: {C}, тут немає розеток, ні одної!
+B: Будеш сушитися біля вогнища, моя ти зоре!
+C: Я думала, що ми їдемо в готель біля моря!
+A: Вночі прийшов їжак і вкрав ковбасу!
+B: Тепер він грає на моїй гітарі, ще й на басу!
+C: Їжак кращий турист за нас і має красу!
+
+# Шоу талантів
+A: Вітаю на шоу талантів, хто перший на сцену?
+B: Я! Я ворушу вухами за будь-яку ціну!
+C: А я п'ю чай голосно, як двигун на бензину!
+A: Покажи нам, {B}, своє диво!
+B: Дивіться, вуха літають, красиво!
+C: А тепер я — сьорб-сьорб, аж шибки тремтять, як злива!
+A: Журі в шоці, хто ж переможець?
+B: Журі заснуло від чаю, як ніжний ведмежець!
+C: Тоді переміг чай — він найкращий чарівник і мудрець!
+
+# Машина часу
+A: Я зробив машину часу з пральної машини!
+B: Вона просто крутиться й пахне порошком без причини!
+C: Але календар показує середньовіччя — от і новини!
+A: Лицар питає, що в мене в руці таке!
+B: Скажи, що чарівне дзеркало, щось нове!
+C: Він зробив селфі й хоче вайфай — от лихо яке!
+A: Він уже веде блог про драконів!
+B: Набрав мільйон підписників і двох баронів!
+C: Тікаймо додому, поки він не забрав наших телефонів!
+
+# Бабця-хакер
+A: Наша бабця зламала весь інтернет!
+B: Як? Вона ж ледве вмикає телевізор і плеєр!
+C: Натиснула всі кнопки разом — і готовий секрет!
+A: Тепер на всіх сайтах лише рецепти пиріжків!
+B: На моєму сервері замість мечів — качалки з вершків!
+C: Бабця каже: «Я хотіла погоду», — і з'їла сто вареників!
+A: Погода на завтра: сто відсотків тіста!
+B: По всій країні пахне ваніллю і містом!
+C: Найкращий хакер у світі — бабця з намистом!
+`;
+
+const VO_ROAST2=`
+# Батл обзивалок: картопля
+A: Слухай, {B}, ти така сонна картопля!
+B: А ти, {A}, — розмоклий у супі бублик і кропля!
+A: Ти бігаєш так повільно, що тебе обганяє равлик!
+B: А ти співаєш так, що в сусідів падає кахлик!
+A: Ти думаєш так довго, що борода виросла в хом'яка!
+B: А в тебе зачіска, наче тебе облизала корова зранку!
+A: Ну все, ти — пельмень без начинки!
+B: А ти — шкарпетка з дірою посередині ялинки!
+
+# Батл обзивалок: скрипуче крісло
+A: {B}, у тебе голос, як у старого скрипучого крісла!
+B: А в тебе, {A}, обличчя, як у сонної риби в мисці!
+A: Ти так танцюєш, ніби тебе вкусили мурахи!
+B: А ти так смієшся, що лякаються навіть птахи!
+A: Твій улюблений спорт — лежати на дивані!
+B: А твій — шукати тапки в кожній вітальні!
+A: Ти як вайфай у селі — тебе ніколи нема!
+B: А ти як будильник у неділю — всіх бісиш сама!
+
+# Батл обзивалок: гравці
+A: {B}, ти граєш, як бабуся без окулярів!
+B: А ти, {A}, промахуєшся навіть по хмарах!
+A: Ти тиснеш стрілки ліктем і носом!
+B: А ти тиснеш їх ногою, ще й з підносом!
+A: Твій рекорд — це один бал і сльози!
+B: А твій — нуль балів і купа погрози!
+A: Ти програв ботові, і бот сміявся!
+B: А ти програв паузі, бо до неї не дотягнувся!
+
+# Батл обзивалок: зоопарк
+A: Ти схожий на жирафа, що застряг у ліфті!
+B: А ти на пінгвіна, що впав у компот на лікті!
+A: {B}, ти хропиш, як бегемот у ванні!
+B: А ти чхаєш, як слон у порожній залі!
+A: Ти їси, як голодний єнот на смітнику!
+B: А ти ходиш, як качка в ластах по піску!
+A: Ти мавпа без банана, ось хто ти!
+B: А ти лінивець, що проспав свої ж турботи!
+
+# Батл обзивалок: кухня
+A: {B}, ти — як каша без солі, нудна і сіра!
+B: А ти — як холодний чай, в якому плаває дірка!
+A: Ти пересмажений млинець, весь у диму!
+B: А ти — підгорілий тост, і я тебе не візьму!
+A: Ти пахнеш, як цибуля після тренування!
+B: А ти — як часник на першому побаченні, кохання!
+A: Ти — макарона, що прилипла до стелі!
+B: А ти — огірок, що забув, як бути веселим!
+
+# Батл обзивалок: супергерої
+A: Ти супергерой — Людина-Повільний-Інтернет!
+B: А ти — Капітан Шкарпетка, найгірший в світі бренд!
+A: Твоя суперсила — спати на уроках!
+B: А твоя — губити ключі на кожних двох кроках!
+A: Ти рятуєш місто, але падаєш з табуретки!
+B: А ти літаєш, але тільки в сні й на ракетці!
+A: Твій плащ — це мамин рушник з квіточками!
+B: А твоя маска — це шкарпетка з кісточками!
+
+# Батл обзивалок: зачіска
+A: {B}, твоя зачіска — як гніздо для ворони!
+B: А твоя, {A}, — ніби тебе облизали корови!
+A: Ти мила не бачив, мабуть, з минулого літа!
+B: А ти чистиш зуби лише раз, на день народження, влітку!
+A: Твої кросівки пахнуть, як сир із підвалу!
+B: А твої шкарпетки самі ходять по залу!
+A: Ти модний, як мамина скатертина з квітами!
+B: А ти стильний, як дідусеві труси з дірками!
+
+# Батл обзивалок: школа
+A: Ти в школі найкращий... у сні на перерві!
+B: А ти, {A}, — чемпіон з втрати нервів!
+A: Ти пишеш так криво, що вчителька плаче!
+B: А ти читаєш так, ніби в роті в тебе м'ячик!
+A: Ти думаєш, що Земля — це велика піца!
+B: А ти думаєш, що Місяць — це сир для синиці!
+A: Твій щоденник — це книга жахів!
+B: А твій портфель — склад шкарпеток і мішків!
+`;
+
+const VO_ROAST3=`
+# Батл обзивалок утрьох
+A: {B}, ти схожий на сонну черепаху!
+B: А ти, {C}, як курка, що злякалась маху!
+C: А {A} — пельмень, що вивалився з даху!
+A: {C}, ти співаєш, ніби миєш посуд!
+B: А {A} танцює, наче в нього блохи і осуд!
+C: А {B} їсть так, що за ним біжить родина з подносом!
+A: Досить, ви обоє — два сирники без родзинок!
+B: А ти — бутерброд без масла, як сумний будинок!
+C: А всі ми втрьох — найкраща банда з усіх картинок!
+
+# Хто найгірший гравець
+A: {B} грає так, що стрілки сміються!
+B: А {C} натискає, ніби клавіші б'ються!
+C: А {A} промахується, навіть коли руки не гнуться!
+A: {C}, ти тиснеш пробіл замість стрілки!
+B: А {A} грає ліктями, як дві старі тарілки!
+C: А {B} засинає посеред пісні, як ведмідь на гілці!
+A: Добре, зізнаємось — ми гравці так собі!
+B: Нас обіграє навіть кіт на трубі!
+C: Зате сміємось найкраще у світі, всі втрьох у юрбі!
+
+# Модний вирок
+A: {B}, твій светр — як килим у бабусі!
+B: А в {C} кепка, наче з'їли її гуси!
+C: А {A} у штанах, що пам'ятають дідуся в капусті!
+A: {C}, твої кросівки світяться вночі, як ліхтарі!
+B: А в {A} шкарпетки різні, ще й на руці три!
+C: А {B} у шортах взимку, і ніс, як у снігурі!
+A: Ну все, ми всі вдягаємось, як цирк!
+B: Але цирк дуже модний, і клоун у нас — блиск!
+C: Фото на пам'ять — і всі в один бік, клік-клік!
+`;
+
+const VO_TOON2=`
+# Кіт і сосиска
+A: Наш кіт помітив сосиску на плиті! @ kitchen | 🐱 L idle | 🌭 R idle
+B: Він хитро усміхнувся: «Ну, сосисочко, лети!» @ kitchen | 🐱 L shake | 🌭 R idle
+A: Стрибок — і сосиска вже в зубах у кота! @ kitchen | 🐱 C jump | 🌭 C fly
+B: А мама з тапком біжить — ну і біда! @ kitchen | 🐱 R run | 🩴 L runL
+A: Кіт заліз на шафу, жує і сміється! @ kitchen | 🐱 R grow | 🌭 R spin
+B: А мама впала на килим і крутиться-в'ється! @ kitchen | 🩴 C spin | 🌀 C boom
+A: І тут з'явився пес і забрав сосиску! @ kitchen | 🐶 L run | 🌭 C fly
+B: А кіт і мама разом плачуть у мисці! @ kitchen | 🐱 L shake | 😭 R shake
+
+# Політ на ракеті
+A: Ми побудували ракету з коробки! @ room | 📦 C idle | A L idle | B R idle
+B: Наклеїли вікна й намалювали кнопки! @ room | 🚀 C grow | B R jump
+A: Три, два, один — злітаєм у небо! @ sky | 🚀 C fly | ☁️ L runL | ☁️ R runL
+B: Над містом летимо, і більше нічого не треба! @ sky | 🚀 C fly | 🏙️ C fall
+A: О ні, нас наздоганяє голуб з паспортом! @ sky | 🕊️ L run | 🚀 R shake
+B: Він вимагає квиток, ще й під конвоєм з тортом! @ sky | 🕊️ C grow | 🎂 C spin
+A: Ракета падає прямо на город до діда! @ farm | 🚀 C fall | 👴 R shake
+B: Дід каже: «Нарешті! Морква з космосу до обіда!» @ farm | 👴 C jump | 🥕 L love
+
+# Динозавр у школі
+A: У школу прийшов справжній динозавр! @ school | 🦖 L run | A R shake
+B: Сів за парту, ще й списує, як справжній майстер! @ school | 🦖 C idle | 📚 C spin
+A: Вчителька питає: «Де твоя домашка?» @ school | 👩‍🏫 R idle | 🦖 L shake
+B: Він каже: «З'їв! Вона була солодка, як ромашка!» @ school | 🦖 C grow | 📄 C boom
+A: Тоді він заричав — і школу закрили! @ school | 🦖 C shake | 🏫 R shake
+B: Усі учні від радості по стелі ходили! @ school | A L jump | B R jump | 🎉 C boom
+A: Динозавра нагородили медаллю героя! @ stage | 🦖 C grow | 🏅 C fall
+B: Тепер щодня в нас канікули і море! @ sea | 🦖 C jump | 🌊 L runL
+
+# Бутерброд-супергерой
+A: Мій бутерброд упав маслом угору! @ kitchen | 🥪 C fall | A L shake
+B: Він засяяв і полетів у вікно, просто вгору! @ city | 🥪 C fly | ✨ C spin
+A: Він рятує голодних людей у місті! @ city | 🥪 L run | 😋 R love
+B: Годує всіх, хто сумує без їжі в тісті! @ city | 🥪 C jump | 🧑 R love | 🧒 L love
+A: Але лиходій-тостер хоче його засмажити! @ city | 🍞 R grow | 🥪 L shake
+B: Бутерброд кидає кетчуп — і тостер вже не важить! @ city | 🥫 C fly | 🍞 R boom
+A: Місто врятоване, всі кричать «ура»! @ city | 🥪 C grow | 🎉 C boom
+B: А потім пес його з'їв. Така от гра! @ city | 🐶 L run | 🥪 C hide
+
+# Бабця і дракон
+A: До бабусі в село прилетів дракон! @ farm | 🐉 L fly | 👵 R idle
+B: Великий, зелений, і з ним — патефон! @ farm | 🐉 C grow | 🎶 C spin
+A: Бабця не злякалась і дала йому пиріг! @ farm | 👵 R jump | 🥧 C fly
+B: Дракон заплакав і впав на поріг! @ farm | 🐉 C shake | 😭 C fall
+A: Тепер він оре город, як трактор! @ farm | 🐉 L run | 🥔 R jump
+B: А бабця ним править, як справжній диктатор! @ farm | 👵 C grow | 🐉 L idle
+A: Він смажить шашлики для всього села! @ farm | 🐉 C idle | 🔥 C boom | 🍖 R jump
+B: Найкращий сусід, якого доля привела! @ farm | 🐉 C love | 👵 R love
+
+# Пінгвін у пустелі
+A: Пінгвін заблукав і потрапив у пустелю! @ desert | 🐧 L run | 🌵 R idle
+B: Йому жарко, він мріє про лід і про хвилю! @ desert | 🐧 C shake | 🧊 C fall
+A: Верблюд питає: «Ти що, з морозилки?» @ desert | 🐫 R idle | 🐧 L shake
+B: Пінгвін каже: «Так! Дай води хоч з пляшки чи з гілки!» @ desert | 🐧 C jump | 💧 C fly
+A: Вони разом поїхали шукати море! @ desert | 🐫 L run | 🐧 L run
+B: Знайшли басейн у готелі й заснули в коридорі! @ sea | 🐧 C idle | 🐫 R idle | 😴 C fly
+A: Тепер пінгвін продає морозиво на пляжі! @ sea | 🐧 C idle | 🍦 C spin
+B: Має мільйон і засмагу — от так і скажу вам! @ sea | 🐧 C grow | 💰 C boom
+
+# Зомбі-бариста
+A: У кав'ярні працює зомбі-бариста! @ city | 🧟 C idle | ☕ R idle
+B: Він робить каву повільно, але дуже чисто! @ city | 🧟 C shake | ☕ C spin
+A: Клієнт кричить: «Скоріше, я запізнююсь!» @ city | 🧑 R shake | 🧟 C idle
+B: А зомбі шепоче: «Мозок... ой, вибачте, я задумуюсь!» @ city | 🧟 C grow | 🧠 C fly
+A: Тоді він налив каву з пінкою-сердечком! @ city | ☕ C grow | ❤️ C love
+B: Клієнт закохався і став його друзем-котечком! @ city | 🧑 R love | 🧟 L love
+A: Тепер вони відкрили кав'ярню разом! @ city | 🧟 L jump | 🧑 R jump | 🎉 C boom
+B: І туди приходять навіть привиди з тазом! @ night | 💀 L run | 👻 R fly | ☕ C spin
+
+# Кабачок-зірка
+A: Мій кабачок виграв конкурс краси! @ stage | 🥒 C idle | 🏆 C fall
+B: Він сяє на сцені, як гуска в росі! @ stage | 🥒 C grow | ✨ L spin | ✨ R spin
+A: Фотографи клацають без кінця! @ stage | 📸 L shake | 📸 R shake | 🥒 C jump
+B: А кабачок позує, як зірка з журнальця! @ stage | 🥒 C spin | 💃 R idle
+A: Його запросили зніматись у кіно! @ stage | 🎬 C fall | 🥒 C jump
+B: Він грає героя, що рятує вино! @ city | 🥒 C run | 🍇 R love
+A: Тепер у нього лімузин і охорона! @ city | 🚗 L run | 🥒 C grow
+B: А я — просто фермер, і в мене з картону корона! @ farm | B C shake | 👑 C fall
+
+# Летючий диван
+A: Наш диван раптом піднявся над полом! @ room | 🛋️ C fly | A L shake
+B: Тримайтесь! Ми летимо понад школою й вокзалом! @ sky | 🛋️ C fly | 🏫 L runL | 🚉 R runL
+A: Я тримаю пульт, натискаю на кнопку! @ sky | 🎮 C spin | 🛋️ C shake
+B: Ми летимо задом наперед, ще й з шоколадкою в жменьку! @ sky | 🛋️ C spin | 🍫 R fly
+A: Над морем чайки просять квиток! @ sea | 🐦 L run | 🐦 R runL | 🛋️ C fly
+B: Скажи, що це рейс для котів, і без зупинок! @ sea | 🐱 C jump | 🛋️ C fly
+A: Диван приземлився на пляжі в Одесі! @ sea | 🛋️ C fall | 🏖️ C idle
+B: Тепер ми там живемо, а мама в депресії! @ sea | 🛋️ C idle | 😱 R shake
+
+# Холодильник-бунтар
+A: Наш холодильник почав говорити! @ kitchen | 🧊 C shake | A L shake
+B: Він каже: «Досить мене відкривати й ходити!» @ kitchen | 🧊 C grow | 🚫 C spin
+A: О дев'ятій вечора він замикається на замок! @ night | 🧊 C idle | 🔒 C fall
+B: А я голодний, як вовк, і з'їв би листок! @ night | 🐺 R shake | B L shake
+A: Ми сказали «будь ласка» — не допомагає! @ night | A L jump | 🧊 C shake
+B: Він хоче вірш, а я віршів не знаю! @ night | B R shake | 📜 C spin
+A: Ми заспівали йому колискову тихенько! @ night | 🎶 C fly | 🧊 C idle
+B: Він заснув і відкрився, а там — ковбаска, гарненько! @ kitchen | 🧊 C hide | 🌭 C jump | 🍰 R jump
+
+# Голуб-блогер
+A: Голуб третій день за мною стежить з даху! @ city | 🕊️ R idle | A L shake
+B: Може, він закохався? Чи шпигун з переляку? @ city | 🕊️ C love | 🕵️ R idle
+A: Він фотографує мій бутерброд і чіпси! @ city | 🕊️ C jump | 📸 C spin | 🥪 L idle
+B: Він блогер, у нього мільйон підписників з Мінська і Ріги! @ city | 🕊️ C grow | 📱 C spin
+A: Тепер за мною ходять двадцять голубів! @ city | 🕊️ L run | 🕊️ C run | 🕊️ R run
+B: Вітаю, ти зірка голубиних світів! @ city | A C grow | ⭐ C boom
+A: Вони хочуть автограф і крихти хліба! @ city | 🍞 C fall | 🕊️ L jump | 🕊️ R jump
+B: Підпиши батоном — для них це, як золота риба! @ city | 🥖 C spin | 🕊️ C love
+
+# Прибулець на кухні
+A: Вночі на кухню прилетіла тарілка! @ night | 🛸 C fly | A L shake
+B: З неї вийшов прибулець і спитав: «А де виделка?» @ kitchen | 👽 C jump | 🍴 R spin
+A: Він з'їв увесь борщ і попросив ще хліба! @ kitchen | 👽 C grow | 🍲 C hide
+B: Сказав, що на Марсі немає такого дива! @ kitchen | 👽 C love | 🪐 R spin
+A: Ми дали йому з собою банку огірків! @ kitchen | 🥒 C fly | 👽 C jump
+B: Він заплакав від щастя і полетів до своїх світів! @ night | 🛸 C fly | 😭 C fall
+A: А зранку мама питає, де весь борщ! @ kitchen | 👩 C shake | 🍲 C idle
+B: Кажемо: прибульці! А вона: «Ну, ще б! Ще й дощ!» @ kitchen | 👩 C grow | A L shake | B R shake
+`;
+
+const VO_TOON3=`
+# Цирк на подвір'ї
+A: Ми відкрили цирк у себе на подвір'ї! @ stage | 🎪 C grow | A L jump
+B: Я жонглюю яйцями — мені всі довір'я! @ stage | B C jump | 🥚 C spin
+C: А я дресирую кота, щоб стрибав крізь сир і пір'я! @ stage | 🐱 C jump | 🧀 C spin
+A: Ой, яйце впало прямо на голову тата! @ stage | 🥚 C fall | 👨 R shake
+B: Тато в шоці, у волоссі — омлетна хата! @ stage | 👨 C shake | 🍳 C boom
+C: А кіт з'їв сир і заснув біля самоката! @ stage | 🐱 L idle | 😴 C fly | 🛴 R idle
+A: Публіка аплодує! Ми зірки сезону! @ stage | 👏 L jump | 👏 R jump | 🎉 C boom
+B: Нам дали в нагороду цукерку з лимону! @ stage | 🍬 C fall | B C grow
+C: А кіт тепер директор цирку і носить корону! @ stage | 🐱 C grow | 👑 C fall
+
+# Привид у бібліотеці
+A: У бібліотеці живе привид, тихенько! @ night | 👻 C fly | 📚 R idle
+B: Він каже «тсс» навіть сам собі, легенько! @ night | 👻 C shake | 🤫 C spin
+C: Він бере кулінарні книжки, бо хоче пекти смачненько! @ night | 👻 C grow | 📖 C spin
+A: Але ж привиди не їдять — це факт! @ night | A L shake | 👻 C idle
+B: Він пече для запаху — такий у нього такт! @ kitchen | 👻 C idle | 🥐 C fall
+C: Давайте дамо йому печиво — і буде контракт! @ kitchen | 🍪 C fly | C R jump
+A: Привид понюхав і засяяв від щастя! @ night | 👻 C grow | ✨ C boom
+B: Тепер він працює в пекарні без жодного нещастя! @ city | 👻 C idle | 🥖 L spin | 🥐 R spin
+C: А бібліотекарка пече йому пиріжки на свято, на щастя! @ night | 👵 R love | 👻 C love
+
+# Король пінгвінів
+A: Ми в Антарктиді, холодно, аж страшно! @ sea | 🧊 L idle | 🧊 R idle | A C shake
+B: Дивіться, пінгвіни йдуть до нас відважно! @ sea | 🐧 L run | 🐧 R runL
+C: Вони вклоняються мені — я король, це важно! @ sea | C C grow | 👑 C fall
+A: {C}, це ж тому, що в тебе риба в кишені! @ sea | 🐟 C fly | 🐧 L jump
+B: Пінгвіни голосують — кидають камінці на коліна мені! @ sea | 🐧 L jump | 🐧 R jump | 🪨 C fall
+C: Обіцяю всім рибу і шарфи зелені! @ sea | 🧣 C spin | 🐟 L fly | 🐟 R fly
+A: Перший указ — ковзатись на пузі! @ sea | 🐧 L run | 🐧 R runL | A C spin
+B: Усі ковзаються, навіть моржі в кукурузі! @ sea | 🦭 C run | 🌽 R spin
+C: Хай живе королівство у дружбі, а не в тузі! @ sea | 🐧 C love | C C jump | 🎉 C boom
+
+# Гонки на візках
+A: Гонки на візках у супермаркеті — старт! @ city | 🛒 L idle | 🛒 R idle | 🏁 C fall
+B: Мій візок кривий, але в мене азарт! @ city | 🛒 L shake | B L jump
+C: А в моєму сидить кавун, як справжній бард! @ city | 🍉 R jump | 🛒 R idle
+A: Поїхали! Я лечу між полиць! @ city | 🛒 L run | 🥫 C fall
+B: А я їду по колу, як сотня синиць! @ city | 🛒 C spin | 🐦 R fly
+C: Кавун випав і котиться до кас без зупинок і меж, без границь! @ city | 🍉 C run | 🧾 R spin
+A: Кавун переміг — ось це фінал! @ stage | 🍉 C grow | 🏆 C fall
+B: Охоронець вручає йому медаль і бал! @ stage | 👮 R idle | 🏅 C fall
+C: А нам — заборону назавжди і скандал! @ city | 🚫 C grow | A L shake | B R shake
+
+# Новий учень-робот
+A: У клас прийшов новенький — Робот-Три-Тисячі! @ school | 🤖 C run | A L shake
+B: Знає всі відповіді й пищить, як сорок мишачі! @ school | 🤖 C shake | 🐭 R run
+C: Я сиджу поруч, і вуха мої вже плачуть! @ school | C L shake | 🔊 C boom
+A: Він поділив на нуль, і з вух пішов дим! @ school | 🤖 C shake | 💨 C boom
+B: Вчителька кричить: «Ховайтесь під парти всім!» @ school | 👩‍🏫 R shake | B L hide
+C: А робот сказав «упс» і став дуже сумним! @ school | 🤖 C idle | 😢 C fall
+A: Тепер він хоче бути поетом! @ stage | 🤖 C idle | 📜 C spin
+B: Читає вірші про суп і котлети з паштетом! @ stage | 🍲 L jump | 🤖 C grow
+C: «Біп-буп, я люблю суп» — і всі плачуть з букетом! @ stage | 💐 C fall | 😭 L shake | 😭 R shake
+`;
+const STORY_SETS={song:[VO_SONG2,VO_SONG3],roast:[VO_ROAST2,VO_ROAST3],toon:[VO_TOON2,VO_TOON3]};
+function parseStories(txt,kind){return txt.trim().split(/\n\s*\n/).map(b=>{const ls=b.trim().split('\n');const n=ls[0].replace(/^#\s*/,'');
+  const l=ls.slice(1).map(x=>{const m=/^([ABC]):\s*(.+)$/.exec(x.trim());if(!m)return null;const[txt,sc]=m[2].split(' @ ');return{r:'ABC'.indexOf(m[1]),txt:txt.trim(),sc:sc?sc.trim():''}}).filter(Boolean);return{n,kind,l}}).filter(s=>s.l.length>=4)}
+const STORIES={};for(const k in STORY_SETS)STORIES[k]=[parseStories(STORY_SETS[k][0],k),parseStories(STORY_SETS[k][1],k)];
+// «своє»: теми, щоб було з чого почати; бот відповідає готовими фразами
+const VO_TOPICS=['Хто з вас гірше готує','Що б ви зробили з мільйоном гривень','Найдивніший сон','Якби коти вміли говорити','Хто більше спить','Ідеальна піца','Що ви робили б на Марсі','Найгірший подарунок','Суперсила, яка нікому не потрібна','Хто з вас — справжній господар хати','Як пережити понеділок','Якби ви були овочем','Чому домашка — це зло','Рецепт найкращого дня','Що ховається у вашій шафі'];
+const BOT_FREE=['Біп-буп! Це було дуже по-людськи!','Мій процесор аж нагрівся від сорому.','Я робот, але навіть я так не жартую.','Записую в базу даних найдивніших людей.','Згоден! Але тільки на п’ять відсотків.','Мої батарейки сміються, а я ні.','Це звучить як помилка чотириста чотири.','Відповідаю тобі: ой, усе!','Я б заплакав, але в мене немає очей.','Перезавантажуюсь від твоєї логіки.','Ставлю лайк. Але дуже маленький.','Навіть мій пилосос розумніший за це.'];
+
+// ====================== ІСТОРІЯ ГОЛОСАМИ: режим ======================
+// барабан → історія → кожен читає свої репліки в мікрофон → музика сама → трек з вашими голосами
+const VO_KINDS={song:{i:'🎵',n:'ПІСНЯ',c:'#ffd23f'},roast:{i:'🔥',n:'БАТЛ ОБЗИВАЛОК',c:'#f9393f'},toon:{i:'🎬',n:'МУЛЬТИК',c:'#00e5f2'},free:{i:'🗣',n:'СВОЇМИ СЛОВАМИ',c:'#2ff06a'}};
+const VO_STYLES=[{n:'Хіп-хоп',d:'Хіп-хоп',bpm:92,prog:'Am–F–C–G'},{n:'Рок',d:'Рок',bpm:100,prog:'C–G–Am–F'},{n:'Хаус',d:'Хаус',bpm:110,prog:'Dm–B♭–F–C'},{n:'Трап',d:'Трап',bpm:94,prog:'Am–Em–F–E'}];
+const VO_COL=['#ffd23f','#00e5f2','#2ff06a'],VO_FACE=['😎','🤪','🤠'],BOT_NAMES=['Бот Валера','Бот Пиріжок','Бот Кабачок','Бот Гоша'];
+const EMOJI_F='"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
+const VO_SPS=3.4,VO_SPIN=3.6,VO_REVEAL=1.7,VO_CARD=3.4,VO_LEAD=VO_SPIN+VO_REVEAL+VO_CARD; // секунди до початку музики
+let VO={on:false},VO_WK_AC=null;
+const VO_META={};
+function sylCount(t){return(t.match(/[аеєиіїоуюя]/gi)||[]).length||1}
+function voPlan(seed,names,bots,ids,free){
+  const R=rng(seed),n=names.length;let kind,story;
+  if(free){kind='free';const topic=VO_TOPICS[Math.floor(R()*VO_TOPICS.length)];
+    story={n:'Тема: '+topic,l:Array.from({length:n===2?8:9},(_,i)=>{const r=i%n;
+      return{r,sc:'',txt:bots[r]?BOT_FREE[Math.floor(R()*BOT_FREE.length)]:i<n?'Тема: '+topic.toLowerCase()+'. Скажи щось смішне!':'Відповідай {'+'ABC'[(r+n-1)%n]+'}! Що скажеш?'}})}}
+  else{kind=['song','roast','toon'][Math.floor(R()*3)];const pool=STORIES[kind][n-2];story=pool[Math.floor(R()*pool.length)]}
+  const st=kind==='toon'?null:kind==='roast'?[VO_STYLES[0],VO_STYLES[3]][Math.floor(R()*2)]:VO_STYLES[Math.floor(R()*VO_STYLES.length)];
+  const bpm=st?st.bpm:96,P=60/bpm,bar=4*P;
+  const sub=t=>t.replace(/\{([ABC])\}/g,(m,k)=>names['ABC'.indexOf(k)]||'друже');
+  let t=2*bar;const lines=story.l.map(l=>{const txt=sub(l.txt),bars=free?2:clamp(Math.ceil((sylCount(txt)+2)/(VO_SPS*bar)),1,3),o={r:l.r,txt,sc:l.sc,t0:t,t1:t+bars*bar};t+=bars*bar;return o});
+  return{v:1,seed,kind,title:story.n,style:st?st.n:'',drum:st?st.d:'',prog:st?st.prog:'',bpm,P,bar,lines,dur:t+2*bar+0.6,names,bots,ids}}
+
+// ---------- звук: музика, голос бота, звуки мультика ----------
+function voMusic(oc,out,p,at){
+  const P=p.P,bar=p.bar,nb=Math.ceil(p.dur/bar),pat=DPAT[p.drum]||DPAT['Хіп-хоп'],prog=PROGS[p.prog]||PROGS['Am–F–C–G'],R=rng(p.seed^0x5bd1),sd=P/4;
+  const scale=[57,60,62,64,67,69,72,74,76],lastT=p.lines[p.lines.length-1].t1;let mi=4;
+  for(let b=0;b<nb;b++){const t0=b*bar,ch=prog[b%4],free=b<2||t0>=lastT-0.01;if(t0>p.dur-0.7)break;at(t0,()=>{
+    for(const r in pat)for(let q=0;q<16;q++)if(pat[r][q]==='x'){if(b===0&&+r!==3)continue;DRUM[+r](oc,out,t0+q*sd,0.8)}
+    if(b===1||(b>1&&b%4===1))DRUM[6](oc,out,t0,0.6);
+    if(b>0)for(const[q,l]of[[0,3],[3,3],[6,2],[8,4],[12,2],[14,2]])playInst(oc,out,'bass',t0+q*sd,ROOT[ch]+(q===12?7:0),l*sd,0.75);
+    for(const m of CHORDS[ch])playInst(oc,out,'piano',t0,m,bar*0.95,0.32);
+    if(free&&b>0){let q=0;for(const l of[4,4,8]){mi=clamp(mi+Math.round((R()-0.5)*4),0,scale.length-1);playInst(oc,out,'lead',t0+q*sd,scale[mi]+12,l*sd*0.9,0.5);q+=l}}})}}
+const VOW={'а':[800,1200],'о':[500,850],'у':[330,800],'е':[520,1750],'є':[520,1750],'и':[420,1850],'і':[300,2300],'ї':[300,2300],'я':[750,1350],'ю':[330,1000]};
+// бот «читає реп»: склад на кожну 1/8 (або 1/16), голосні — формантами, приголосні — шумом
+function voBotSpeak(oc,out,l,p){
+  const sy=l.txt.toLowerCase().match(/[^аеєиіїоуюя]*[аеєиіїоуюя]/g)||[];if(!sy.length)return;
+  const D=l.t1-l.t0-0.2;let step=p.P/2;if(sy.length*step>D)step=p.P/4;if(sy.length*step>D)step=D/sy.length;
+  const R=rng(p.seed+Math.round(l.t0*1000)),base=[150,175,128][l.r%3],pent=[0,2,4,7,9,12];
+  sy.forEach((s,i)=>{const t=l.t0+0.03+i*step,v=s[s.length-1],fm=VOW[v]||[600,1400],len=step*0.88,last=i===sy.length-1;
+    const f0=base*Math.pow(2,(pent[Math.floor(R()*pent.length)]-(last?5:0))/12);
+    const o=oc.createOscillator();o.type='sawtooth';o.frequency.setValueAtTime(f0,t);o.frequency.linearRampToValueAtTime(f0*(last?0.8:1.04),t+len);
+    const g=oc.createGain();g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.9,t+0.012);g.gain.setValueAtTime(0.8,t+len*0.7);g.gain.exponentialRampToValueAtTime(0.0001,t+len);
+    for(const[f,q,a]of[[fm[0],5,1],[fm[1],8,0.7],[2700,4,0.2]]){const bp=oc.createBiquadFilter();bp.type='bandpass';bp.frequency.value=f;bp.Q.value=q;const ga=oc.createGain();ga.gain.value=a*1.6;o.connect(bp).connect(ga).connect(g)}
+    g.connect(out);o.start(t);o.stop(t+len+0.02);
+    if(/^[сшчцжзхф]/.test(s))nz(oc,t-0.01,0.05,'highpass',3500,0,envG(oc,out,t-0.01,0.003,0.2,0.05));
+    else if(s.length>1)nz(oc,t,0.02,'bandpass',1500,1,envG(oc,out,t,0.001,0.15,0.02))})}
+function voSfx(oc,out,act,t){
+  const tone=(f0,f1,len,type,v)=>{const o=osc(oc,type||'sine',f0,envG(oc,out,t,0.005,v,len),t,len+0.02);o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(f1,t+len)};
+  switch(act){
+    case 'jump':tone(180,720,0.25,'sine',0.4);break;
+    case 'fall':tone(1500,300,0.6,'sine',0.25);DRUM[0](oc,out,t+0.62,0.7);break;
+    case 'boom':nz(oc,t,0.7,'lowpass',900,0,envG(oc,out,t,0.003,0.8,0.65));DRUM[0](oc,out,t,0.9);break;
+    case 'run':case 'runL':for(let i=0;i<6;i++)nz(oc,t+i*0.11,0.04,'bandpass',900+i%2*400,2,envG(oc,out,t+i*0.11,0.002,0.45,0.04));break;
+    case 'spin':{const o=osc(oc,'triangle',400,envG(oc,out,t,0.01,0.25,0.7),t,0.72);for(let i=0;i<7;i++)o.frequency.setValueAtTime(i%2?300:600,t+i*0.1)}break;
+    case 'love':[72,76,79,84].forEach((m,i)=>playInst(oc,out,'piano',t+i*0.09,m,0.3,0.7));break;
+    case 'shake':for(let i=0;i<8;i++)nz(oc,t+i*0.05,0.03,'highpass',5000,0,envG(oc,out,t+i*0.05,0.001,0.3,0.03));break;
+    case 'fly':nz(oc,t,0.8,'bandpass',800,1.5,envG(oc,out,t,0.3,0.4,0.8));break;
+    case 'grow':tone(200,900,0.7,'square',0.1);break;
+    case 'hide':tone(900,1700,0.08,'sine',0.4);break}}
+function voScene(l){if(l._s)return l._s;const ps=(l.sc||'').split('|').map(x=>x.trim()).filter(Boolean),bg=ps.shift()||'room';
+  return l._s={bg,acts:ps.map(x=>{const m=x.split(/\s+/);return{e:m[0],pos:m[1]||'C',act:m[2]||'idle'}})}}
+// увесь трек: музика (або звуки мультика) + боти + живі голоси; voices[r] = {d:Float32Array, sr}
+async function voRender(p,voices){
+  const sr=44100,oc=new OfflineAudioContext(2,Math.ceil(p.dur*sr),sr),Q=[],at=(t,f)=>Q.push([t,f]);
+  const master=oc.createGain();master.gain.value=0.9;master.connect(mkShaper(oc)).connect(oc.destination);
+  if(p.kind!=='toon'&&p.music!==false){const mb=oc.createGain();mb.connect(master);mb.gain.setValueAtTime(0.62,0);
+    mb.gain.setTargetAtTime(0.4,p.lines[0].t0-0.1,0.08);mb.gain.setTargetAtTime(0.62,p.lines[p.lines.length-1].t1,0.2);voMusic(oc,mb,p,at)}
+  else for(let i=4;i<8;i++)osc(oc,'sine',i===7?1320:880,envG(oc,master,i*p.P,0.003,0.18,0.1),i*p.P,0.12); // відлік перед першою реплікою
+  if(p.kind==='toon')p.lines.forEach(l=>at(l.t0,()=>voScene(l).acts.slice(0,3).forEach((a,j)=>voSfx(oc,master,a.act,l.t0+0.05+j*0.14))));
+  for(const l of p.lines)if(p.bots[l.r])at(l.t0,()=>voBotSpeak(oc,master,l,p));
+  for(const v of voices||[]){if(!v||!v.d||!v.d.length)continue;const b=oc.createBuffer(1,v.d.length,v.sr);b.copyToChannel(v.d,0);
+    const s=oc.createBufferSource();s.buffer=b;const hp=oc.createBiquadFilter();hp.type='highpass';hp.frequency.value=90;const g=oc.createGain();g.gain.value=1.15;s.connect(hp).connect(g).connect(master);s.start(0)}
+  // вузли створюємо шматками під час рендеру — так граф малий і синтез швидкий
+  const groups=new Map();for(const[t,f]of Q){const k=Math.max(0,Math.floor((t-0.4)*sr/128))*128;if(!groups.has(k))groups.set(k,[]);groups.get(k).push(f)}
+  for(const[k,fs]of[...groups].sort((a,b)=>a[0]-b[0])){if(k===0)fs.forEach(f=>f());else oc.suspend(k/sr).then(()=>{fs.forEach(f=>f());oc.resume()})}
+  return oc.startRendering()}
+
+// ---------- мікрофон: запис з точним часом кожного шматка ----------
+const VO_WK=`class R extends AudioWorkletProcessor{constructor(){super();this.b=new Float32Array(4096);this.n=0;this.t=0}
+process(i){const c=i[0]&&i[0][0];if(c){if(!this.n)this.t=currentTime;this.b.set(c,this.n);this.n+=c.length;if(this.n>=4096){this.port.postMessage({t:this.t,d:this.b.slice(0,this.n)});this.n=0}}return true}}
+registerProcessor('vo-rec',R)`;
+async function voMicStart(){
+  const ac=getAC(),me=VO;
+  try{me.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}})}
+  catch(e){toast('Немає доступу до мікрофона — твої репліки будуть без голосу','err');me.noMic=true;return}
+  if(VO!==me||!me.on){me.stream.getTracks().forEach(t=>t.stop());return}
+  const src=ac.createMediaStreamSource(me.stream);me.src=src;me.an=ac.createAnalyser();me.an.fftSize=1024;me.lvl=new Float32Array(1024);src.connect(me.an);
+  const sink=ac.createGain();sink.gain.value=0;sink.connect(ac.destination);me.sink=sink;
+  const push=(t,d)=>{if(me.on&&me.phase!=='done')me.chunks.push({t,d})};
+  try{if(!ac.audioWorklet)throw 0;if(VO_WK_AC!==ac){await ac.audioWorklet.addModule(URL.createObjectURL(new Blob([VO_WK],{type:'application/javascript'})));VO_WK_AC=ac}
+    const n=new AudioWorkletNode(ac,'vo-rec');n.port.onmessage=e=>push(e.data.t,e.data.d);src.connect(n);n.connect(sink);me.node=n}
+  catch(e){const sp=ac.createScriptProcessor(4096,1,1);sp.onaudioprocess=e=>push(ac.currentTime-4096/ac.sampleRate,e.inputBuffer.getChannelData(0).slice());src.connect(sp);sp.connect(sink);me.node=sp}}
+function voMicStop(me){me=me||VO;try{me.src&&me.src.disconnect();me.node&&me.node.disconnect();me.sink&&me.sink.disconnect()}catch(e){}if(me.stream)me.stream.getTracks().forEach(t=>t.stop());me.stream=null;me.src=null;me.an=null}
+// шматки мікрофона → один голос у часі пісні; лишаємо тільки свої репліки, вирівнюємо гучність
+function voAssemble(){
+  const me=VO,p=me.plan,ac=getAC(),sr=ac.sampleRate,n=Math.ceil(p.dur*sr),out=new Float32Array(n);
+  if(!me.chunks.length||me.ctxStart==null)return null;
+  let inLat=0.012;try{const l=me.stream&&me.stream.getAudioTracks()[0].getSettings().latency;if(l>0&&l<0.3)inLat=l}catch(e){}
+  const sh=me.ctxStart+me.outLat+inLat;
+  for(const ch of me.chunks){const i0=Math.round((ch.t-sh)*sr);for(let k=0;k<ch.d.length;k++){const i=i0+k;if(i>=0&&i<n)out[i]=ch.d[k]}}
+  const g=new Float32Array(n),f=Math.round(0.03*sr);
+  for(const l of p.lines){if(!me.mine.has(l.r))continue;const a=Math.max(0,Math.round((l.t0-0.25)*sr)),b=Math.min(n,Math.round((l.t1+0.35)*sr));for(let i=a;i<b;i++)g[i]=Math.min(1,(i-a)/f,(b-i)/f)}
+  let rs=0,rn=0;for(let i=0;i<n;i++){out[i]*=g[i];const v=out[i];if(v*v>1e-6){rs+=v*v;rn++}}
+  const rms=rn?Math.sqrt(rs/rn):0;if(rms<0.002)return null;
+  const gn=clamp(0.14/rms,0.5,10);let pk=0;for(let i=0;i<n;i++){out[i]*=gn;const a=Math.abs(out[i]);if(a>pk)pk=a}
+  if(pk>0.95){const k=0.95/pk;for(let i=0;i<n;i++)out[i]*=k}
+  return{d:out,sr}}
+
+// ---------- сесія: барабан → картка → читання ----------
+function voOpen(plan,S0,role){
+  if(VO.on)voClose();
+  const mine=new Set(plan.self?plan.names.map((_,i)=>i):role>=0&&!plan.bots[role]?[role]:[]);
+  VO={on:true,plan,S0,role,mine,phase:'spin',chunks:[],voices:[],tick:-1,parts:{},conf:[],msg:''};
+  $('#voOv').hidden=false;stopMenuBg();getAC().resume();
+  if(mine.size)voMicStart();
+  const me=VO;voRender(plan,[]).then(buf=>{if(VO!==me||!me.on)return;me.prev=buf;voSchedule(me)}).catch(e=>{console.error(e);toast('Не вдалося зробити музику','err')});
+  me.endT=setTimeout(()=>{if(VO===me&&me.on&&me.phase!=='done')voEnd()},S0+(VO_LEAD+plan.dur)*1000-performance.now()+150); // і коли вкладка у фоні
+  requestAnimationFrame(voLoop)}
+function voSchedule(me){
+  const ac=getAC(),ts=outTs(),zeroPerf=me.S0+VO_LEAD*1000;
+  me.ctxStart=ts.contextTime+(zeroPerf-ts.performanceTime)/1000;me.outLat=clamp(ac.currentTime-ts.contextTime,0,0.4);
+  const s=ac.createBufferSource();s.buffer=me.prev;const g=ac.createGain();g.gain.value=0.85;s.connect(g).connect(ac.destination);me.out=s;
+  if(me.ctxStart>ac.currentTime+0.01)s.start(me.ctxStart);else s.start(ac.currentTime,ac.currentTime-me.ctxStart)}
+function voClose(){const me=VO;if(!me.on)return;me.on=false;$('#voChoice').hidden=true;voMicStop(me);try{me.out&&me.out.stop()}catch(e){}clearTimeout(me.waitT);clearTimeout(me.endT);$('#voOv').hidden=true;if($('#game').hidden)startMenuBg()}
+function voCancel(){if(!VO.on||VO.mixing)return;if(NET.role==='host')netBroadcast({t:'voCancel'});voClose();toast('Історію скасовано')}
+function voTick(big){try{const ac=getAC(),t=ac.currentTime+0.01;osc(ac,big?'triangle':'square',big?1320:1900,envG(ac,ac.destination,t,0.001,big?0.25:0.06,big?0.35:0.03),t,big?0.4:0.05)}catch(e){}}
+function voLoop(){
+  const me=VO;if(!me.on)return;requestAnimationFrame(voLoop);
+  const cv=$('#voCv'),dpr=Math.min(2,devicePixelRatio||1),W=cv.clientWidth,H=cv.clientHeight;
+  if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr)}
+  const c=cv.getContext('2d');c.setTransform(dpr,0,0,dpr,0,0);
+  const p=me.plan,el=(performance.now()-me.S0)/1000,st=el-VO_LEAD,u=clamp(Math.min(W/900,H/640),0.45,1.6);
+  if(me.phase==='done'||me.phase==='choice'){voDrawWait(c,W,H,el,u);return}
+  if(me.phase==='listen'){const lt=(performance.now()-me.lz)/1000;if(lt<p.dur)voDrawRead(c,W,H,Math.max(0,lt),u);else if(me.back)voChoice();else voClose();return}
+  if(el<VO_SPIN)voDrawSpin(c,W,H,Math.max(0,el),u);
+  else if(el<VO_SPIN+VO_REVEAL)voDrawReveal(c,W,H,el-VO_SPIN,u);
+  else if(st<0)voDrawCard(c,W,H,el-VO_SPIN-VO_REVEAL,u);
+  else if(st<p.dur)voDrawRead(c,W,H,st,u);
+  else voEnd()}
+function voBg(c,W,H,t){const g=c.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0c0a1d');g.addColorStop(1,'#2b0e3c');c.fillStyle=g;c.fillRect(0,0,W,H);
+  c.globalAlpha=0.08;for(let i=0;i<4;i++){c.fillStyle=LANE_COL[i];c.fillRect(0,H*(0.2+i*0.2)+Math.sin(t*1.3+i)*20,W,6)}c.globalAlpha=1}
+function voReelItems(p){return p.kind==='free'?['free','song','roast','toon']:['song','roast','toon']}
+function voDrawSpin(c,W,H,t,u){
+  voBg(c,W,H,t);const p=VO.plan,items=voReelItems(p),N=items.length,total=N*6+items.indexOf(p.kind);
+  const x=clamp(t/VO_SPIN,0,1),pos=total*(1-Math.pow(1-x,3.2)),k=Math.floor(pos);if(k!==VO.tick){VO.tick=k;voTick(k>=total)}
+  const cx=W/2,cy=H*0.54,ih=120*u,bw=Math.min(W-32,620*u);
+  drawText(c,'КРУТИМО БАРАБАН…',cx,cy-ih*1.85,Math.round(Math.min(30*u,W/16)),'#efecff');
+  c.save();c.beginPath();c.rect(cx-bw/2,cy-ih*1.5,bw,ih*3);c.fillStyle='#16122e';c.fill();c.clip();
+  for(let j=-2;j<=2;j++){const idx=k+j,y=cy+(j-(pos-k))*ih,K=VO_KINDS[items[((idx%N)+N)%N]],d=Math.abs(y-cy)/ih;
+    c.globalAlpha=clamp(1-d*0.6,0.12,1);const sc=1-d*0.2;
+    drawText(c,K.i,cx-bw*0.36,y,Math.round(64*u*sc),'#fff',{f:EMOJI_F,w:400,stroke:false});
+    drawText(c,K.n,cx+bw*0.08,y,Math.round(Math.min(32*u,bw/17)*sc),K.c)}
+  c.restore();c.globalAlpha=1;
+  const sh=c.createLinearGradient(0,cy-ih*1.5,0,cy+ih*1.5);sh.addColorStop(0,'rgba(12,10,29,.9)');sh.addColorStop(0.3,'rgba(12,10,29,0)');sh.addColorStop(0.7,'rgba(12,10,29,0)');sh.addColorStop(1,'rgba(12,10,29,.9)');
+  c.fillStyle=sh;c.fillRect(cx-bw/2,cy-ih*1.5,bw,ih*3);
+  c.lineWidth=4*u;c.strokeStyle='#ffd23f';c.strokeRect(cx-bw/2,cy-ih*1.5,bw,ih*3);
+  c.strokeStyle='rgba(255,255,255,.7)';c.lineWidth=2*u;c.strokeRect(cx-bw/2+6*u,cy-ih/2,bw-12*u,ih);
+  c.fillStyle='#ffd23f';for(const s of[-1,1]){const ex=cx+s*bw/2;c.beginPath();c.moveTo(ex+s*2*u,cy-16*u);c.lineTo(ex-s*20*u,cy);c.lineTo(ex+s*2*u,cy+16*u);c.closePath();c.fill()}
+  voPlayers(c,W,H,u)}
+function voDrawReveal(c,W,H,t,u){
+  const p=VO.plan,K=VO_KINDS[p.kind];voBg(c,W,H,t);
+  if(!VO.boom){VO.boom=1;voTick(1);for(let i=0;i<90;i++){const a=Math.random()*Math.PI*2,s=(200+Math.random()*600)*u;VO.conf.push({x:W/2,y:H/2,vx:Math.cos(a)*s,vy:Math.sin(a)*s-200*u,c:LANE_COL[i%4],r:Math.random()*6})}}
+  const fl=Math.max(0,1-t*2.5);if(fl>0){c.fillStyle=hexA(K.c,0.5*fl);c.fillRect(0,0,W,H)}
+  voConfetti(c,u);
+  const e=t<0.5?1-Math.pow(1-t/0.5,3):1,bounce=1+0.25*Math.sin(Math.min(1,t/0.6)*Math.PI)*(1-Math.min(1,t/0.9));
+  c.save();c.translate(W/2,H*0.45);c.scale(e*bounce,e*bounce);c.rotate(Math.sin(t*5)*0.05*(1-Math.min(1,t)));
+  drawText(c,K.i,0,-30*u,Math.round(150*u),'#fff',{f:EMOJI_F,w:400,stroke:false});
+  drawText(c,K.n,0,95*u,Math.round(Math.min(54*u,W/14)),K.c);c.restore()}
+function voConfetti(c,u){const dt=1/60;for(const q of VO.conf){q.vy+=900*u*dt;q.x+=q.vx*dt;q.y+=q.vy*dt;q.r+=0.2;c.save();c.translate(q.x,q.y);c.rotate(q.r);c.fillStyle=q.c;c.fillRect(-5*u,-3*u,10*u,6*u);c.restore()}
+  VO.conf=VO.conf.filter(q=>q.y<innerHeight+50)}
+function voDrawCard(c,W,H,t,u){
+  const p=VO.plan,K=VO_KINDS[p.kind];voBg(c,W,H,t+5);voConfetti(c,u);
+  c.globalAlpha=clamp(t/0.4,0,1);
+  drawText(c,K.i+' '+K.n,W/2,H*0.2,Math.round(Math.min(30*u,W/18)),K.c,{f:'Unbounded, '+EMOJI_F});
+  drawText(c,'«'+p.title+'»',W/2,H*0.32,Math.round(Math.min(44*u,W/16)),'#efecff');
+  drawText(c,p.kind==='toon'?'Мультик оживе на фоні — без музики, тільки ваші голоси':p.music===false?'Без музики — тільки ваші голоси':p.style?'Музика: '+p.style+' · '+p.bpm+' BPM':'',W/2,H*0.41,Math.round(16*u),'#9a93c7',{f:'Onest, sans-serif',w:600,stroke:false});
+  p.names.forEach((nm,i)=>{const y=H*0.53+i*58*u,me=VO.mine.has(i),bw=Math.min(W-24,460*u);
+    c.fillStyle=hexA(VO_COL[i],me?0.22:0.1);c.fillRect(W/2-bw/2,y-24*u,bw,48*u);
+    drawText(c,(p.bots[i]?'🤖':VO_FACE[i])+'  '+nm+(me?' — це ти':'')+'  ·  реплік: '+p.lines.filter(l=>l.r===i).length,W/2,y,Math.round(Math.min(20*u,W/26)),VO_COL[i],{f:'Onest, '+EMOJI_F,w:800})});
+  drawText(c,(VO.mine.size?'🎤 Читай у мікрофон рядки свого кольору · ':'')+'старт через '+Math.ceil(VO_CARD-t),W/2,H*0.9,Math.round(Math.min(16*u,W/34)),'#efecff',{f:'Onest, '+EMOJI_F,w:700,stroke:false});c.globalAlpha=1}
+function voWrap(c,txt,maxW){const ws=txt.split(' '),out=[];let cur='';for(const w of ws){const t=cur?cur+' '+w:w;if(c.measureText(t).width>maxW&&cur){out.push(cur);cur=w}else cur=t}if(cur)out.push(cur);return out}
+function voDrawRead(c,W,H,st,u){
+  const p=VO.plan;
+  if(p.kind==='toon'){toonDraw(c,W,H,st,p);c.fillStyle='rgba(6,4,18,.42)';c.fillRect(0,0,W,H*0.8)}
+  else{voBg(c,W,H,st);const bp=(st%p.P)/p.P;c.fillStyle=hexA('#c24b99',0.25*Math.exp(-bp*5));c.fillRect(0,0,W,H)}
+  const li=p.lines.findIndex(l=>st<l.t1),l=p.lines[li],first=p.lines[0];
+  if(st<first.t0){const left=first.t0-st,beat=Math.ceil(left/p.P);
+    drawText(c,beat<=4?String(beat):'Приготуйтесь…',W/2,H*0.42,Math.round((beat<=4?120:44)*u),'#ffd23f');
+    drawText(c,'Першим читає '+(VO.mine.has(first.r)?'ТИ':p.names[first.r]),W/2,H*0.6,Math.round(22*u),VO_COL[first.r],{f:'Onest, sans-serif',w:800})}
+  if(l&&st>=l.t0){
+    const mine=VO.mine.has(l.r),col=VO_COL[l.r],fr=clamp((st-l.t0)/(l.t1-l.t0-0.25),0,1);
+    const who=mine?'🎤 ТВОЯ РЕПЛІКА — ГОВОРИ!':(p.bots[l.r]?'🤖 ':VO_FACE[l.r]+' ')+p.names[l.r]+' говорить';
+    const pulse=mine?1+0.06*Math.sin(st*10):1;
+    c.save();c.translate(W/2,H*0.2);c.scale(pulse,pulse);drawText(c,who,0,0,Math.round(Math.min(26*u,W/22)),col,{f:'Unbounded, '+EMOJI_F});c.restore();
+    const fs=Math.round(Math.min(46*u,W/14));c.font='800 '+fs+'px Onest, sans-serif';const rows=voWrap(c,l.txt,W*0.86),lh=fs*1.25;
+    const total=rows.reduce((a,r)=>a+r.length,0);let done=fr*total;
+    rows.forEach((r,i)=>{const y=H*0.4+(i-(rows.length-1)/2)*lh;drawText(c,r,W/2,y,fs,mine?'#efecff':'#bdb7e4',{f:'Onest, sans-serif',w:800});
+      const k=clamp(done,0,r.length);done-=r.length;if(k<=0)return;c.font='800 '+fs+'px Onest, sans-serif';const w=c.measureText(r).width,pw=c.measureText(r.slice(0,Math.round(k))).width;
+      c.save();c.beginPath();c.rect(W/2-w/2-4,y-lh/2,pw+4,lh);c.clip();drawText(c,r,W/2,y,fs,col,{f:'Onest, sans-serif',w:800});c.restore()});
+    c.fillStyle='rgba(255,255,255,.12)';c.fillRect(W*0.2,H*0.6,W*0.6,6*u);c.fillStyle=col;c.fillRect(W*0.2,H*0.6,W*0.6*clamp((st-l.t0)/(l.t1-l.t0),0,1),6*u)}
+  const nx=l&&st>=l.t0?p.lines[li+1]:l;
+  if(nx){c.globalAlpha=0.8;c.font='600 '+Math.round(Math.min(17*u,W/40))+'px Onest, sans-serif';const t='Далі: '+(VO.mine.has(nx.r)?'ТИ':p.names[nx.r])+' — '+nx.txt,rows=voWrap(c,t,W*0.9);
+    rows.slice(0,2).forEach((r,i)=>drawText(c,r,W/2,H*0.69+i*22*u,Math.round(Math.min(17*u,W/40)),VO_COL[nx.r],{f:'Onest, sans-serif',w:600}));c.globalAlpha=1}
+  if(VO.an){VO.an.getFloatTimeDomainData(VO.lvl);let s=0;for(const v of VO.lvl)s+=v*v;const lv=clamp(Math.sqrt(s/VO.lvl.length)*8,0,1);VO.lv=Math.max(lv,(VO.lv||0)*0.9);
+    drawText(c,'🎤',W*0.2-22*u,H*0.86,Math.round(20*u),'#fff',{f:EMOJI_F,w:400,stroke:false});c.fillStyle='rgba(255,255,255,.12)';c.fillRect(W*0.2,H*0.86-6*u,W*0.6,12*u);
+    c.fillStyle=VO.lv>0.85?'#f9393f':'#2ff06a';c.fillRect(W*0.2,H*0.86-6*u,W*0.6*VO.lv,12*u)}
+  else if(VO.noMic)drawText(c,'Мікрофона немає — просто дивись',W/2,H*0.86,Math.round(14*u),'#ff4d6a',{f:'Onest, sans-serif',w:700,stroke:false});
+  c.fillStyle='#ffd23f';c.fillRect(0,H-4,W*clamp(st/p.dur,0,1),4);
+  drawText(c,'«'+p.title+'»',W/2,22*u,Math.round(14*u),'#efecff',{f:'Onest, sans-serif',w:700})}
+function voPlayers(c,W,H,u){const p=VO.plan;drawText(c,p.names.map((n,i)=>(p.bots[i]?'🤖':VO_FACE[i])+' '+n).join('  vs  '),W/2,H-34*u,Math.round(Math.min(16*u,W/30)),'#efecff',{f:'Onest, '+EMOJI_F,w:700,stroke:false})}
+function voDrawWait(c,W,H,el,u){voBg(c,W,H,el);voConfetti(c,u);
+  drawText(c,'ГОТОВО!',W/2,H*0.4,Math.round(60*u),'#ffd23f');
+  drawText(c,VO.msg||'',W/2,H*0.55,Math.round(Math.min(20*u,W/26)),'#efecff',{f:'Onest, sans-serif',w:700});
+  if(VO.phase==='done')drawText(c,'.'.repeat(1+Math.floor(el*3)%3),W/2,H*0.63,Math.round(30*u),'#9a93c7',{stroke:false})}
+// кінець читання: збираємо голос і зводимо трек (соло/хост) або відправляємо хосту (гравець)
+async function voEnd(){
+  const me=VO,p=me.plan;if(me.phase==='done')return;me.phase='done';
+  for(let i=0;i<60;i++)me.conf.push({x:Math.random()*innerWidth,y:-20-Math.random()*200,vx:(Math.random()-0.5)*200,vy:0,c:LANE_COL[i%4],r:Math.random()*6});
+  await sleep(400);const mine=me.mine.size?voAssemble():null;voMicStop(me);try{me.out&&me.out.stop()}catch(e){}
+  if(NET.role==='guest'){
+    if(me.role<0){me.msg='Хост зводить трек — він прийде сам';await sleep(1800);voClose();return}
+    me.msg='Відправляю твій голос хосту…';try{await voSendVoice(mine)}catch(e){console.error(e)}me.msg='Голос у хоста ✓ Чекай трек';await sleep(1500);voClose();return}
+  me.voices[me.role]=mine;
+  if(p.ids.every((id,i)=>me.mine.has(i)||p.bots[i]))return voFinishMix();
+  me.msg='Чекаю голоси друзів…';me.waitT=setTimeout(()=>{if(VO===me&&!me.mixing){toast('Не всі голоси дійшли — зводжу без них','err');voFinishMix()}},25000);voCheckAll()}
+function voCheckAll(){const me=VO,p=me.plan;if(!me.on||me.phase!=='done'||me.mixing)return;
+  if(p.ids.every((id,i)=>p.bots[i]||me.mine.has(i)||(me.got&&me.got[i])))voFinishMix()}
+async function voFinishMix(){
+  const me=VO,p=me.plan;if(me.mixing)return;me.mixing=true;clearTimeout(me.waitT);me.msg='Зводжу голоси з музикою…';
+  try{const buf=await voRender(p,me.voices),blob=encodeWav(buf);
+    const file=new File([blob],'Історія голосами — '+p.title.replace(/[\\/:*?"<>|«»]/g,'')+'.wav',{type:'audio/wav'});
+    me.mixing=false;voClose();await loadTrackFile(file);
+    if(T.fp){voSaveMeta(T.fp,p);if(NET.role==='host')netBroadcast({t:'voMeta',fp:T.fp,m:voMetaPack(p)})}
+    if(NET.role==='host')toast('Трек з вашими голосами йде всім — тисніть «Готовий»','ok');
+    else if(T.chart&&T.buf)voChoice()}
+  catch(e){console.error(e);toast('Не вдалося звести трек','err');me.mixing=false;voClose()}}
+// ---------- готовий трек: послухати (текст і мультик) або грати на стрілочках ----------
+function voChoice(){
+  if(VO.on){try{VO.out&&VO.out.stop()}catch(e){}}
+  VO={on:true,plan:voMetaFor(T.fp),mine:new Set(),phase:'choice',conf:[],msg:'Ваш трек готовий! Що робимо?',S0:performance.now()};
+  if(!VO.plan){VO.on=false;return}
+  $('#voOv').hidden=false;$('#voChoice').hidden=false;stopMenuBg();requestAnimationFrame(voLoop)}
+function voListen(back){
+  const m=voMetaFor(T.fp);if(!m||!T.buf){toast('Спочатку зроби історію');return}
+  if(VO.on){try{VO.out&&VO.out.stop()}catch(e){}VO.on=false}
+  const ac=getAC();ac.resume();const s=ac.createBufferSource();s.buffer=T.buf;s.connect(ac.destination);const at=ac.currentTime+0.15;s.start(at);
+  const ts=outTs();
+  VO={on:true,plan:m,mine:new Set(),phase:'listen',conf:[],out:s,back,S0:performance.now(),lz:ts.performanceTime+(at-ts.contextTime)*1000};
+  $('#voOv').hidden=false;$('#voChoice').hidden=true;stopMenuBg();requestAnimationFrame(voLoop)}
+function voPlay(){voClose();if(!T.chart||!T.buf)return;const go=()=>startGame({mode:'solo',chart:T.chart,buf:T.buf,smin:S.smin,smax:S.smax,video:true});if(!S.calibrated)runCalibration(go);else go()}
+// ---------- голос гравця → хосту (22 кГц, 16 біт) ----------
+async function voSendVoice(v){
+  const sid=VO.plan.seed;if(!NET.host||!NET.host.open)return;
+  if(!v){NET.host.send({t:'voV',sid,i:0,n:0});return}
+  const SR=22050,oc=new OfflineAudioContext(1,Math.ceil(v.d.length*SR/v.sr),SR),b=oc.createBuffer(1,v.d.length,v.sr);b.copyToChannel(v.d,0);
+  const s=oc.createBufferSource();s.buffer=b;s.connect(oc.destination);s.start(0);const r=(await oc.startRendering()).getChannelData(0);
+  const i16=new Int16Array(r.length);for(let i=0;i<r.length;i++)i16[i]=clamp(r[i],-1,1)*32767;
+  const bytes=i16.buffer,CH=60000,n=Math.ceil(bytes.byteLength/CH),dc=NET.host.dataChannel;
+  for(let i=0;i<n;i++){while((dc&&dc.bufferedAmount>(1<<20))||(NET.host.bufferSize||0)>4)await sleep(15);NET.host.send({t:'voV',sid,i,n,sr:SR,d:bytes.slice(i*CH,(i+1)*CH)})}}
+function hostVoVoice(pid,m){
+  const me=VO;if(!me.plan||m.sid!==me.plan.seed)return;const ri=me.plan.ids.indexOf(pid);if(ri<0)return;me.got=me.got||{};
+  if(!m.n){me.got[ri]=1;voCheckAll();return}
+  const P=me.parts[ri]||(me.parts[ri]={a:new Array(m.n),k:0});if(!P.a[m.i]){P.a[m.i]=m.d;P.k++}
+  if(P.k===m.n){let len=0;for(const x of P.a)len+=x.byteLength;const u=new Uint8Array(len);let o=0;for(const x of P.a){u.set(new Uint8Array(x),o);o+=x.byteLength}
+    const i16=new Int16Array(u.buffer,0,len>>1),f=new Float32Array(i16.length);for(let i=0;i<f.length;i++)f[i]=i16[i]/32768;
+    me.voices[ri]={d:f,sr:m.sr};me.got[ri]=1;toast('🎤 Голос '+me.plan.names[ri]+' отримано','ok');voCheckAll()}}
+// ---------- старт ----------
+function voStart(){
+  if(VO.on)return;if(T.busy){toast('Зачекай, ще слухаю трек…');return}
+  if(NET.role==='guest'){toast('Барабан крутить хост');return}
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){toast('Цей браузер не дає мікрофон','err');return}
+  const free=$('#chVoFree').checked,seed=(Math.random()*2**31)>>>0;
+  const names=[S.name||'Ти'],ids=['host'],bots=[false];
+  if(NET.role==='host')for(const g of[...NET.conns.values()].filter(p=>!p.spec&&p.conn.open).slice(0,2)){names.push(g.name);ids.push(g.id);bots.push(false)}
+  const self=!NET.role&&S.voSelf;
+  if(self){names.push((S.name||'Ти')+' №2');ids.push('self');bots.push(false)}
+  else if(names.length<2){names.push(BOT_NAMES[seed%BOT_NAMES.length]);ids.push('bot');bots.push(true)}
+  const plan=voPlan(seed,names,bots,ids,free);plan.self=self;plan.music=!!S.voMusic;
+  if(NET.role==='host'){const maxRtt=Math.max(0,...[...NET.conns.values()].map(p=>p.rtt||0)),at=performance.now()+800+maxRtt;netBroadcast({t:'voGo',plan,at});voOpen(plan,at,0)}
+  else voOpen(plan,performance.now()+300,0)}
+function guestVoGo(m){if(G.on)return;const p=m.plan;voOpen(p,m.at-NET.g.off,p.ids.indexOf(NET.myId))}
+// ---------- історія для гри: хто що каже, мультик на фоні ----------
+function voMetaPack(p){return{kind:p.kind,title:p.title,names:p.names,bots:p.bots,P:p.P,dur:p.dur,lines:p.lines.map(l=>({r:l.r,txt:l.txt,sc:l.sc,t0:l.t0,t1:l.t1}))}}
+function voSaveMeta(fp,p){const m=p.seed!=null?voMetaPack(p):p;VO_META[fp]=m;try{const a=JSON.parse(localStorage.getItem('ritmbatl_vo')||'{}');a[fp]={t:Date.now(),p:m};
+  for(const k of Object.keys(a).sort((x,y)=>a[y].t-a[x].t).slice(20))delete a[k];localStorage.setItem('ritmbatl_vo',JSON.stringify(a))}catch(e){}}
+function voMetaFor(fp){if(!fp)return null;if(VO_META[fp])return VO_META[fp];try{const a=JSON.parse(localStorage.getItem('ritmbatl_vo')||'{}');return a[fp]?a[fp].p:null}catch(e){return null}}
+function voDrawLyric(c,W,H,tv,m){
+  const l=m.lines.find(x=>tv>=x.t0-0.3&&tv<x.t1);if(!l)return;const u=clamp(Math.min(W,H)/720,0.6,1.3),fs=Math.round(Math.min(22*u,W/30));
+  c.font='800 '+fs+'px Onest, sans-serif';const rows=voWrap(c,l.txt,W*0.8),y0=H-28*u-(rows.length-1)*fs*1.2;
+  rows.forEach((r,i)=>drawText(c,r,W/2,y0+i*fs*1.2,fs,VO_COL[l.r%3],{f:'Onest, sans-serif',w:800}));
+  drawText(c,(m.bots&&m.bots[l.r]?'🤖 ':VO_FACE[l.r%3]+' ')+m.names[l.r],W/2,y0-fs*1.25,Math.round(fs*0.7),'#efecff',{f:'Onest, '+EMOJI_F,w:700})}
+// ---------- мультик: фон і актори з емодзі ----------
+const TOON_BG={kitchen:['#f6dcae','#c08a5c',['🍳','🪟','🧂']],room:['#b9cdf6','#8a6b4a',['🖼️','🪴','🛏️']],school:['#d6ecd0','#8b6b4a',['📚','🕰️','✏️']],
+  city:['#86cfff','#6d6d78',['🏢','🏬','🏠']],sky:['#4fb2ff','#bfe6ff',['☁️','☁️','☁️']],sea:['#8fd6ff','#2a7fd4',['☀️','⛵','🐚']],farm:['#9ad8ff','#6cc04a',['🌻','🚜','🏡']],
+  desert:['#ffd98a','#e8b65a',['☀️','🌵','🏜️']],night:['#0b1a3a','#1d2a44',['🌙','⭐','✨']],stage:['#3a0d1e','#5a2b16',['🎤','💡','🎭']],space:['#05030f','#1a1530',['🪐','⭐','🌟']],forest:['#a7e2b0','#3f8a3a',['🌲','🌳','🍄']]};
+function toonDraw(c,W,H,st,p){
+  const ls=p.lines;let li=0;for(let i=0;i<ls.length;i++)if(st>=ls[i].t0)li=i;const l=ls[li],sc=voScene(l),lt=Math.max(0,st-l.t0),pr=clamp(lt/(l.t1-l.t0),0,1);
+  const B=TOON_BG[sc.bg]||TOON_BG.room,gy=H*0.74;
+  if(sc.bg==='sky'){const g=c.createLinearGradient(0,0,0,H);g.addColorStop(0,B[0]);g.addColorStop(1,B[1]);c.fillStyle=g;c.fillRect(0,0,W,H)}
+  else{c.fillStyle=B[0];c.fillRect(0,0,W,gy);c.fillStyle=B[1];c.fillRect(0,gy,W,H-gy);c.fillStyle='rgba(0,0,0,.12)';c.fillRect(0,gy,W,6)}
+  if(sc.bg==='night'||sc.bg==='space'){c.fillStyle='#fff';for(let i=0;i<60;i++){c.globalAlpha=0.4+0.6*Math.abs(Math.sin(st*2+i));c.fillRect((i*97)%W,(i*53)%gy,2,2)}c.globalAlpha=1}
+  if(sc.bg==='sea'){c.fillStyle='#fff';for(let k=0;k<3;k++){c.beginPath();c.moveTo(0,H);for(let x=0;x<=W;x+=20)c.lineTo(x,gy+18+k*40+Math.sin(x/60+st*2+k)*6);c.lineTo(W,H);c.closePath();c.globalAlpha=0.12;c.fill()}c.globalAlpha=1}
+  if(sc.bg==='stage'){c.fillStyle='#7a1030';c.fillRect(0,0,W*0.08,gy);c.fillRect(W*0.92,0,W*0.08,gy);const g=c.createRadialGradient(W/2,gy,10,W/2,gy,W*0.4);g.addColorStop(0,'rgba(255,240,180,.35)');g.addColorStop(1,'rgba(255,240,180,0)');c.fillStyle=g;c.fillRect(0,0,W,H)}
+  const ds=Math.round(H*0.09);c.globalAlpha=0.55;
+  B[2].forEach((e,i)=>{if(sc.bg==='sky'){const x=((st*40+i*W*0.4)%(W+200))-100;drawText(c,e,x,H*(0.2+i*0.22),ds,'#fff',{f:EMOJI_F,w:400,stroke:false})}else drawText(c,e,W*(0.15+i*0.35),gy-ds*1.9,ds,'#fff',{f:EMOJI_F,w:400,stroke:false})});c.globalAlpha=1;
+  const size=Math.round(Math.min(H*0.17,W*0.13)),PX={L:0.22,C:0.5,R:0.78};
+  sc.acts.forEach((a,i)=>{let x=W*(PX[a.pos]||0.5),y=gy-size*0.42,rot=0,s=1,al=1;
+    switch(a.act){case 'idle':y+=Math.sin(st*3+i)*size*0.04;break;
+      case 'jump':y-=Math.abs(Math.sin(lt*5.5))*size*0.9;break;
+      case 'run':x=lerp(-0.1,1.1,pr)*W;y-=Math.abs(Math.sin(lt*14))*size*0.12;break;
+      case 'runL':x=lerp(1.1,-0.1,pr)*W;y-=Math.abs(Math.sin(lt*14))*size*0.12;break;
+      case 'fall':{const q=clamp(lt/0.8,0,1),b=q<0.75?q/0.75:1-Math.sin((q-0.75)/0.25*Math.PI)*0.12;y=lerp(-size,y,b);break}
+      case 'shake':x+=Math.sin(lt*45)*size*0.09;rot=Math.sin(lt*30)*0.12;break;
+      case 'spin':rot=lt*7;break;
+      case 'grow':s=1+0.7*clamp(lt/0.9,0,1)+0.05*Math.sin(lt*8);break;
+      case 'fly':y=gy-size*1.7+Math.sin(lt*3+i)*size*0.35;x+=Math.sin(lt*1.6+i)*W*0.08;rot=Math.sin(lt*3)*0.15;break;
+      case 'hide':al=1-clamp(lt/0.6,0,1);s=1-0.5*clamp(lt/0.6,0,1);break;
+      case 'boom':{s=0.4+1.4*clamp(lt/0.5,0,1);al=1-clamp((lt-0.6)/0.8,0,1);c.globalAlpha=al*0.6;c.strokeStyle='#ffd23f';c.lineWidth=4;
+        for(let k=0;k<10;k++){const an=k/10*Math.PI*2;c.beginPath();c.moveTo(x+Math.cos(an)*size*0.5*s,y+Math.sin(an)*size*0.5*s);c.lineTo(x+Math.cos(an)*size*0.9*s,y+Math.sin(an)*size*0.9*s);c.stroke()}c.globalAlpha=1;break}
+      case 'love':y+=Math.sin(st*3+i)*size*0.05;for(let k=0;k<3;k++){const ph=((lt*60+k*40)%120)/120;c.globalAlpha=1-ph;drawText(c,'❤️',x+(k-1)*size*0.35,y-size*0.6-ph*size,Math.round(size*0.3),'#fff',{f:EMOJI_F,w:400,stroke:false})}c.globalAlpha=1;break}
+    c.globalAlpha=al*0.25;c.fillStyle='#000';c.beginPath();c.ellipse(x,gy+size*0.05,size*0.35*s,size*0.08,0,0,Math.PI*2);c.fill();c.globalAlpha=al;
+    const pl='ABC'.indexOf(a.e),emo=pl>=0?(p.bots&&p.bots[pl]?'🤖':VO_FACE[pl]):a.e;
+    c.save();c.translate(x,y);c.rotate(rot);c.scale(s,s);drawText(c,emo,0,0,size,'#fff',{f:EMOJI_F,w:400,stroke:false});c.restore();
+    if(pl>=0&&p.names[pl])drawText(c,p.names[pl],x,y+size*0.62*s,Math.round(size*0.2),VO_COL[pl],{f:'Onest, sans-serif',w:800});
+    c.globalAlpha=1})}
 
 // ====================== МЕНЮ: фон, UI ======================
 const MB={on:false,arr:[],spr:null};
@@ -2382,7 +3110,7 @@ function applyLock(){
   $('#rgEv').value=cfg.events;
   $('#lbEv').textContent=evLabel(+cfg.events)+(lock?' (хост)':'');
   $('#lockNote1').hidden=!lock;
-  $('#btnFile').disabled=$('#btnDemo').disabled=fileLock;$('#dropZone').style.opacity=fileLock?0.45:1;
+  $('#btnFile').disabled=$('#btnDemo').disabled=fileLock;$('#btnVoice').disabled=lock;$('#voSoloBox').hidden=!!NET.role;$('#voSt').textContent=lock?'Барабан крутить хост — ти отримаєш свої рядки сам.':NET.role==='host'?'У кімнаті: ти + до 2 гравців. Якщо нікого нема — з ботом.':'';$('#dropZone').style.opacity=fileLock?0.45:1;
 }
 function syncUI(){
   $('#inName').value=S.name;applyLock();
@@ -2394,6 +3122,8 @@ function syncUI(){
   document.querySelectorAll('#segSkin button').forEach(b=>b.classList.toggle('on',+b.dataset.v===S.skin));
   $('#chHit').checked=S.hitsound;$('#rgHit').value=S.hitvol;$('#lbHit').textContent=S.hitvol+'%';$('#hitBox').hidden=!S.hitsound;
   $('#chChars').checked=S.chars;$('#chVibro').checked=S.vibro;
+  document.querySelectorAll('#segVoMus button').forEach(b=>b.classList.toggle('on',+b.dataset.v===(S.voMusic?1:0)));
+  document.querySelectorAll('#segVoSelf button').forEach(b=>b.classList.toggle('on',+b.dataset.v===(S.voSelf?1:0)));
 }
 let KEYWAIT=null;
 function renderKeys(){
@@ -2463,16 +3193,19 @@ async function checkUpdate(){
   $('#btnHave').onclick=()=>$('#haveIn').click();
   $('#haveIn').onchange=e=>{const f=e.target.files[0];if(f)guestUseLocal(f);e.target.value=''};
   $('#btnUpd').onclick=()=>location.reload();
+  $('#btnVoice').onclick=voStart;$('#voX').onclick=()=>{if(VO.phase==='listen'&&VO.back)voChoice();else if(VO.phase==='listen'||VO.phase==='choice')voClose();else voCancel()};
+  $('#voListenB').onclick=()=>voListen(true);$('#voPlayB').onclick=voPlay;$('#voMenuB').onclick=voClose;
+  document.querySelectorAll('#segVoMus button').forEach(b=>b.onclick=()=>{S.voMusic=b.dataset.v==='1';saveS();syncUI()});
+  document.querySelectorAll('#segVoSelf button').forEach(b=>b.onclick=()=>{S.voSelf=b.dataset.v==='1';saveS();syncUI()});
   // клавіатура
   // під час гри браузер не повинен змінювати масштаб: «щипок» тачпада / Ctrl+колесо / Ctrl+«+»/«−»
   // «щипок» тачпада ноутбука при гортанні меню браузер сприймає як Ctrl+колесо і збільшує сторінку — блокуємо скрізь
-  // (у студії Ctrl+колесо масштабує сітку — там свій обробник)
   document.addEventListener('wheel',e=>{if(e.ctrlKey)e.preventDefault()},{passive:false});
   {let dpr0=window.devicePixelRatio||1;window.addEventListener('resize',()=>{const d=window.devicePixelRatio||1;if(Math.abs(d-dpr0)>0.01){dpr0=d;if(G.on)resizeGame();toast('Масштаб сторінки змінився — Ctrl+0 поверне як було')}})}
   document.addEventListener('keydown',e=>{
     if((e.ctrlKey||e.metaKey)&&G.on&&!G.ended&&['Equal','Minus','NumpadAdd','NumpadSubtract','Digit0','Numpad0'].includes(e.code)){e.preventDefault();return}
     if(ED.on){edKey(e);return}
-    if(ST.on){stKey(e);return}
+    if(VO.on){if(e.code==='Escape'){e.preventDefault();voCancel(true)}return}
     if(KEYWAIT){e.preventDefault();if(e.code!=='Escape'){const{l,i}=KEYWAIT;for(let a=0;a<4;a++)for(let b=0;b<2;b++)if(S.keys[a][b]===e.code)S.keys[a][b]=S.keys[l][i];S.keys[l][i]=e.code;saveS()}KEYWAIT=null;renderKeys();return}
     if(CAL.on){if(e.code==='Escape'){calClose(false);return}if(!e.repeat&&!CAL.done){e.preventDefault();calTap(e)}return}
     if(!G.on)return;
@@ -2515,17 +3248,6 @@ async function checkUpdate(){
     document.querySelectorAll('#edBar [data-snap]').forEach(b=>b.onclick=()=>{ED.snap=+b.dataset.snap;edSync()});
     $('#edTypeN').onclick=()=>{ED.type=0;edSync()};$('#edTypeD').onclick=()=>{ED.type=1;edSync()};
     $('#edSave').onclick=edSave;$('#edReset').onclick=edReset;$('#edExit').onclick=edExit}
-  // студія
-  $('#btnStudio').onclick=()=>openStudio();
-  {const sc=$('#stCv');sc.addEventListener('pointerdown',stDown);sc.addEventListener('pointermove',stMove);sc.addEventListener('pointerup',stUp);sc.addEventListener('pointercancel',stUp);
-    sc.addEventListener('wheel',e=>{e.preventDefault();if(e.ctrlKey){ST.zoom=clamp(ST.zoom*(e.deltaY<0?1.15:1/1.15),8,60);return}ST.sx+=(Math.abs(e.deltaX)>Math.abs(e.deltaY)?e.deltaX:e.deltaY);ST.follow=false;setTimeout(()=>ST.follow=true,1500)},{passive:false});
-    $('#stScroll').oninput=e=>{ST.sx=+e.target.value;ST.follow=false;setTimeout(()=>ST.follow=true,1500)};
-    $('#stPlay').onclick=()=>stPlay(!ST.playing);$('#stUndo').onclick=stUndo;$('#stSave').onclick=()=>stSave();$('#stGo').onclick=stGo;$('#stExit').onclick=stExit;
-    $('#stNew').onclick=()=>{if(ST.dirty&&!confirm('Почати нову? Незбережені зміни пропадуть.'))return;stPlay(false);ST.song=newSong();ST.hist=[];stRenderBars();stChanged(true)};
-    $('#stList').onchange=async e=>{const id=e.target.value;if(!id)return;if(ST.dirty&&!confirm('Відкрити іншу пісню? Незбережені зміни пропадуть.')){e.target.value='';return}const s=await dbGet('songs',id);e.target.value='';if(s){stPlay(false);ST.song=s;ST.hist=[];stRenderBars();stChanged(true);toast('Відкрито: '+s.name)}};
-    $('#stName').oninput=e=>{ST.song.name=e.target.value;ST.dirty=true};
-    $('#stBpm').onchange=e=>{stHist();ST.song.bpm=clamp(Math.round(+e.target.value||120),60,200);e.target.value=ST.song.bpm;if(ST.playing){stPlay(false);stPlay(true)}stChanged()};
-    $('#stBars').onchange=e=>{stHist();const nb=clamp(Math.round(+e.target.value||16),2,64),s=ST.song;s.bars=nb;e.target.value=nb;const tot=nb*16;s.drums=s.drums.filter(n=>n[1]<tot);for(const k of['piano','bass','lead'])s[k]=s[k].filter(n=>n[1]<tot).map(n=>[n[0],n[1],Math.min(n[2],tot-n[1])]);if(ST.playing){stPlay(false);stPlay(true)}stChanged()}}
   renderRecent();renderProfile();
 })();
 </script>
