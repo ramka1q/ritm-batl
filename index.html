@@ -22,8 +22,8 @@ header{text-align:center;margin-bottom:18px}
 h1{font-family:Unbounded,sans-serif;font-weight:900;font-size:clamp(34px,7vw,66px);margin:8px 0 4px;letter-spacing:.02em;background:linear-gradient(90deg,var(--l0),var(--l1),var(--l2),var(--l3));-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 22px rgba(255,210,63,.22))}
 .build{font:12px 'JetBrains Mono',monospace;color:var(--mut)}
 .tag{color:var(--acc);font-weight:600;font-size:14px;margin-top:4px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
-@media(max-width:860px){.grid{grid-template-columns:1fr}}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}.grid>*{min-width:0}
+@media(max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
 .panel{background:rgba(22,18,46,.9);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:16px;backdrop-filter:blur(6px);position:relative;overflow:hidden}
 .panel::before{content:'';position:absolute;left:0;right:0;top:0;height:3px;background:var(--stripe);opacity:.85}
 h2{font-family:Unbounded,sans-serif;font-size:15px;margin:4px 0 12px;letter-spacing:.05em;text-transform:uppercase}
@@ -113,7 +113,7 @@ table.res tr.me td{background:rgba(255,210,63,.07)}
 .toast.out{opacity:0;transform:translateY(10px)}
 #upd{position:fixed;top:4px;left:0;right:0;z-index:55;background:var(--acc);color:#1a1300;text-align:center;padding:8px;font-weight:800;display:flex;gap:12px;justify-content:center;align-items:center}
 #upd button{background:#1a1300;color:var(--acc);border:none;padding:6px 14px}
-.rc{display:flex;gap:6px;margin-top:6px}.rc .rcp{flex:1;text-align:left;font-size:13px;display:flex;justify-content:space-between;gap:8px;overflow:hidden}.rc .rcp small{color:var(--mut);font:11px 'JetBrains Mono',monospace;white-space:nowrap}.rc .rcx{flex:0 0 40px;padding:0}
+.rc{display:flex;gap:6px;margin-top:6px}.rc .rcp{flex:1;text-align:left;font-size:13px;display:flex;justify-content:space-between;gap:8px;overflow:hidden;min-width:0}.rc .rcp span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.rc .rcp small{color:var(--mut);font:11px 'JetBrains Mono',monospace;white-space:nowrap}.rc .rcx{flex:0 0 40px;padding:0}
 #edOv{position:fixed;inset:0;z-index:40;background:var(--bg);display:flex;flex-direction:column}
 #edBar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--line);background:var(--panel)}
 #edBar button{padding:7px 10px;font-size:13px}#edBar .on{background:var(--acc);color:#1a1300;border-color:var(--acc)}
@@ -465,7 +465,7 @@ async function renderRecent(){
   const el=$('#recent');if(!el)return;const all=((await dbAll('meta'))||[]).sort((a,b)=>b.t-a.t);
   if(!all.length||(NET.role==='guest'&&!amPicker())){el.innerHTML='';return}
   el.innerHTML='<div class="mut" style="margin:12px 0 6px">Недавні треки (збережені в браузері, грають одразу):</div>'+all.map(m=>{const r=getRecord(m.fp,S.diff);
-    return`<div class="rc"><button class="rcp" data-fp="${esc(m.fp)}">▶ ${esc(m.name)}<small>${fmtMB(m.size)}${r?' · 🏆 '+r.score+' '+r.rank:''}</small></button><button class="rcx" data-fp="${esc(m.fp)}" title="Прибрати з кешу">×</button></div>`}).join('');
+    return`<div class="rc"><button class="rcp" data-fp="${esc(m.fp)}" title="${esc(m.name)}"><span>▶ ${esc(m.name)}</span><small>${fmtMB(m.size)}${r?' · 🏆 '+r.score+' '+r.rank:''}</small></button><button class="rcx" data-fp="${esc(m.fp)}" title="Прибрати з кешу">×</button></div>`}).join('');
   el.querySelectorAll('.rcp').forEach(b=>b.onclick=async()=>{const c=await cachedTrack(b.dataset.fp);if(!c){toast('Трек зник з кешу','err');renderRecent();return}
     loadTrackFile(new File([c.bytes],c.meta.name,{type:c.meta.mime}))});
   el.querySelectorAll('.rcx').forEach(b=>b.onclick=async()=>{const fp=b.dataset.fp;await dbDel('tracks',fp);await dbDel('meta',fp);await dbDel('feat',fp);renderRecent()})}
