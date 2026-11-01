@@ -117,7 +117,7 @@ table.res tr.me td{background:rgba(255,210,63,.07)}
 #voOv{position:fixed;inset:0;z-index:45;background:#0c0a1d;touch-action:none;user-select:none}#voCv{width:100%;height:100%;display:block}#voChoice{position:absolute;left:0;right:0;bottom:12%;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;padding:0 16px}#voChoice button{font-size:17px;padding:14px 20px}
 #voTake{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(820px,calc(100% - 32px));text-align:center}
 #vtProg{color:var(--mut);font:600 13px Onest;margin-bottom:14px}#vtPrev{font:600 16px/1.4 Onest;color:#bdb7e4;margin-bottom:22px}
-#vtWho{font:800 14px Unbounded;letter-spacing:.06em;margin-bottom:6px}
+#vtWho{font:800 14px Unbounded;letter-spacing:.06em;margin-bottom:26px}
 #vtLine{position:relative;font:800 clamp(24px,4.6vw,42px)/1.5 Onest;margin:4px 0 16px;color:var(--text)}#vtLine span{opacity:.55;transition:opacity .08s}
 #vtLine span.on{opacity:1}#vtLine span.cur{opacity:1;color:#fff;text-shadow:0 0 14px currentColor}
 #vtBall{position:absolute;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:var(--acc);border:2px solid #120c24;opacity:0;pointer-events:none}#vtBall.beat{background:#fff;width:18px;height:18px;margin-left:-9px}
@@ -309,7 +309,7 @@ body{touch-action:manipulation;overscroll-behavior-x:none}
 <script>
 'use strict';
 // ====================== БАЗА ======================
-const BUILD_ID='2026-11-01T14:38:35Z';
+const BUILD_ID='2026-11-01T14:45:45Z';
 const GAME_VER='1.3';
 const BUILD=(()=>{if(!BUILD_ID.startsWith('__'))return BUILD_ID;const d=new Date(document.lastModified);return isNaN(d)?'0':d.toISOString()})();
 const LANE_COL=['#c24b99','#00e5f2','#2ff06a','#f9393f'];
@@ -3237,13 +3237,14 @@ function voTakeBtns(){
   const me=VO,busy=me.recOn||me.count;
   $('#vtRec').textContent=busy?'⏹ Стоп':'⏺ Записати';$('#vtRec').classList.toggle('rec',!!busy);$('#vtRec').disabled=!!me.noMic||!!me.take;
   $('#vtPlay').disabled=!me.take||busy;$('#vtClear').disabled=!me.take||busy;$('#vtSend').disabled=!(me.take||me.noMic)||busy;$('#vtHow').disabled=!!busy;
-  $('#vtSt').textContent=me.noMic?'Мікрофона немає — тисни «Відправити», рядок буде тихим':me.count?'Приготуйся… '+me.count:me.recOn?'🔴 Говори за підсвіткою… потім «Стоп» (Пробіл)':
-    me.take?'Послухай. Подобається — «Відправити» (Enter). Ні — «Очистити» і заново':'«Як читати» — бот покаже ритм. «Записати» (Пробіл) — відлік і читай за підсвіткою'}
+  const coarse=matchMedia('(pointer:coarse)').matches;
+  $('#vtSt').textContent=(me.noMic?'Мікрофона немає — тисни «Відправити», рядок буде тихим':me.count?'Приготуйся… '+me.count:me.recOn?'🔴 Говори за підсвіткою… потім «Стоп» (Пробіл)':
+    me.take?'Послухай. Подобається — «Відправити» (Enter). Ні — «Очистити» і заново':'«Як читати» — бот покаже ритм. «Записати» (Пробіл) — відлік і читай за підсвіткою').replace(coarse?/ \((Пробіл|Enter)\)/g:/$^/,'')}
 // підсвітка рядка в ритм: від моменту me.guide (performance.now першого складу)
 function voGuideStart(at){VO.guide=at}
 function voClick(t,big){const ac=getAC();osc(ac,'square',big?1600:1100,envG(ac,ac.destination,t,0.001,big?0.12:0.07,0.04),t,0.05)}
 function voTakeRec(){
-  const me=VO;if(me.phase!=='takes'||me.noMic||me.take)return;
+  const me=VO;getAC().resume();if(me.phase!=='takes'||me.noMic||me.take)return;
   if(me.recOn||me.count){clearTimeout(me.countT);const was=me.recOn;me.recOn=false;me.count=0;me.guide=0;
     if(was){const clip=voClip(me.chunks);me.chunks=[];if(!clip)toast('Нічого не чути — спробуй ще раз, ближче до мікрофона','err');me.take=clip}voTakeBtns();return}
   if(!me.src){toast('Мікрофон ще вмикається…');return}
@@ -3477,7 +3478,7 @@ async function checkUpdate(){
   $('#btnHave').onclick=()=>$('#haveIn').click();
   $('#haveIn').onchange=e=>{const f=e.target.files[0];if(f)guestUseLocal(f);e.target.value=''};
   $('#btnUpd').onclick=()=>location.reload();
-  $('#btnVoice').onclick=voStart;$('#voPick').onchange=voPickFill;$('#chVoFree').addEventListener('change',voPickFill);$('#voX').onclick=()=>{if(VO.phase==='listen'&&VO.back)voChoice();else if(VO.phase==='listen'||VO.phase==='choice')voClose();else voCancel()};
+  $('#btnVoice').onclick=voStart;$('#voOv').addEventListener('pointerdown',()=>{if(AC&&AC.state!=='running')AC.resume()});$('#voPick').onchange=voPickFill;$('#chVoFree').addEventListener('change',voPickFill);$('#voX').onclick=()=>{if(VO.phase==='listen'&&VO.back)voChoice();else if(VO.phase==='listen'||VO.phase==='choice')voClose();else voCancel()};
   $('#voListenB').onclick=()=>voListen(true);$('#voPlayB').onclick=voPlay;$('#voMenuB').onclick=voClose;$('#voMoreB').onclick=()=>{voClose();voStart()};
   document.querySelectorAll('#segVoMus button').forEach(b=>b.onclick=()=>{S.voMusic=b.dataset.v==='1';saveS();syncUI()});
   document.querySelectorAll('#segVoSelf button').forEach(b=>b.onclick=()=>{S.voSelf=b.dataset.v==='1';saveS();syncUI()});
