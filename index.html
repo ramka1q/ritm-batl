@@ -68,6 +68,7 @@ input[type=text]:focus{border-color:var(--acc)}
 .chip.drop{border-color:var(--acc);color:var(--acc)}
 .err{color:var(--bad);font-size:13px;margin-top:6px}
 .okc{color:var(--l2)}
+.hl0{color:var(--l2)}.hl1{color:#ffb020}.hl2{color:var(--bad)}#stStart{font-family:Onest,sans-serif;font-size:14px;padding:8px 10px;border-radius:10px;background:#0b0920;border:1px solid var(--line)}#stStart:empty{display:none}
 .mut{color:var(--mut);font-size:12px}
 .st{font:600 13px 'JetBrains Mono',monospace;margin-top:8px;color:var(--text);line-height:1.4}
 .st.err{color:var(--bad)}
@@ -211,6 +212,7 @@ body{touch-action:manipulation;overscroll-behavior-x:none}
           <input type="file" id="haveIn" hidden accept="audio/*,video/*,.mkv,.flac,.opus,.aiff,.aif,.mov,.3gp">
           <div class="st" id="stPicker"></div>
           <div id="plist"></div>
+          <div class="st" id="stStart"></div>
           <div class="row">
             <button id="btnReady">Готовий</button>
             <button id="btnStartAll" class="acc">Старт для всіх</button>
@@ -309,7 +311,7 @@ body{touch-action:manipulation;overscroll-behavior-x:none}
 <script>
 'use strict';
 // ====================== БАЗА ======================
-const BUILD_ID='2026-11-01T14:53:32Z';
+const BUILD_ID='2026-11-01T14:56:07Z';
 const GAME_VER='1.3';
 const BUILD=(()=>{if(!BUILD_ID.startsWith('__'))return BUILD_ID;const d=new Date(document.lastModified);return isNaN(d)?'0':d.toISOString()})();
 const LANE_COL=['#c24b99','#00e5f2','#2ff06a','#f9393f'];
@@ -1703,10 +1705,28 @@ const PEER_OPTS={debug:1,config:{iceServers:[{urls:'stun:stun.l.google.com:19302
 // попередження тільки про тих, хто ще в кімнаті: гравець вийшов — напис зникає
 function watchIce(c,who){c.on('iceStateChanged',s=>{
   const p=NET.role==='host'?[...NET.conns.values()].find(x=>x.conn===c):null,alive=NET.role==='host'?!!p:NET.host===c;
+  if(p)p.ice=s;if(NET.role==='guest'&&alive)NET.g.ice=s;
   if(!alive||s==='closed'||s==='connected'||s==='completed'){connOk();return}
   const nm=p?who+' «'+p.name+'»':who;
   if(s==='failed')setConn('Не вдалося з\'єднатися з '+nm+' навіть через ретранслятор — спробуйте іншу мережу (наприклад, мобільний інтернет)',true);
   else if(s==='disconnected')setConn('Зв\'язок з '+nm+' хитається…',true)})}
+// ---------- чи можна починати: оцінка зв'язку з кожним ----------
+// 0 — добрий, 1 — хиткий (може викинути), 2 — немає зв'язку
+const HL_TXT=['📶 зв\'язок добрий','📶 зв\'язок хиткий','📵 зв\'язку немає'];
+function peerHealth(p){const gap=performance.now()-(p.seen||0),ice=p.ice||'';
+  if(!p.conn.open||ice==='failed'||gap>5000)return 2;if(ice==='disconnected'||gap>2000||(p.rtt||0)>350)return 1;return 0}
+function netHealthTick(){
+  const el=$('#stStart');if(!el)return;
+  if(NET.role==='host'){const ps=[...NET.conns.values()];let worst=-1,bad=[];
+    for(const p of ps){const h=peerHealth(p),sp=document.getElementById('hl-'+p.id);if(sp){sp.textContent=HL_TXT[h];sp.className='hl'+h}
+      if(p.spec)continue;if(h>worst){worst=h;bad=[]}if(h===worst&&h>0)bad.push(p.name)}
+    const who=bad.join(', ');
+    el.className='st';el.innerHTML=worst<0?'':worst===0?'<span class="hl0">✅ Можна починати — зв\'язок з усіма добрий</span>':
+      worst===1?'<span class="hl1">⚠️ Можна, але зв\'язок з '+esc(who)+' хиткий — може викинути. Якщо відвалиться, гра почекає його 30 с</span>':
+      '<span class="hl2">⛔ '+esc(who)+' не відповідає — краще не починати, поки зв\'язок не повернеться</span>';return}
+  if(NET.role==='guest'&&!NET.spec){const g=NET.g,gap=performance.now()-(g.seen||0),open=NET.host&&NET.host.open;
+    const h=!open||g.ice==='failed'||gap>9000?2:g.ice==='disconnected'||gap>4500||(g.rtt||0)>350?1:0;
+    el.className='st';el.innerHTML=!g.seen&&open?'':['<span class="hl0">✅ Зв\'язок з хостом добрий — тебе не викине</span>','<span class="hl1">⚠️ Зв\'язок з хостом хиткий — може викинути</span>','<span class="hl2">⛔ Хост не відповідає</span>'][h]}}
 function connOk(){if(NET.role==='host')setConn('Кімната відкрита. Скинь друзям код або посилання.');else if(NET.role==='guest'&&NET.host&&NET.host.open)setConn('З\'єднано з хостом ✓')}
 function setConn(msg,err){const e=$('#stConn');e.textContent=msg||'';e.className='st'+(err?' err':'')}
 function netErr(e){const t=e&&e.type;const m=t==='peer-unavailable'?'Кімнату не знайдено — перевір код':(t==='network'||t==='server-error'||t==='socket-error'||t==='socket-closed')?'Немає зв\'язку з сервером PeerJS — перевір інтернет':
@@ -1721,10 +1741,11 @@ function showRoom(){
   $('#btnStartAll').hidden=NET.role!=='host';$('#btnReady').hidden=NET.role!=='guest'||NET.spec;$('#btnHave').hidden=true;
   $('#stTrack').textContent='';$('#stChart').textContent='';$('#verWarn').hidden=true;
   applyLock();renderPlist();renderPicker();
+  clearInterval(NET.hlIv);NET.hlIv=setInterval(netHealthTick,1000);netHealthTick();
 }
 function leaveRoom(){
   try{NET.peer&&NET.peer.destroy()}catch(e){}
-  clearInterval(NET.g.iv);clearInterval(NET.boardIv);for(const p of NET.conns.values())clearTimeout(p.chTimer);
+  clearInterval(NET.g.iv);clearInterval(NET.boardIv);clearInterval(NET.hlIv);$('#stStart').textContent='';for(const p of NET.conns.values())clearTimeout(p.chTimer);
   Object.assign(NET,{picker:'host',pickMode:'fixed',pickerName:'',role:null,peer:null,code:'',conns:new Map(),host:null,hostRaw:null,myId:'',cfg:null,lobby:[],results:new Map(),best:{},live:{},leader:null,g:{},resList:[]});
   $('#onIdle').hidden=false;$('#onRoom').hidden=true;
   if(location.hash)history.replaceState(null,'',location.pathname+location.search);
@@ -1759,6 +1780,7 @@ function hostOnConn(c){
   c.on('error',e=>console.warn('conn',e));
 }
 function hostMsg(p,m){
+  p.seen=performance.now();
   switch(m.t){
     case 'hello':{p.name=String(m.name||'Гравець').slice(0,16);p.ver=m.ver;p.build=m.build;p.spec=!!m.spec;const has=m.has||{};
       p.conn.send({t:'welcome',ver:GAME_VER,build:BUILD,cfg:hostCfg(),you:p.id,hostName:S.name||'Хост',picker:NET.picker||'host',pickerName:pickerName(NET.picker||'host'),pickMode:NET.pickMode||'fixed'});
@@ -1960,7 +1982,7 @@ function guestRaw(d){
   if(performance.now()-(g.lastR||0)>250){g.lastR=performance.now();renderGuestStatus()}
 }
 function guestMsg(m){
-  const g=NET.g,now=performance.now();
+  const g=NET.g,now=performance.now();g.seen=now;
   switch(m.t){
     case 'welcome':NET.cfg=m.cfg;NET.hostName=m.hostName;NET.picker=m.picker;NET.pickerName=m.pickerName;NET.pickMode=m.pickMode;applyLock();renderPicker();renderRecent();if(m.ver!==GAME_VER||m.build!==BUILD)verWarn(m.build);break;
     case 'full':setConn('Кімната заповнена — там уже 8 гравців',true);break;
@@ -2056,11 +2078,11 @@ function renderPlist(){
     for(const p of NET.conns.values()){const chOk=p.chartAck===T.chartId&&!!T.chartId;
       const tr=!T.bytes?'—':p.has?'є свій ✓':(p.track>=100?(p.dec?'100% ✓':'100%, відкриває…'):p.track+'%');
       rows.push(`<div class="pl"><b>${esc(p.name)}${p.spec?' 👁':''}</b><span class="rd ${p.ready||p.spec?'okc':'mut'}">${p.spec?'глядач':p.ready?'готовий':'не натиснув «Готовий»'}</span>
-        <div class="s">Трек ${tr} · Стрілки ${!T.chartBytes?'—':chOk?'✓':p.chart+'%'+(p.chTry>1?' (спроба '+p.chTry+')':'')} · пінг ${p.rtt?Math.round(p.rtt)+' мс':'…'}
+        <div class="s">Трек ${tr} · Стрілки ${!T.chartBytes?'—':chOk?'✓':p.chart+'%'+(p.chTry>1?' (спроба '+p.chTry+')':'')} · пінг ${p.rtt?Math.round(p.rtt)+' мс':'…'} · <span id="hl-${esc(p.id)}"></span>
         ${NET.picker===p.id?`<div style="color:var(--acc)">🎧 ${p.up?'кидає трек… '+Math.floor(p.up.got/p.up.size*100)+'%':'його черга кидати пісню'}</div>`:''}
         ${p.err?`<div class="e">${esc(p.err)}</div>`:''}${p.gErr?`<div class="e">${esc(p.gErr)}</div>`:''}${p.verErr?`<div class="e">${esc(p.verErr)}</div>`:''}</div></div>`)}
     if(!NET.conns.size)rows.push('<div class="hint">Поки нікого. Скинь посилання — хто відкриє, одразу зайде.</div>');
-    el.innerHTML=rows.join('');hostCheckReady();renderPicker();voPickFill();
+    el.innerHTML=rows.join('');hostCheckReady();renderPicker();voPickFill();netHealthTick();
   }else{
     el.innerHTML=(NET.lobby||[]).map(p=>`<div class="pl"><b>${esc(p.name)}${p.host?' (хост)':''}${p.spec?' 👁':''}</b><span class="rd ${p.ready||p.spec?'okc':'mut'}">${p.spec?'глядач':p.ready?'готовий':'чекає'}</span></div>`).join('');
   }
