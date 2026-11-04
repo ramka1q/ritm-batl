@@ -7,7 +7,7 @@
 <title>Ритм-Батл</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Onest:wght@400;600;800&family=Unbounded:wght@600;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Onest:wght@400;600;800&family=Unbounded:wght@600;800;900&family=Rubik:wght@600;800;900&family=Rubik+Wet+Paint&family=Press+Start+2P&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <style>
 :root{--bg:#0c0a1d;--panel:#16122e;--panel2:#211a48;--line:#2f2864;--text:#efecff;--mut:#9a93c7;--acc:#ffd23f;--l0:#c24b99;--l1:#00e5f2;--l2:#2ff06a;--l3:#f9393f;--bad:#ff4d6a;
@@ -148,16 +148,65 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%;overflow-x:hidden}
 body{touch-action:manipulation;overscroll-behavior-x:none}
 @media (max-width:860px),(pointer:coarse){input[type=text],input[type=number],select,textarea{font-size:16px!important}}
 [hidden]{display:none!important}
+
+/* ---------- вигляд у дусі FNF (усе своє: логотип, колонки, каракулі) ---------- */
+:root{--ink:#0b0918;--sun:#fbd75a;--pink:#ff4fa3;--blue:#3340d8}
+html,body{background-color:var(--sun)}
+body{background-image:var(--doodles,none);background-size:900px auto;background-position:center top}
+#topstripe{display:none}
+#menu header{margin-bottom:6px}
+.build{color:#6b4512;font-weight:700}
+.tag{color:var(--ink);font:800 16px Rubik,sans-serif;margin-top:2px}
+.logo{position:relative;display:inline-block;padding:16px 36px 24px;line-height:.82;user-select:none;-webkit-user-select:none}
+.logo svg{position:absolute;left:-7%;top:-9%;width:114%;height:118%;z-index:0;overflow:visible}
+.logo b{position:relative;z-index:1;display:block;font-family:'Rubik Wet Paint',Rubik,sans-serif;font-weight:400;letter-spacing:.01em;
+  text-shadow:4px 0 var(--ink),-4px 0 var(--ink),0 4px var(--ink),0 -4px var(--ink),3px 3px var(--ink),-3px 3px var(--ink),3px -3px var(--ink),-3px -3px var(--ink),0 8px 0 var(--ink)}
+.logo .l1{color:var(--pink);font-size:clamp(40px,8vw,82px);transform:rotate(-4deg) translateX(-4%)}
+.logo .l2{color:#fff;font-size:clamp(54px,11vw,122px);transform:rotate(-2deg)}
+#menu .logo{margin:4px 0 22px}
+#menu header .build,#menu header .tag{position:relative;z-index:2}
+.panel{background:#1b1838;border:4px solid var(--ink);box-shadow:0 7px 0 var(--ink);border-radius:20px;backdrop-filter:none}
+.panel::before{display:none}
+h2{font:900 21px Rubik,sans-serif;color:#fff;letter-spacing:.02em;margin:2px 0 14px;
+  text-shadow:3px 0 var(--ink),-3px 0 var(--ink),0 3px var(--ink),0 -3px var(--ink),2px 2px var(--ink),-2px 2px var(--ink),2px -2px var(--ink),-2px -2px var(--ink),0 5px 0 var(--ink)}
+h2 small{text-shadow:none;font-family:Onest}
+button{font-family:Rubik,Onest,sans-serif;font-weight:800;border:3px solid var(--ink);border-radius:12px;box-shadow:0 4px 0 var(--ink)}
+button:active:not(:disabled){transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+button.acc,.seg button.on{background:var(--pink);color:#fff;border-color:var(--ink);text-shadow:0 2px 0 var(--ink)}
+.play{font:900 clamp(26px,4vw,40px) Rubik,sans-serif;text-transform:uppercase;background:var(--pink);color:#fff;border:5px solid var(--ink);border-radius:22px;
+  box-shadow:0 9px 0 var(--ink);padding:18px;text-shadow:3px 0 var(--ink),-3px 0 var(--ink),0 3px var(--ink),0 -3px var(--ink),0 5px 0 var(--ink)}
+.play:hover:not(:disabled){box-shadow:0 9px 0 var(--ink),0 0 0 6px #fff}
+.drop{border:3px dashed #4b4580}
+/* титульний екран */
+#titleOv{position:fixed;inset:0;z-index:70;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;padding:16px;transition:opacity .4s}
+#titleOv.out{opacity:0;pointer-events:none}
+#titleOv .stage{display:flex;align-items:center;justify-content:center;gap:3vw;flex-wrap:wrap;max-width:1100px}
+#titleOv .logo{animation:tbump .6s ease-out infinite}
+@keyframes tbump{0%{transform:scale(1.06)}30%{transform:scale(1)}100%{transform:scale(1)}}
+.spk{display:flex;align-items:flex-end;gap:6px;animation:tbump .6s ease-out infinite}
+.sb{display:flex;flex-direction:column;justify-content:space-around;align-items:center;background:#3c3949;border:5px solid #0d0c12;border-radius:14px;box-shadow:5px 4px 0 var(--pink),-4px -3px 0 var(--blue);padding:8px}
+.sb u{display:block;border-radius:50%;border:5px solid #0d0c12;background:radial-gradient(circle,#5b5868 0 18%,#1d1b25 19% 55%,#4a4757 56%)}
+.s1,.s3{width:clamp(70px,9vw,110px);height:clamp(110px,15vw,170px)}.s1 u,.s3 u{width:76%;aspect-ratio:1}
+.s2{width:clamp(120px,15vw,180px);height:clamp(170px,23vw,260px)}.s2 u{width:80%;aspect-ratio:1}
+.s2 u:first-child{width:46%}
+#titleOv .press{font:clamp(11px,2.1vw,22px)/1.6 'Press Start 2P',monospace;color:#3442d9;margin-top:5vh;text-align:center;animation:blink 1.1s steps(2) infinite}
+@keyframes blink{50%{color:#1b2280}}
+#titleOv.go .press{color:#fff;animation:flash .12s 6}
+@keyframes flash{50%{color:#3442d9}}
+#titleOv .wf{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+#titleOv.go .wf{animation:wf .5s ease-out}
+@keyframes wf{0%{opacity:.9}100%{opacity:0}}
 </style>
 </head>
 <body>
 <div id="topstripe"></div>
 <canvas id="bgMenu"></canvas>
+<div id="titleOv"><div class="wf"></div><div class="stage"><div class="logo"><svg viewBox="0 0 100 100" preserveAspectRatio="none" class="splat"></svg><b class="l1">РИТМ</b><b class="l2">БАТЛ</b></div><div class="spk"><i class="sb s1"><u></u><u></u></i><i class="sb s2"><u></u><u></u></i><i class="sb s3"><u></u><u></u></i></div></div><div class="press">Натисни Enter, щоб почати</div></div>
 <div id="upd" hidden>Є нова версія гри <button id="btnUpd">Оновити</button></div>
 
 <div id="menu">
   <header>
-    <h1>РИТМ-БАТЛ</h1>
+    <h1 style="font-size:0;margin:0">РИТМ-БАТЛ</h1><div class="logo"><svg viewBox="0 0 100 100" preserveAspectRatio="none" class="splat"></svg><b class="l1">РИТМ</b><b class="l2">БАТЛ</b></div>
     <div class="build" id="buildInfo">Оновлено: …</div>
     <div class="tag">Кидай свій трек — стрілки самі ляжуть у біт</div>
   </header>
@@ -1715,7 +1764,11 @@ const NET={role:null,peer:null,code:'',conns:new Map(),host:null,hostRaw:null,my
 const hostCfg=()=>({diff:S.diff,events:S.events,smin:S.smin,smax:S.smax,sens:S.sens});
 // STUN — щоб знайти пряму дорогу; TURN — запасний ретранслятор, коли пряме з'єднання блокує роутер
 // (безкоштовний openrelay.metered.ca вимкнули в листопаді 2026 — його адреса тепер 192.0.2.1)
-const TURN=[];
+// запасний ретранслятор: ExpressTURN, безкоштовний тариф (1 ТБ/міс), акаунт власника гри.
+// Логін і пароль закодовані (base64 перевернутого рядка) — не захист, а щоб їх не знаходили боти, що шукають паролі в коді;
+// браузер однаково мусить їх отримати. Нові дані: кнопка «Refresh Credentials» у кабінеті ExpressTURN.
+const unveil=v=>atob(v).split('').reverse().join('');
+const TURN=[{urls:['turn:free.expressturn.com:3478','turn:free.expressturn.com:3478?transport=tcp'],username:unveil('OTE3NjAyOTAxMjAwMDAwMDAw'),credential:unveil('PTBHU2VUUFVGcTEwbnNpRWhIMzZIdTlrbHprdA==')}];
 const PEER_OPTS={debug:1,config:{iceServers:[{urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302']},{urls:'stun:stun.cloudflare.com:3478'},{urls:'stun:global.stun.twilio.com:3478'},...TURN]}};
 // попередження тільки про тих, хто ще в кімнаті: гравець вийшов — напис зникає
 function watchIce(c,who){c.on('iceStateChanged',s=>{
@@ -3533,11 +3586,43 @@ async function checkUpdate(){
     else if(BUILD_ID.startsWith('__')){const lm=r.headers.get('last-modified');if(lm){const a=new Date(lm).getTime(),b=new Date(document.lastModified).getTime();newer=a>b+2000}}
     if(newer)$('#upd').hidden=false}catch(e){}}
 
+
+// ---------- вигляд у дусі FNF: клякса під логотипом, каракулі на жовтому фоні, титульний екран ----------
+function splatSVG(seed){const R=rng(seed),N=34,pts=[];
+  for(let i=0;i<N;i++){const a=i/N*Math.PI*2,r=0.40+R()*0.06+(R()<0.22?0.05+R()*0.09:0);pts.push([50+Math.cos(a)*r*100,50+Math.sin(a)*r*100])}
+  let d='M'+((pts[0][0]+pts[N-1][0])/2).toFixed(1)+' '+((pts[0][1]+pts[N-1][1])/2).toFixed(1);
+  for(let i=0;i<N;i++){const p=pts[i],q=pts[(i+1)%N];d+=' Q'+p[0].toFixed(1)+' '+p[1].toFixed(1)+' '+((p[0]+q[0])/2).toFixed(1)+' '+((p[1]+q[1])/2).toFixed(1)}
+  let drops='';for(let i=0;i<7;i++){const a=R()*Math.PI*2,r=0.5+R()*0.08;drops+='<ellipse cx="'+(50+Math.cos(a)*r*100).toFixed(1)+'" cy="'+(50+Math.sin(a)*r*100).toFixed(1)+'" rx="'+(1.5+R()*2.5).toFixed(1)+'" ry="'+(1.5+R()*2.5).toFixed(1)+'"/>'}
+  return'<g fill="#3340d8" stroke="#0b0918" stroke-width="1.6" stroke-linejoin="round"><path d="'+d+'Z"/>'+drops+'</g>'}
+function doodles(){const R=rng(77),W=900,col='#d9752b';let g='';
+  const arrow=(x,y,s,r)=>'<path transform="translate('+x+' '+y+') rotate('+r+') scale('+s+')" d="M0 -40 L38 0 L14 0 L14 38 L-14 38 L-14 0 L-38 0 Z"/>';
+  for(let i=0;i<26;i++){const x=R()*W,y=R()*W,s=0.6+R()*1.6,r=Math.floor(R()*4)*90+(R()-0.5)*20,k=R();
+    if(k<0.4)g+=arrow(x.toFixed(0),y.toFixed(0),s.toFixed(2),r.toFixed(0));
+    else if(k<0.6)g+='<circle cx="'+x.toFixed(0)+'" cy="'+y.toFixed(0)+'" r="'+(20+R()*50).toFixed(0)+'"/>';
+    else if(k<0.8){let d='M'+x.toFixed(0)+' '+y.toFixed(0);for(let j=0;j<6;j++)d+=' l'+(18+R()*20).toFixed(0)+' '+(j%2?-1:1)*(16+R()*20).toFixed(0);g+='<path d="'+d+'"/>'}
+    else{let d='M'+x.toFixed(0)+' '+y.toFixed(0);for(let j=0;j<5;j++){const a=j*144*Math.PI/180;d+=' L'+(x+Math.sin(a)*40*s).toFixed(0)+' '+(y-Math.cos(a)*40*s).toFixed(0)}g+='<path d="'+d+'Z"/>'}}
+  // штрихування, як олівцем
+  for(let i=0;i<10;i++){const x=R()*W,y=R()*W;for(let j=0;j<6;j++)g+='<path d="M'+(x+j*9).toFixed(0)+' '+y.toFixed(0)+' l40 -40"/>'}
+  const svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+W+'" height="'+W+'"><g fill="none" stroke="'+col+'" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity=".55">'+g+'</g></svg>';
+  document.body.style.setProperty('--doodles','url("data:image/svg+xml,'+encodeURIComponent(svg)+'")')}
+function titleScreen(){
+  document.querySelectorAll('.logo svg.splat').forEach((el,i)=>el.innerHTML=splatSVG(31+i));doodles();
+  const t=$('#titleOv');if(!t)return;
+  if(/^#(join|watch)-/.test(location.hash)){t.remove();return} // за посиланням-запрошенням — одразу в кімнату
+  let gone=false;
+  const go=()=>{if(gone)return;gone=true;
+    try{const ac=getAC();ac.resume();const t0=ac.currentTime+0.02;[523,659,784,1047].forEach((f,i)=>osc(ac,'square',f,envG(ac,ac.destination,t0+i*0.05,0.005,0.08,0.35),t0+i*0.05,0.4))}catch(e){}
+    t.classList.add('go');setTimeout(()=>{t.classList.add('out');setTimeout(()=>t.remove(),450)},650)};
+  t.addEventListener('pointerdown',go);
+  const k=e=>{if(!document.body.contains(t)){document.removeEventListener('keydown',k,true);return}
+    if(e.code==='Enter'||e.code==='Space'||e.code==='NumpadEnter'){e.preventDefault();e.stopImmediatePropagation();go()}};
+  document.addEventListener('keydown',k,true)}
+
 // ====================== СТАРТ СТОРІНКИ ======================
 (function init(){
   // BUILD може бути ISO-датою або 20261030131500 (UTC)
   const cm=/^(\d{4})(\d\d)(\d\d)(\d\d)(\d\d)(\d\d)$/.exec(BUILD),d=cm?new Date(Date.UTC(+cm[1],cm[2]-1,+cm[3],+cm[4],+cm[5],+cm[6])):new Date(BUILD);$('#buildInfo').textContent=isNaN(d)?'Оновлено: —':'Оновлено: '+d.toLocaleDateString('uk-UA')+' о '+d.toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'});
-  syncUI();startMenuBg();
+  syncUI();startMenuBg();titleScreen();
   // трек
   const fi=$('#fileIn'),dz=$('#dropZone');
   $('#btnFile').onclick=()=>fi.click();dz.onclick=()=>{if(NET.role!=='guest'||amPicker())fi.click()};
