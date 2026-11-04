@@ -207,7 +207,12 @@ button.acc,.seg button.on{background:var(--pink);color:#fff;border-color:var(--i
 
 /* ---------- екрани як у грі: «Грати»/«Онлайн» — у стилі списку пісень, «Налаштування» — у стилі опцій ---------- */
 #menu[data-scr="play"] #scrBar,#menu[data-scr="online"] #scrBar,#menu[data-scr="set"] #scrBar{display:none}
-#menu[data-scr="play"],#menu[data-scr="online"]{max-width:1280px}
+/* «Грати» — на весь екран: смуга на всю ширину, колонки розтягуються, висота заповнюється */
+#menu[data-scr="play"]{max-width:none;padding:0 0 30px}
+#menu[data-scr="play"] .fpbar{margin:0 0 16px}
+/* розкладка розрахована на 1500×860 і масштабується під екран (fpZoom), як у грі; --fpH — висота під смугою */
+#menu[data-scr="play"] .fpb{margin:0 auto;padding:0 28px;min-height:var(--fpH,700px);align-items:stretch}
+@media(min-width:901px){#fp .fpleft{min-height:0;height:var(--fpH,700px)}#fp #fpDJ{height:100%}}
 .fpbar{display:flex;align-items:center;gap:12px;background:#000;color:#fff;padding:8px 14px;margin:-26px -16px 18px;position:sticky;top:0;z-index:5}
 .fpbar b{font:900 clamp(20px,3vw,32px) Rubik,sans-serif;letter-spacing:.02em;text-transform:uppercase}
 .fpbar .hc{flex:1;text-align:center;color:#6d6d6d;font:clamp(8px,1.1vw,12px)/1.5 'Press Start 2P',monospace}
@@ -491,7 +496,7 @@ button.acc,.seg button.on{background:var(--pink);color:#fff;border-color:var(--i
 <script>
 'use strict';
 // ====================== БАЗА ======================
-const BUILD_ID='2026-11-04T10:56:09Z';
+const BUILD_ID='2026-11-04T11:03:30Z';
 const GAME_VER='1.3';
 const BUILD=(()=>{if(!BUILD_ID.startsWith('__'))return BUILD_ID;const d=new Date(document.lastModified);return isNaN(d)?'0':d.toISOString()})();
 const LANE_COL=['#c24b99','#00e5f2','#2ff06a','#f9393f'];
@@ -3713,7 +3718,7 @@ function onSetChange(rebuild){saveS();applyLock();if(NET.role==='host')netBroadc
 async function checkUpdate(){
   if($('#menu').hidden||G.on)return;
   try{const r=await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)return;const tx=await r.text();
-    const m=tx.match(/^const BUILD_ID='([^']+)'/m);let newer=false;
+    const m=tx.match(/^const BUILD_ID='2026-11-04T11:03:30Z']+)'/m);let newer=false;
     if(m&&!m[1].startsWith('__'))newer=m[1]!==BUILD_ID;
     else if(BUILD_ID.startsWith('__')){const lm=r.headers.get('last-modified');if(lm){const a=new Date(lm).getTime(),b=new Date(document.lastModified).getTime();newer=a>b+2000}}
     if(newer)$('#upd').hidden=false}catch(e){}}
@@ -3803,7 +3808,7 @@ function fpTool(k){if(k==='F')$('#fileIn').click();else if(k==='D')fpChoose(1);
 // діджей: наш персонаж у худі за пультом, качає головою в такт музики меню
 function fpDJ(){
   if(SCR!=='play'||$('#menu').hidden){FP.dj=0;return}requestAnimationFrame(fpDJ);
-  const cv=$('#fpDJ'),dpr=Math.min(2,devicePixelRatio||1),W=cv.clientWidth,H=cv.clientHeight;if(!W)return;
+  const cv=$('#fpDJ'),dpr=Math.min(2,devicePixelRatio||1)*(parseFloat($('#fp').style.zoom)||1),W=cv.clientWidth,H=cv.clientHeight;if(!W)return;
   if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr)}
   const c=cv.getContext('2d');c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,W,H);
   const P=60/MM_BPM,t=performance.now()/1000,bf=(t/P)%1,beat=Math.floor(t/P),bob=Math.exp(-bf*6),pose=['idle',0,'idle',3,'idle',2,'idle',1][beat%8];
@@ -3816,7 +3821,11 @@ function fpDJ(){
     c.strokeStyle='#444';c.lineWidth=2;c.beginPath();c.ellipse(cx,cy,r*0.6,r*0.27,0,0,Math.PI*2);c.stroke();
     const a=t*5*(sx<0.5?1:-1);c.strokeStyle='#ff4fa3';c.lineWidth=3;c.beginPath();c.moveTo(cx,cy);c.lineTo(cx+Math.cos(a)*r*0.9,cy+Math.sin(a)*r*0.4);c.stroke();c.strokeStyle='#0b0918';c.lineWidth=5}
   for(let i=0;i<6;i++){c.fillStyle=LANE_COL[i%4];c.globalAlpha=0.4+0.6*((beat+i)%3===0?1:0.2);c.fillRect(tx+tw*0.38+i*tw*0.04,ty+th*0.72,tw*0.025,th*0.12)}c.globalAlpha=1}
-function fpShow(){fpRender();
+// екран «Грати» масштабується під монітор: розрахований на 1500×860, на більших (2K, 4K) — пропорційно більший
+function fpZoom(){const f=$('#fp');if(!f)return;const big=innerWidth>900,z=big?Math.max(1,Math.min(innerWidth/1500,innerHeight/860)):1;
+  f.style.zoom=z;f.style.setProperty('--fpH',Math.max(420,Math.round(innerHeight/z-118))+'px')}
+addEventListener('resize',fpZoom);
+function fpShow(){fpZoom();fpRender();
   const m=$('#fpMarq');if(m&&!m.childNodes.length){const L=['НОВИЙ ТРЕК! • КИДАЙ СВОЮ МУЗИКУ • ','ДРУГ ЧИ ВОРОГ?? • СТРІЛКИ САМІ ЛЯЖУТЬ У БІТ • ','РИТМ-БАТЛ • ЖЕСТЬ ЧЕКАЄ • ','ХТО КРАЩИЙ? • ПЕРЕВІР! • '],C=['#5ff28a','#ffb547','#5ff28a','#ffb547'];
     m.innerHTML=Array.from({length:14},(_,i)=>'<div style="color:'+C[i%4]+'">'+L[i%4].repeat(6)+'</div>').join('')}
   if(!FP.dj){FP.dj=1;requestAnimationFrame(fpDJ)}}
