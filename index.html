@@ -151,8 +151,8 @@ body{touch-action:manipulation;overscroll-behavior-x:none}
 
 /* ---------- вигляд у дусі FNF (усе своє: логотип, колонки, каракулі) ---------- */
 :root{--ink:#0b0918;--sun:#fbd75a;--pink:#ff4fa3;--blue:#3340d8}
-html,body{background-color:var(--sun)}
-body{background-image:var(--doodles,none);background-size:900px auto;background-position:center top}
+html{background-color:var(--sun)}body{background-color:var(--sun);transition:background-color .25s}
+body{background-image:var(--doodles,none);background-size:900px auto;background-position:center top;min-height:100vh}
 #topstripe{display:none}
 #menu header{margin-bottom:6px}
 .build{color:#6b4512;font-weight:700}
@@ -178,6 +178,32 @@ button.acc,.seg button.on{background:var(--pink);color:#fff;border-color:var(--i
 .play:hover:not(:disabled){box-shadow:0 9px 0 var(--ink),0 0 0 6px #fff}
 .drop{border:3px dashed #4b4580}
 /* титульний екран */
+
+/* ---------- меню як у грі: список великих слів, окремі екрани ---------- */
+#mm{display:none;flex-direction:column;align-items:center;gap:clamp(2px,1vh,10px);margin:8px 0 40px}
+#menu[data-scr="main"] #mm{display:flex}
+#menu[data-scr="main"] .grid,#menu:not([data-scr="main"]) header,#menu[data-scr="main"] #scrBar{display:none}
+.mmi{all:unset;cursor:pointer;font:900 clamp(34px,8vw,74px)/1.08 Rubik,sans-serif;color:#15121f;text-transform:uppercase;letter-spacing:.01em;transition:transform .12s;text-align:center;
+  text-shadow:5px 0 #fff,-5px 0 #fff,0 5px #fff,0 -5px #fff,4px 4px #fff,-4px 4px #fff,4px -4px #fff,-4px -4px #fff}
+.mmi.sel{color:#fff;transform:scale(1.14);animation:mmbob .9s ease-in-out infinite;
+  text-shadow:6px 0 var(--ink),-6px 0 var(--ink),0 6px var(--ink),0 -6px var(--ink),5px 5px var(--ink),-5px 5px var(--ink),5px -5px var(--ink),-5px -5px var(--ink),0 10px 0 var(--ink)}
+.mmi.blink{animation:mmblink .1s steps(2) infinite}
+@keyframes mmbob{50%{transform:scale(1.14) translateY(-4px) rotate(-1deg)}}
+@keyframes mmblink{50%{opacity:0}}
+.mmlogo{transform:scale(.62);margin:-28px 0 -34px}
+.mmhint{font:11px 'Press Start 2P',monospace;color:#6b4512;margin-top:16px;text-align:center;line-height:1.7}
+#scrBar{display:flex;align-items:center;gap:14px;margin:0 auto 16px;max-width:760px}
+#scrBar b{font:900 clamp(26px,5vw,44px) Rubik,sans-serif;color:#fff;text-transform:uppercase;
+  text-shadow:4px 0 var(--ink),-4px 0 var(--ink),0 4px var(--ink),0 -4px var(--ink),3px 3px var(--ink),-3px 3px var(--ink),3px -3px var(--ink),-3px -3px var(--ink),0 7px 0 var(--ink)}
+#scrBack{flex:0 0 auto}
+#menu:not([data-scr="main"]) .grid{grid-template-columns:minmax(0,1fr);max-width:760px;margin:0 auto}
+#menu[data-scr="play"] [data-scr]:not([data-scr~="play"]),#menu[data-scr="verse"] [data-scr]:not([data-scr~="verse"]),
+#menu[data-scr="online"] [data-scr]:not([data-scr~="online"]),#menu[data-scr="prof"] [data-scr]:not([data-scr~="prof"]),
+#menu[data-scr="set"] [data-scr]:not([data-scr~="set"]){display:none}
+/* треки-«капсули», як у списку пісень */
+.rc .rcp{background:linear-gradient(#26305a,#1b2246);border:3px solid var(--ink);border-radius:16px;padding:12px 16px;font:800 16px Rubik,sans-serif;box-shadow:0 4px 0 var(--ink),inset 0 0 0 2px #3e4c8a}
+.rc .rcp:hover:not(:disabled){border-color:var(--ink);box-shadow:0 4px 0 var(--ink),inset 0 0 0 2px #8fb1ff;transform:translateX(6px)}
+.rc .rcp small{color:#8fb1ff}
 #titleOv{position:fixed;inset:0;z-index:70;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;padding:16px;transition:opacity .4s}
 #titleOv.out{opacity:0;pointer-events:none}
 #titleOv .stage{display:flex;align-items:center;justify-content:center;gap:3vw;flex-wrap:wrap;max-width:1100px}
@@ -210,6 +236,10 @@ button.acc,.seg button.on{background:var(--pink);color:#fff;border-color:var(--i
     <div class="build" id="buildInfo">Оновлено: …</div>
     <div class="tag">Кидай свій трек — стрілки самі ляжуть у біт</div>
   </header>
+  <nav id="mm">
+    <button class="mmi" data-go="play">Грати</button><button class="mmi" data-go="verse">Вірш голосами</button><button class="mmi" data-go="online">Онлайн</button><button class="mmi" data-go="prof">Профіль</button><button class="mmi" data-go="set">Налаштування</button>
+    <div class="mmhint">↑ ↓ — вибрати · Enter — відкрити</div></nav>
+  <div id="scrBar"><button id="scrBack">← Назад</button><b id="scrTitle"></b></div>
   <div class="grid">
     <div class="col">
       <section class="panel" id="pTrack">
@@ -299,6 +329,7 @@ button.acc,.seg button.on{background:var(--pink);color:#fff;border-color:var(--i
         <div class="field"><div class="t">Затримка звуку <b id="lbOff"></b></div><input type="range" id="rgOff" min="-250" max="400" step="1">
           <div class="row"><button id="btnCalib">Підбір затримки</button><button id="btnTest">Тест затримки (метроном)</button></div>
           <div class="hint">Під час соло клавіші <b>−</b> та <b>=</b> змінюють затримку на 5 мс.</div></div>
+        <label class="chk"><input type="checkbox" id="chMenuMus"><span>Музика в меню <small>своя весела мелодія, поки ти в меню</small></span></label>
         <label class="chk"><input type="checkbox" id="chNofail"><span>Без програшу <small>у соло гра не закінчиться, навіть якщо здоров'я впаде до нуля</small></span></label>
         <label class="chk"><input type="checkbox" id="chHit"><span>Звук натискання <small>тихий клац, коли влучаєш у стрілку</small></span></label>
         <div class="field" id="hitBox"><div class="t">Гучність клацу <b id="lbHit"></b></div><input type="range" id="rgHit" min="5" max="100" step="5"></div>
@@ -360,7 +391,7 @@ button.acc,.seg button.on{background:var(--pink);color:#fff;border-color:var(--i
 <script>
 'use strict';
 // ====================== БАЗА ======================
-const BUILD_ID='2026-11-04T10:22:18Z';
+const BUILD_ID='2026-11-04T10:43:46Z';
 const GAME_VER='1.3';
 const BUILD=(()=>{if(!BUILD_ID.startsWith('__'))return BUILD_ID;const d=new Date(document.lastModified);return isNaN(d)?'0':d.toISOString()})();
 const LANE_COL=['#c24b99','#00e5f2','#2ff06a','#f9393f'];
@@ -391,7 +422,7 @@ function hexA(hex,a){const n=parseInt(hex.slice(1),16);return`rgba(${n>>16},${n>
 
 // ====================== НАЛАШТУВАННЯ ======================
 const DEF_KEYS=[['ArrowLeft','KeyD'],['ArrowDown','KeyF'],['ArrowUp','KeyJ'],['ArrowRight','KeyK']];
-const S={name:'',diff:1,events:50,smin:0.9,smax:2.7,shake:100,side:1,scroll:0,keys:DEF_KEYS.map(k=>k.slice()),offset:0,nofail:false,sing:false,calibrated:false,sens:100,sensV:1,color:'#00b8c4',hitsound:false,hitvol:60,vibro:true,skin:0,chars:true,voMusic:true,voSelf:false,voTakes:true};
+const S={name:'',diff:1,events:50,smin:0.9,smax:2.7,shake:100,side:1,scroll:0,keys:DEF_KEYS.map(k=>k.slice()),offset:0,nofail:false,sing:false,calibrated:false,sens:100,sensV:1,color:'#00b8c4',hitsound:false,hitvol:60,vibro:true,skin:0,chars:true,voMusic:true,voSelf:false,voTakes:true,menuMusic:true};
 try{const o=JSON.parse(localStorage.getItem('ritmbatl')||'{}');for(const k in S)if(o[k]!==undefined&&typeof o[k]===typeof S[k])S[k]=o[k];
   if(!o.sensV){if(S.sens===50)S.sens=100;S.sensV=1} // старий стандарт 50 → новий 100
   if(!Array.isArray(S.keys)||S.keys.length!==4||S.keys.some(k=>!Array.isArray(k)||k.length!==2))S.keys=DEF_KEYS.map(k=>k.slice());}catch(e){}
@@ -3565,7 +3596,7 @@ function syncUI(){
   $('#chNofail').checked=S.nofail;$('#chSing').checked=S.sing;renderKeys();
   document.querySelectorAll('#segSkin button').forEach(b=>b.classList.toggle('on',+b.dataset.v===S.skin));
   $('#chHit').checked=S.hitsound;$('#rgHit').value=S.hitvol;$('#lbHit').textContent=S.hitvol+'%';$('#hitBox').hidden=!S.hitsound;
-  $('#chChars').checked=S.chars;$('#chVibro').checked=S.vibro;
+  $('#chChars').checked=S.chars;$('#chVibro').checked=S.vibro;$('#chMenuMus').checked=S.menuMusic;
   document.querySelectorAll('#segVoMus button').forEach(b=>b.classList.toggle('on',+b.dataset.v===(S.voMusic?1:0)));
   document.querySelectorAll('#segVoSelf button').forEach(b=>b.classList.toggle('on',+b.dataset.v===(S.voSelf?1:0)));
   document.querySelectorAll('#segVoTakes button').forEach(b=>b.classList.toggle('on',+b.dataset.v===(S.voTakes?1:0)));
@@ -3587,6 +3618,68 @@ async function checkUpdate(){
     if(newer)$('#upd').hidden=false}catch(e){}}
 
 
+
+
+// ---------- музика меню: свій веселий хіп-хоп-луп (102 BPM, до мінор), грає, поки ти в меню ----------
+const MM={on:false,next:0,bar:0,bus:null,timer:0},MM_BPM=102;
+// акорди на 8 тактів (електропіаніно) і корені для баса
+const MM_CH=[[60,63,67,70],[60,63,67,70],[56,60,63,67],[55,59,62,65],[60,63,67,70],[53,56,60,63],[56,60,63,67],[55,59,62,65]];
+const MM_ROOT=[36,36,32,31,36,29,32,31];
+// мелодія (крок 1/16, нота, довжина в 1/16) — своя, на до-мінорній пентатоніці
+const MM_A=[[0,72,2],[3,75,1],[4,77,2],[7,75,1],[8,72,3],[12,70,2],[14,72,2]],MM_B=[[0,67,2],[2,70,2],[4,72,4],[10,75,2],[12,74,1],[13,72,3]],
+  MM_END=[[0,79,2],[2,77,2],[4,75,2],[6,72,6],[14,70,2]];
+function mmBar(ac,o,t,b){
+  const P=60/MM_BPM,sd=P/4,c=b%8,sw=q=>q%2?sd*0.22:0; // розкачка: кожна парна 1/16 трохи пізніше
+  const kick=c===7?'x.....x.x.x.....':c%2?'x.....x...x..x..':'x.....x...x.....';
+  for(let q=0;q<16;q++){const at=t+q*sd+sw(q);
+    if(kick[q]==='x')DRUM[0](ac,o,at,0.85);
+    if(q===4||q===12)DRUM[1](ac,o,at,0.65);
+    if(q%2===0)DRUM[3](ac,o,at,q%4?0.35:0.5);
+    if(q===14&&c%2)DRUM[4](ac,o,at,0.4)}
+  if(c===0)DRUM[6](ac,o,t,0.35);
+  if(c===7)for(const q of[12,13,14,15])DRUM[1](ac,o,t+q*sd,0.25+0.1*(q-12)); // підводка до нового кола
+  // електропіаніно: удар на «раз» і фанковий на «і» двійки
+  for(const m of MM_CH[c]){playInst(ac,o,'piano',t,m,P*1.4,0.42);playInst(ac,o,'piano',t+6*sd+sw(6),m,P*0.5,0.3)}
+  // бас
+  const r=MM_ROOT[c];for(const[q,l,dv]of[[0,3,0],[6,2,12],[8,3,0],[11,1,7],[14,2,12]])playInst(ac,o,'bass',t+q*sd+sw(q),r+dv,l*sd,0.7);
+  // мелодія в другій половині кола
+  if(c>=4){const ph=c===4||c===6?MM_A:c===5?MM_B:MM_END;for(const[q,m,l]of ph)playInst(ac,o,'lead',t+q*sd+sw(q),m,l*sd*0.9,0.42)}}
+function mmTick(){const ac=getAC();while(MM.next<ac.currentTime+0.7){mmBar(ac,MM.bus,MM.next,MM.bar);MM.next+=4*60/MM_BPM;MM.bar++}}
+function menuMusicStart(){if(MM.on)return;const ac=getAC();if(ac.state!=='running')return;MM.on=true;
+  const b=ac.createGain();b.gain.setValueAtTime(0.0001,ac.currentTime);b.gain.linearRampToValueAtTime(0.3,ac.currentTime+1.2);b.connect(mkShaper(ac)).connect(ac.destination);
+  MM.bus=b;MM.next=ac.currentTime+0.15;MM.bar=0;MM.timer=setInterval(mmTick,100);mmTick()}
+function menuMusicStop(){if(!MM.on)return;MM.on=false;clearInterval(MM.timer);const ac=getAC(),b=MM.bus;MM.bus=null;
+  try{b.gain.cancelScheduledValues(ac.currentTime);b.gain.setValueAtTime(b.gain.value,ac.currentTime);b.gain.linearRampToValueAtTime(0.0001,ac.currentTime+0.35)}catch(e){}setTimeout(()=>{try{b.disconnect()}catch(e){}},1200)}
+// грає тільки в меню: не в грі, не на титульному екрані, не під час вірша, редактора, підбору затримки, прослуховування треку
+function menuMusicWatch(){
+  const want=S.menuMusic&&!G.on&&!$('#menu').hidden&&!VO.on&&!ED.on&&!CAL.on&&!document.getElementById('titleOv')&&document.visibilityState==='visible';
+  if(want)menuMusicStart();else menuMusicStop()}
+// ---------- меню як у грі: головний список і окремі екрани ----------
+const SCREENS={main:{bg:'#fbd75a',dd:'#d9752b'},play:{t:'Грати',bg:'#3b2d7e',dd:'#5c4bb8',el:['pTrack','pPractice','btnSolo']},
+  verse:{t:'Вірш голосами',bg:'#2f6fd8',dd:'#1f4ea6',el:['pVoice']},online:{t:'Онлайн',bg:'#1fa39b',dd:'#127069',el:['pOnline']},
+  prof:{t:'Профіль',bg:'#f39a3a',dd:'#b4601a',el:['pProf']},set:{t:'Налаштування',bg:'#c4587e',dd:'#8e2f55',el:['pSet']}};
+let SCR='main',MMI=0;
+function mmSound(big){try{const ac=getAC();ac.resume();const t=ac.currentTime+0.01;
+  if(big)[523,659,784,1047].forEach((f,i)=>osc(ac,'square',f,envG(ac,ac.destination,t+i*0.05,0.005,0.07,0.3),t+i*0.05,0.35));
+  else osc(ac,'square',1250,envG(ac,ac.destination,t,0.002,0.05,0.05),t,0.06)}catch(e){}}
+function showScreen(k,quiet){const sc=SCREENS[k];if(!sc)return;SCR=k;$('#menu').dataset.scr=k;
+  document.documentElement.style.setProperty('--sun',sc.bg);doodles(sc.dd);$('#scrTitle').textContent=sc.t||'';
+  if(k==='main')mmSel(MMI,true);window.scrollTo(0,0)}
+function mmSel(i,quiet){const it=[...document.querySelectorAll('#mm .mmi')];MMI=(i+it.length)%it.length;it.forEach((b,j)=>b.classList.toggle('sel',j===MMI));if(!quiet)mmSound(false)}
+function mmOpen(i){const b=document.querySelectorAll('#mm .mmi')[i];if(!b||b.classList.contains('blink'))return;mmSel(i,true);mmSound(true);b.classList.add('blink');
+  setTimeout(()=>{b.classList.remove('blink');showScreen(b.dataset.go)},450)}
+function menuInit(){
+  for(const k in SCREENS)for(const id of SCREENS[k].el||[]){const el=document.getElementById(id);if(el)el.dataset.scr=((el.dataset.scr||'')+' '+k).trim()}
+  document.querySelectorAll('#mm .mmi').forEach((b,i)=>{b.onmouseenter=()=>{if(i!==MMI)mmSel(i)};b.onclick=()=>mmOpen(i)});
+  $('#scrBack').onclick=()=>{mmSound(false);showScreen('main')};
+  document.addEventListener('keydown',e=>{
+    if(G.on||$('#menu').hidden||ED.on||VO.on||KEYWAIT||CAL.on||document.getElementById('titleOv'))return;
+    const typing=e.target&&/INPUT|TEXTAREA|SELECT/.test(e.target.tagName);
+    if(SCR==='main'){if(e.code==='ArrowUp'||e.code==='KeyW'){e.preventDefault();mmSel(MMI-1)}else if(e.code==='ArrowDown'||e.code==='KeyS'){e.preventDefault();mmSel(MMI+1)}
+      else if(e.code==='Enter'||e.code==='NumpadEnter'){e.preventDefault();mmOpen(MMI)}}
+    else if(!typing&&(e.code==='Escape'||e.code==='Backspace')){e.preventDefault();mmSound(false);showScreen('main')}});
+  // за посиланням-запрошенням — одразу екран онлайну
+  showScreen(/^#(join|watch)-/.test(location.hash)?'online':'main',true)}
 // ---------- вигляд у дусі FNF: клякса під логотипом, каракулі на жовтому фоні, титульний екран ----------
 function splatSVG(seed){const R=rng(seed),N=34,pts=[];
   for(let i=0;i<N;i++){const a=i/N*Math.PI*2,r=0.40+R()*0.06+(R()<0.22?0.05+R()*0.09:0);pts.push([50+Math.cos(a)*r*100,50+Math.sin(a)*r*100])}
@@ -3594,7 +3687,8 @@ function splatSVG(seed){const R=rng(seed),N=34,pts=[];
   for(let i=0;i<N;i++){const p=pts[i],q=pts[(i+1)%N];d+=' Q'+p[0].toFixed(1)+' '+p[1].toFixed(1)+' '+((p[0]+q[0])/2).toFixed(1)+' '+((p[1]+q[1])/2).toFixed(1)}
   let drops='';for(let i=0;i<7;i++){const a=R()*Math.PI*2,r=0.5+R()*0.08;drops+='<ellipse cx="'+(50+Math.cos(a)*r*100).toFixed(1)+'" cy="'+(50+Math.sin(a)*r*100).toFixed(1)+'" rx="'+(1.5+R()*2.5).toFixed(1)+'" ry="'+(1.5+R()*2.5).toFixed(1)+'"/>'}
   return'<g fill="#3340d8" stroke="#0b0918" stroke-width="1.6" stroke-linejoin="round"><path d="'+d+'Z"/>'+drops+'</g>'}
-function doodles(){const R=rng(77),W=900,col='#d9752b';let g='';
+const DOODLES={};
+function doodles(col){col=col||'#d9752b';if(DOODLES[col]){document.body.style.setProperty('--doodles',DOODLES[col]);return}const R=rng(77),W=900;let g='';
   const arrow=(x,y,s,r)=>'<path transform="translate('+x+' '+y+') rotate('+r+') scale('+s+')" d="M0 -40 L38 0 L14 0 L14 38 L-14 38 L-14 0 L-38 0 Z"/>';
   for(let i=0;i<26;i++){const x=R()*W,y=R()*W,s=0.6+R()*1.6,r=Math.floor(R()*4)*90+(R()-0.5)*20,k=R();
     if(k<0.4)g+=arrow(x.toFixed(0),y.toFixed(0),s.toFixed(2),r.toFixed(0));
@@ -3604,7 +3698,7 @@ function doodles(){const R=rng(77),W=900,col='#d9752b';let g='';
   // штрихування, як олівцем
   for(let i=0;i<10;i++){const x=R()*W,y=R()*W;for(let j=0;j<6;j++)g+='<path d="M'+(x+j*9).toFixed(0)+' '+y.toFixed(0)+' l40 -40"/>'}
   const svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+W+'" height="'+W+'"><g fill="none" stroke="'+col+'" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity=".55">'+g+'</g></svg>';
-  document.body.style.setProperty('--doodles','url("data:image/svg+xml,'+encodeURIComponent(svg)+'")')}
+  DOODLES[col]='url("data:image/svg+xml,'+encodeURIComponent(svg)+'")';document.body.style.setProperty('--doodles',DOODLES[col])}
 function titleScreen(){
   document.querySelectorAll('.logo svg.splat').forEach((el,i)=>el.innerHTML=splatSVG(31+i));doodles();
   const t=$('#titleOv');if(!t)return;
@@ -3622,7 +3716,8 @@ function titleScreen(){
 (function init(){
   // BUILD може бути ISO-датою або 20261030131500 (UTC)
   const cm=/^(\d{4})(\d\d)(\d\d)(\d\d)(\d\d)(\d\d)$/.exec(BUILD),d=cm?new Date(Date.UTC(+cm[1],cm[2]-1,+cm[3],+cm[4],+cm[5],+cm[6])):new Date(BUILD);$('#buildInfo').textContent=isNaN(d)?'Оновлено: —':'Оновлено: '+d.toLocaleDateString('uk-UA')+' о '+d.toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'});
-  syncUI();startMenuBg();titleScreen();
+  syncUI();startMenuBg();titleScreen();menuInit();
+  setInterval(menuMusicWatch,300);document.addEventListener('pointerdown',()=>{if(AC&&AC.state!=='running')AC.resume()});
   // трек
   const fi=$('#fileIn'),dz=$('#dropZone');
   $('#btnFile').onclick=()=>fi.click();dz.onclick=()=>{if(NET.role!=='guest'||amPicker())fi.click()};
@@ -3715,6 +3810,7 @@ function titleScreen(){
   $('#chHit').onchange=e=>{S.hitsound=e.target.checked;saveS();syncUI();if(S.hitsound){getAC().resume();hitSound()}};
   $('#rgHit').oninput=e=>{S.hitvol=+e.target.value;saveS();syncUI()};$('#rgHit').onchange=()=>{getAC().resume();hitSound()};
   $('#chChars').onchange=e=>{S.chars=e.target.checked;saveS()};
+  $('#chMenuMus').onchange=e=>{S.menuMusic=e.target.checked;saveS()};
   $('#chVibro').onchange=e=>{S.vibro=e.target.checked;saveS();vibrate(40)};
   // тренування
   for(const id of['#rgRate','#rgFrom','#rgTo'])$(id).oninput=syncPractice;$('#chLoop').onchange=syncPractice;
